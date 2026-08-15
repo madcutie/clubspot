@@ -1,0 +1,111 @@
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #08090b;
+  color: #f5f7fa;
+  font-family: Manrope, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: Manrope, system-ui, sans-serif;
+}
+
+input {
+  font-family: Manrope, system-ui, sans-serif;
+}
+
+input::placeholder {
+  color: #5f6772;
+}
+
+input:focus {
+  border-color: #ffc94a !important;
+}
+
+a {
+  color: #ffc94a;
+}
+
+a:hover {
+  color: #ffd97a;
+}
+
+/* La app es mobile first: en desktop se centra como una columna en vez de
+   estirarse a todo el ancho. */
+.app-page {
+  min-height: 100dvh;
+  background: #08090b;
+  display: flex;
+  justify-content: center;
+}
+
+.app-shell {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  height: 100dvh;
+  overflow: hidden;
+  background: #0d0e11;
+}
+
+@media (min-width: 660px) {
+  .app-shell {
+    border-left: 1px solid rgba(255, 255, 255, 0.07);
+    border-right: 1px solid rgba(255, 255, 255, 0.07);
+  }
+}
+
+/* Los carruseles de días/horas se desplazan sin barra visible. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.86);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+.pop {
+  animation: pop 0.3s ease-out;
+}
+
+/* Foco visible para navegación por teclado, sin ensuciar el clic con mouse. */
+:focus-visible {
+  outline: 2px solid #ffc94a;
+  outline-offset: 2px;
+}

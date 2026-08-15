@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/api/ClubSpot.Api/ClubSpot.Api.csproj" />
+    <Project Path="src/ClubSpot.Infrastructure/ClubSpot.Infrastructure.csproj" />
+    <Project Path="src/ClubSpot.Jobs/ClubSpot.Jobs.csproj" />
+    <Project Path="src/ClubSpot.Modules.Clubes/ClubSpot.Modules.Clubes.csproj" />
+    <Project Path="src/ClubSpot.Modules.Finanzas/ClubSpot.Modules.Finanzas.csproj" />
+    <Project Path="src/ClubSpot.Modules.Futbol/ClubSpot.Modules.Futbol.csproj" />
+    <Project Path="src/ClubSpot.Modules.Padel/ClubSpot.Modules.Padel.csproj" />
+    <Project Path="src/ClubSpot.Modules.Reservas/ClubSpot.Modules.Reservas.csproj" />
+    <Project Path="src/ClubSpot.SharedKernel/ClubSpot.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="src/tests/ClubSpot.IntegrationTests/ClubSpot.IntegrationTests.csproj" />
+    <Project Path="src/tests/ClubSpot.UnitTests/ClubSpot.UnitTests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ClubSpot.SharedKernel\ClubSpot.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\ClubSpot.Modules.Clubes\ClubSpot.Modules.Clubes.csproj" />
+    <ProjectReference Include="..\..\ClubSpot.Modules.Reservas\ClubSpot.Modules.Reservas.csproj" />
+    <ProjectReference Include="..\..\ClubSpot.Modules.Padel\ClubSpot.Modules.Padel.csproj" />
+    <ProjectReference Include="..\..\ClubSpot.Modules.Futbol\ClubSpot.Modules.Futbol.csproj" />
+    <ProjectReference Include="..\..\ClubSpot.Modules.Finanzas\ClubSpot.Modules.Finanzas.csproj" />
+    <ProjectReference Include="..\..\ClubSpot.Infrastructure\ClubSpot.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\ClubSpot.Jobs\ClubSpot.Jobs.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

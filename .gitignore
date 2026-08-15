@@ -1,0 +1,40 @@
+# .NET
+bin/
+obj/
+[Aa]rtifacts/
+*.user
+*.suo
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.DotSettings.user
+TestResults/
+coverage/
+*.coverage
+*.trx
+efbundle*
+publish/
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+.pnpm-store/
+
+# Vercel
+.vercel
+
+# Entorno y secretos — nunca versionar credenciales del club ni del gateway de pago
+.env
+.env.*
+!.env.example
+appsettings.Development.local.json
+*.pfx
+*.snk
+
+# Sistema
+Thumbs.db
+.DS_Store
+*.log

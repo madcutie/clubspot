@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diseño detallado — Socios y Reservas</title>
+<style>
+:root{
+  --paper:#f6f5f2; --surface:#ffffff; --ink:#191b1f; --ink2:#3d424b; --dim:#767d89;
+  --hair:#e2e0da; --hair2:#cfccc4;
+  --accent:#1f5f8b; --accent-soft:#e8f0f6;
+  --ok:#2c6a4d; --ok-soft:#e6f2ec;
+  --no:#8e3b34; --no-soft:#f8eae8;
+  --warn:#8a6320; --warn-soft:#faf1e0;
+  --violet:#5b4a8a; --violet-soft:#eeebf6;
+  --code:#f0efeb;
+  --shadow:0 1px 2px rgba(20,20,20,.05), 0 8px 24px rgba(20,20,20,.05);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#141619; --surface:#1b1e23; --ink:#e7e9ed; --ink2:#b9bfc9; --dim:#8b93a0;
+    --hair:#2b2f36; --hair2:#3a4048;
+    --accent:#6aa9d6; --accent-soft:#1a2a36;
+    --ok:#6fbf95; --ok-soft:#16261f;
+    --no:#d98a80; --no-soft:#2a1a18;
+    --warn:#d9ac62; --warn-soft:#2a2115;
+    --violet:#a596d6; --violet-soft:#211d2e;
+    --code:#22262c;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.28);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:24px}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans);
+  font-size:16px; line-height:1.62; -webkit-font-smoothing:antialiased}
+
+.shell{display:grid; grid-template-columns:272px minmax(0,1fr); max-width:1300px; margin:0 auto}
+@media (max-width:980px){ .shell{grid-template-columns:1fr} }
+
+nav.toc{position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:34px 20px 40px 28px; border-right:1px solid var(--hair)}
+nav.toc .brand{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:16px}
+nav.toc a{display:block; text-decoration:none; color:var(--ink2); font-size:13.5px; line-height:1.4;
+  padding:6px 10px; border-radius:6px; border-left:2px solid transparent; margin-left:-2px}
+nav.toc a:hover{background:var(--accent-soft); color:var(--accent)}
+nav.toc a.on{color:var(--accent); border-left-color:var(--accent); background:var(--accent-soft); font-weight:600}
+nav.toc a .n{color:var(--dim); font-variant-numeric:tabular-nums; margin-right:7px; font-size:12px}
+nav.toc a.on .n{color:var(--accent)}
+nav.toc a.sub2{padding-left:34px; font-size:12.5px}
+nav.toc hr{border:0; border-top:1px solid var(--hair); margin:14px 0}
+@media (max-width:980px){
+  nav.toc{position:static; height:auto; border-right:0; border-bottom:1px solid var(--hair); padding:22px 20px}
+  nav.toc .list{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:2px}
+  nav.toc a.sub2{padding-left:10px}
+}
+
+main{padding:44px 46px 120px; min-width:0}
+@media (max-width:700px){ main{padding:28px 18px 80px} }
+
+.doc-head{border-bottom:1px solid var(--hair2); padding-bottom:26px; margin-bottom:36px}
+.eyebrow{font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); font-weight:700}
+h1{font-size:clamp(28px,4.2vw,42px); line-height:1.12; letter-spacing:-.02em; margin:12px 0 14px; font-weight:700}
+.lede{font-size:17.5px; color:var(--ink2); max-width:64ch; margin:0}
+.meta{display:flex; flex-wrap:wrap; gap:8px; margin-top:22px}
+.meta span{font-size:12px; color:var(--dim); background:var(--surface); border:1px solid var(--hair);
+  padding:4px 10px; border-radius:99px}
+.meta span b{color:var(--ink2); font-weight:600}
+
+section{scroll-margin-top:20px; margin-bottom:56px}
+h2{font-size:24px; letter-spacing:-.015em; margin:0 0 6px; font-weight:700; line-height:1.2;
+  display:flex; align-items:baseline; gap:12px}
+h2 .num{font-size:12px; font-weight:700; color:var(--accent); background:var(--accent-soft);
+  border-radius:5px; padding:3px 8px; letter-spacing:.06em; flex:none; transform:translateY(-2px)}
+.sub{color:var(--dim); font-size:14.5px; margin:0 0 22px; max-width:66ch}
+h3{font-size:17.5px; margin:34px 0 10px; font-weight:700; letter-spacing:-.01em}
+h4{font-size:14.5px; margin:22px 0 8px; font-weight:700; color:var(--ink2)}
+p{margin:0 0 14px; max-width:76ch}
+a{color:var(--accent)}
+strong{font-weight:650}
+code{font-family:var(--mono); font-size:.86em; background:var(--code); padding:1.5px 5px;
+  border-radius:4px; border:1px solid var(--hair); white-space:nowrap}
+hr.rule{border:0; border-top:1px solid var(--hair); margin:44px 0}
+ul{margin:0 0 16px; padding-left:20px; max-width:76ch}
+li{margin-bottom:7px}
+ul.tick{list-style:none; padding-left:0}
+ul.tick li{position:relative; padding-left:20px}
+ul.tick li::before{content:""; position:absolute; left:2px; top:10px; width:6px; height:6px;
+  border-radius:1px; background:var(--accent)}
+
+.tw{overflow-x:auto; margin:0 0 18px; border:1px solid var(--hair); border-radius:10px;
+  background:var(--surface); box-shadow:var(--shadow)}
+table{border-collapse:collapse; width:100%; font-size:14px; min-width:480px}
+th{text-align:left; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim);
+  font-weight:700; padding:11px 15px; border-bottom:1px solid var(--hair2); white-space:nowrap}
+td{padding:11px 15px; border-bottom:1px solid var(--hair); vertical-align:top; line-height:1.5}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--accent-soft)}
+td.k{font-weight:600; white-space:nowrap}
+td.t{font-family:var(--mono); font-size:12.5px; color:var(--dim); white-space:nowrap}
+
+.chip{display:inline-block; font-size:11px; font-weight:700; letter-spacing:.04em;
+  padding:2.5px 8px; border-radius:5px; white-space:nowrap}
+.chip.yes{background:var(--ok-soft); color:var(--ok); border:1px solid color-mix(in srgb,var(--ok) 30%,transparent)}
+.chip.no{background:var(--no-soft); color:var(--no); border:1px solid color-mix(in srgb,var(--no) 30%,transparent)}
+.chip.part{background:var(--warn-soft); color:var(--warn); border:1px solid color-mix(in srgb,var(--warn) 32%,transparent)}
+.chip.inf{background:var(--accent-soft); color:var(--accent); border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+.chip.vio{background:var(--violet-soft); color:var(--violet); border:1px solid color-mix(in srgb,var(--violet) 30%,transparent)}
+
+.box{border:1px solid var(--hair); border-left:3px solid var(--accent); background:var(--surface);
+  border-radius:0 10px 10px 0; padding:16px 20px; margin:22px 0; box-shadow:var(--shadow)}
+.box .lbl{font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:700;
+  color:var(--accent); margin-bottom:7px}
+.box p:last-child,.box ul:last-child,.box table:last-child{margin-bottom:0}
+.box.risk{border-left-color:var(--no)} .box.risk .lbl{color:var(--no)}
+.box.ok{border-left-color:var(--ok)} .box.ok .lbl{color:var(--ok)}
+.box.warn{border-left-color:var(--warn)} .box.warn .lbl{color:var(--warn)}
+
+pre.flow{font-family:var(--mono); font-size:12.5px; line-height:1.7; background:var(--surface);
+  color:var(--ink2); border:1px solid var(--hair); border-radius:10px; padding:18px 20px;
+  overflow-x:auto; margin:16px 0; box-shadow:var(--shadow)}
+
+/* job cards */
+.job{background:var(--surface); border:1px solid var(--hair); border-radius:12px;
+  margin:20px 0; box-shadow:var(--shadow); overflow:hidden}
+.job > header{display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:14px 20px; border-bottom:1px solid var(--hair); background:var(--accent-soft)}
+.job > header .id{font-family:var(--mono); font-size:12px; font-weight:700; color:var(--accent);
+  border:1px solid color-mix(in srgb,var(--accent) 35%,transparent); border-radius:5px; padding:2px 7px}
+.job > header h4{margin:0; font-size:16px; color:var(--ink); font-weight:700; flex:1 1 240px}
+.job .body{padding:6px 20px 16px}
+.job dl{display:grid; grid-template-columns:150px minmax(0,1fr); gap:0; margin:0; font-size:14px}
+@media (max-width:640px){ .job dl{grid-template-columns:1fr} }
+.job dt{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim);
+  font-weight:700; padding:11px 0 11px; border-bottom:1px solid var(--hair)}
+.job dd{margin:0; padding:11px 0 11px 14px; border-bottom:1px solid var(--hair); line-height:1.55}
+@media (max-width:640px){ .job dd{padding-left:0; padding-top:0} .job dt{border-bottom:0; padding-bottom:2px} }
+.job dl > :nth-last-child(1),.job dl > :nth-last-child(2){border-bottom:0}
+.job dd.crit{color:var(--no); font-weight:600}
+
+.tally{display:flex; gap:28px; flex-wrap:wrap; margin:22px 0 10px}
+.tally div{min-width:104px}
+.tally b{display:block; font-size:32px; line-height:1.1; letter-spacing:-.02em}
+.tally small{color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.08em; font-weight:600}
+
+ol.qs{counter-reset:q; list-style:none; padding-left:0; max-width:76ch}
+ol.qs li{counter-increment:q; position:relative; padding-left:40px; margin-bottom:13px}
+ol.qs li::before{content:counter(q); position:absolute; left:0; top:1px; width:26px; height:26px;
+  border-radius:50%; background:var(--accent-soft); color:var(--accent); font-size:12.5px;
+  font-weight:700; display:flex; align-items:center; justify-content:center}
+
+footer{border-top:1px solid var(--hair); margin-top:60px; padding-top:22px; color:var(--dim); font-size:13px}
+@media print{
+  nav.toc{display:none} .shell{display:block} main{padding:0}
+  .box,.tw,.job,pre.flow{box-shadow:none} h2,h3{break-after:avoid} .job{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<nav class="toc">
+  <div class="brand">Diseño detallado</div>
+  <div class="list">
+    <a href="#respuesta"><span class="n">—</span>Respuesta corta: 11 jobs</a>
+    <hr>
+    <a href="#dominio"><span class="n">1</span>Modelo de dominio</a>
+    <a href="#estados"><span class="n">2</span>Máquinas de estado</a>
+    <a href="#jobs"><span class="n">3</span>Procesos de background</a>
+    <a href="#jobs-infra" class="sub2">3.1 Infraestructura común</a>
+    <a href="#jobs-tabla" class="sub2">3.2 Inventario</a>
+    <a href="#jobs-fichas" class="sub2">3.3 Ficha de cada job</a>
+    <a href="#jobs-no" class="sub2">3.4 Los que no existen</a>
+    <a href="#jobs-cond" class="sub2">3.5 Condicionales</a>
+    <a href="#concurrencia"><span class="n">4</span>Concurrencia y consistencia</a>
+    <a href="#api"><span class="n">5</span>Superficie de API</a>
+    <a href="#roles"><span class="n">6</span>Roles y permisos</a>
+    <a href="#integraciones"><span class="n">7</span>Integraciones externas</a>
+    <a href="#migracion"><span class="n">8</span>Migración del padrón</a>
+    <a href="#observabilidad"><span class="n">9</span>Observabilidad</a>
+    <a href="#riesgos"><span class="n">10</span>Riesgos técnicos</a>
+  </div>
+</nav>
+
+<main>
+
+<header class="doc-head">
+  <div class="eyebrow">Diseño detallado · continúa el alcance aprobado</div>
+  <h1>Socios y Reservas de Canchas</h1>
+  <p class="lede">Modelo de dominio, máquinas de estado, concurrencia y —sobre todo— el inventario
+  completo de procesos de background que el sistema necesita para funcionar solo.</p>
+  <div class="meta">
+    <span><b>Continúa:</b> <a href="alcance-socios-mvp.html">Alcance MVP</a></span>
+    <span><b>Base:</b> <code>forever/ourclub/</code></span>
+    <span><b>Fecha:</b> 13/08/2026</span>
+    <span><b>Sobre:</b> M1–M4a ya construidos</span>
+  </div>
+</header>
+
+<!-- ================= RESPUESTA CORTA ================= -->
+<section id="respuesta">
+  <h2>Respuesta corta</h2>
+  <p class="sub">La pregunta era cuántos procesos hacen falta. Este es el número, antes del detalle.</p>
+
+  <div class="tally">
+    <div><b>4</b><small>Continuos</small></div>
+    <div><b>5</b><small>Programados</small></div>
+    <div><b>2</b><small>Bajo demanda</small></div>
+    <div><b>11</b><small>Total MVP</small></div>
+  </div>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Grupo</th><th>Jobs</th><th>Si no corren</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="k">Continuos<br><span class="chip inf">30 s – 5 min</span></td>
+        <td>Expiración de reservas · Conciliación de pagos · Reproceso de webhooks · Despachador de notificaciones</td>
+        <td>El sistema deja de vender o cobra sin entregar. <strong>Falla en minutos.</strong></td>
+      </tr>
+      <tr>
+        <td class="k">Programados<br><span class="chip inf">diario</span></td>
+        <td>Apertura de agenda · Snapshot de habilitación · Avisos de cobranza · Recordatorio de reservas · Retención y purga</td>
+        <td>Degradación lenta e invisible. <strong>Se nota semanas después.</strong></td>
+      </tr>
+      <tr>
+        <td class="k">Bajo demanda<br><span class="chip inf">humano</span></td>
+        <td>Preliquidación · Aplicación de liquidación</td>
+        <td>No hay deuda del mes. Se nota enseguida y lo reporta el usuario.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Además hay <strong>2 diferidos</strong> (anonimización por retención, baja automática por mora) y
+  <strong>hasta 6 condicionales</strong> que aparecen según cómo se respondan las preguntas abiertas
+  del alcance — ver <a href="#jobs-cond">3.5</a>. De los 11 del MVP, <strong>uno ya existe</strong>
+  (la expiración de holds de M3) y sólo hay que extenderlo.</p>
+
+  <div class="box warn">
+    <div class="lbl">El número que importa no es 11</div>
+    <p>Es <strong>cuántos de esos fallan en silencio</strong>. Seis de los once no producen ningún
+    error cuando dejan de correr: simplemente no pasa nada, y el efecto aparece días después. Eso
+    define la estrategia de monitoreo de la <a href="#observabilidad">sección 9</a>: se alerta sobre
+    el <em>efecto pendiente</em>, no sobre la ejecución.</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ================= 1 DOMINIO ================= -->
+<section id="dominio">
+  <h2><span class="num">01</span>Modelo de dominio</h2>
+  <p class="sub">Agregados, campos y tipos. Todo lo monetario es <code>decimal(14,2)</code> con moneda
+  explícita; todo lo temporal es <code>timestamptz</code> guardado en UTC y mostrado en hora del club.</p>
+
+  <h3>1.1 · Persona <span class="chip inf">agregado raíz</span></h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Campo</th><th>Tipo</th><th>Reglas</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Id</td><td class="t">uuid</td><td>PK, inmutable, no expuesta como identificador de negocio</td></tr>
+      <tr><td class="k">TenantId</td><td class="t">uuid</td><td>filtro global obligatorio</td></tr>
+      <tr><td class="k">TipoDocumento</td><td class="t">enum</td><td>DNI · LC · LE · CI · PASAPORTE</td></tr>
+      <tr><td class="k">NumeroDocumento</td><td class="t">varchar(20)</td><td><strong>único por (tenant, tipo)</strong>; sólo dígitos y letras</td></tr>
+      <tr><td class="k">Apellido / Nombre</td><td class="t">varchar(120)</td><td>índice de búsqueda sin acentos ni mayúsculas</td></tr>
+      <tr><td class="k">FechaNacimiento</td><td class="t">date</td><td>obligatoria — es insumo de la categorización</td></tr>
+      <tr><td class="k">Sexo</td><td class="t">enum</td><td>catálogo configurable, no booleano</td></tr>
+      <tr><td class="k">Email</td><td class="t">varchar(254)?</td><td>nullable; único cuando existe. Requerido para autogestión</td></tr>
+      <tr><td class="k">Telefono</td><td class="t">varchar(30)?</td><td>normalizado E.164 cuando se pueda</td></tr>
+      <tr><td class="k">Domicilio</td><td class="t">value object</td><td>calle, número, piso, depto, localidad, provincia, CP</td></tr>
+      <tr><td class="k">FotoUrl</td><td class="t">varchar?</td><td>referencia a blob, nunca base64 en la fila</td></tr>
+      <tr><td class="k">CodigoCredencial</td><td class="t">varchar(32)?</td><td><strong>único por tenant</strong>; tercer identificador buscable; puente con control de acceso</td></tr>
+      <tr><td class="k">Estado</td><td class="t">enum</td><td>ACTIVO · INACTIVO</td></tr>
+      <tr><td class="k">Observaciones</td><td class="t">text?</td><td>libre, auditado</td></tr>
+      <tr><td class="k">xmin</td><td class="t">system</td><td>concurrencia optimista, como en el catálogo actual</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><strong>Invariante:</strong> no pueden existir dos personas con el mismo documento en un tenant.
+  El alta desde mostrador y el alta online compiten por eso, así que la unicidad se garantiza con
+  índice en base, no con una consulta previa.</p>
+
+  <h3>1.2 · Membresía (rol Socio)</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Campo</th><th>Tipo</th><th>Reglas</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Id / PersonaId</td><td class="t">uuid</td><td>una membresía vigente por persona</td></tr>
+      <tr><td class="k">NumeroSocio</td><td class="t">varchar(8)</td><td>identificador de negocio <strong>mutable</strong>; único entre membresías no dadas de baja</td></tr>
+      <tr><td class="k">CategoriaId</td><td class="t">uuid</td><td>ACTIVO · CADETE MENOR · CADETE INFANTIL, en variante individual y grupo familiar</td></tr>
+      <tr><td class="k">Estado</td><td class="t">enum</td><td>VIGENTE · SUSPENDIDO · BAJA</td></tr>
+      <tr><td class="k">FechaAlta</td><td class="t">date</td><td>base de la antigüedad</td></tr>
+      <tr><td class="k">FechaBaja</td><td class="t">date?</td><td>presente sólo en estado BAJA</td></tr>
+      <tr><td class="k">MesesAntiguedadAcreditados</td><td class="t">int</td><td>default 0; permite reconocer antigüedad manualmente</td></tr>
+      <tr><td class="k">GrupoFamiliarId</td><td class="t">uuid?</td><td>null si es socio individual</td></tr>
+      <tr><td class="k">ExcepcionRecategorizacion</td><td class="t">enum?</td><td>DISCAPACIDAD · VITALICIO · ADHERENTE · ESTATUTO_2011_HIJA_MAYOR_24</td></tr>
+      <tr><td class="k">OrigenAlta</td><td class="t">enum</td><td>MOSTRADOR · PORTAL · MIGRACION — trazabilidad</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><strong>Antigüedad</strong> es derivada: <code>hoy − FechaAlta + MesesAntiguedadAcreditados</code>.
+  No se guarda ni se recalcula por job.</p>
+
+  <h3>1.3 · Grupo familiar</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Campo</th><th>Tipo</th><th>Reglas</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Id</td><td class="t">uuid</td><td></td></tr>
+      <tr><td class="k">TitularMembresiaId</td><td class="t">uuid</td><td>obligatorio, exactamente uno</td></tr>
+      <tr><td class="k">CategoriaGrupo</td><td class="t">uuid</td><td>la del titular; las de los integrantes derivan de ella</td></tr>
+      <tr><td class="k">VigenteDesde / Hasta</td><td class="t">date</td><td></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="box warn">
+    <div class="lbl">Invariantes que en OurClub son sólo advertencias en pantalla</div>
+    <ul class="tick">
+      <li>Un grupo familiar tiene <strong>≥ 2 integrantes</strong>. Quitar al penúltimo disuelve el grupo
+        y convierte al restante en socio individual, en la misma transacción.</li>
+      <li>Ninguna membresía puede tener categoría de grupo familiar sin <code>GrupoFamiliarId</code>.</li>
+      <li>El titular no puede estar en estado BAJA mientras el grupo tenga integrantes vigentes: la baja
+        del titular exige un cambio de titularidad previo.</li>
+    </ul>
+  </div>
+
+  <h3>1.4 · Catálogo de precios</h3>
+  <pre class="flow">TipoConcepto ──1:N──&gt; Concepto ──1:N──&gt; Precio(CategoriaId | NO_SOCIO, vigenteDesde, monto)</pre>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Entidad</th><th>Campos clave</th><th>Reglas</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Concepto</td><td class="t">codigo, nombre, generaDeuda:bool, periodicidad:enum, mesesAplicables:int[]</td><td>código <strong>único</strong> — el catálogo actual tiene duplicados</td></tr>
+      <tr><td class="k">Precio</td><td class="t">conceptoId, audiencia, monto, moneda, vigenteDesde</td><td><strong>historizado</strong>: nunca se pisa un precio, se agrega uno nuevo con vigencia. Un cargo emitido conserva el monto, no el puntero al precio</td></tr>
+      <tr><td class="k">Descuento</td><td class="t">membresiaId, tipo:PORCENTAJE|MONTO, valor, desde, hasta, motivo</td><td><strong>uno vigente por membresía</strong> en MVP</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>1.5 · Cuenta corriente</h3>
+  <p>Libro <strong>append-only</strong>. No hay <code>UPDATE</code> sobre movimientos: se agrega el
+  contra-asiento.</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Entidad</th><th>Campos clave</th><th>Reglas</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Cargo</td><td class="t">personaId, conceptoId, periodo(aaaa-mm), montoBruto, descuento, montoNeto, fechaEmision, fechaVencimiento, estado, loteLiquidacionId?</td><td><strong><code>UNIQUE (persona, concepto, periodo)</code></strong> — ésta es la garantía real contra la doble liquidación, no un flag de proceso</td></tr>
+      <tr><td class="k">Imputacion</td><td class="t">cargoId, pagoId, monto</td><td>N:N — un pago cubre varios cargos, un cargo se cubre con varios pagos</td></tr>
+      <tr><td class="k">Pago</td><td class="t">personaId, medio, monto, fecha, sesionCajaId?, gatewayPaymentId?, reciboId</td><td>medio: EFECTIVO · TARJETA · TRANSFERENCIA · ONLINE</td></tr>
+      <tr><td class="k">Recibo</td><td class="t">numero, fechaEmision, fechaPago, estado, motivoAnulacion?</td><td><strong>fecha de emisión ≠ fecha de pago</strong>, ambas obligatorias en el modelo</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><strong>Vencido no es un estado.</strong> Es la condición
+  <code>fechaVencimiento &lt; hoy AND estado ≠ PAGADO</code>, calculada al consultar. Eso elimina un
+  job diario que en la mayoría de los sistemas existe sin motivo.</p>
+
+  <h3>1.6 · Habilitación <span class="chip vio">proyección</span></h3>
+  <p>Tabla derivada, una fila por persona, consultada con altísima concurrencia el día del partido.</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Campo</th><th>Tipo</th><th>Notas</th></tr></thead>
+    <tbody>
+      <tr><td class="k">PersonaId</td><td class="t">uuid</td><td>PK</td></tr>
+      <tr><td class="k">Habilitada</td><td class="t">bool</td><td>lo que responde el molinete y la boletería</td></tr>
+      <tr><td class="k">MesesDeuda</td><td class="t">int</td><td>meses consecutivos impagos</td></tr>
+      <tr><td class="k">MotivoInhabilitacion</td><td class="t">enum?</td><td>DEUDA · SUSPENDIDO · BAJA · SIN_MEMBRESIA</td></tr>
+      <tr><td class="k">CalculadaEn</td><td class="t">timestamptz</td><td>si envejece más de 26 h, es una alerta</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="box">
+    <div class="lbl">Por qué es una proyección y no un cálculo al vuelo</div>
+    <p>Resolver la habilitación con un <em>join</em> a la cuenta corriente en cada lectura del molinete
+    es correcto pero no sobrevive un día de partido: son miles de lecturas concurrentes contra la
+    tabla más caliente del sistema. Se materializa, se actualiza por evento (pago, cargo nuevo, cambio
+    de estado) y se reconcilia de noche con <a href="#J6">J6</a>.</p>
+  </div>
+
+  <h3>1.7 · Reservas de canchas</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Entidad</th><th>Campos clave</th><th>Reglas</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Espacio</td><td class="t">nombre, tipo:enum, techado:bool, iluminacion:bool, duracionTurnoMin:int, estado</td><td>tipo: PADEL · FUTBOL_5 · FUTBOL_7 · OTRO</td></tr>
+      <tr><td class="k">GrillaHoraria</td><td class="t">espacioId, diaSemana, horaApertura, horaCierre</td><td>define qué turnos se materializan</td></tr>
+      <tr><td class="k">Bloqueo</td><td class="t">espacioId, desde, hasta, motivo</td><td>saca turnos de venta; <strong>no borra reservas confirmadas</strong> — las lista para resolver a mano</td></tr>
+      <tr><td class="k">Tarifa</td><td class="t">tipoEspacio, franjaDesde, franjaHasta, diasSemana, audiencia, monto</td><td>audiencia: SOCIO · NO_SOCIO. La franja horaria es donde está el ingreso</td></tr>
+      <tr><td class="k">Turno</td><td class="t">espacioId, inicio, fin, estado, reservaId?</td><td><strong><code>UNIQUE (espacio, inicio)</code></strong>; materializado por <a href="#J5">J5</a>; capacidad 1</td></tr>
+      <tr><td class="k">Reserva</td><td class="t">turnoId, personaId?, nombreContacto?, telefono?, estado, expiraEn?, pagoId?, recordatorioEnviadoEn?</td><td>persona nullable para reserva telefónica de no socio</td></tr>
+      <tr><td class="k">SerieRecurrente</td><td class="t">espacioId, diaSemana, hora, personaId, desde, hasta, estado</td><td>el turno fijo; la extiende <a href="#J5">J5</a></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="box ok">
+    <div class="lbl">Reuso literal de M3</div>
+    <p>Un <code>Turno</code> es una <code>Section</code> de capacidad 1 y una <code>Reserva</code> es
+    un <code>Hold</code> que se convierte en <code>Booking</code>. El <code>UPDATE</code> condicional
+    atómico, el TTL, la idempotencia por clave y el flujo de pago son <strong>el mismo código</strong>,
+    no una implementación paralela.</p>
+  </div>
+
+  <h3>1.8 · Sesión de caja y profesor</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Entidad</th><th>Campos clave</th></tr></thead>
+    <tbody>
+      <tr><td class="k">SesionCaja</td><td class="t">operadorId, aperturaEn, montoInicial, cierreEn?, efectivoDeclarado?, diferencia?, estado</td></tr>
+      <tr><td class="k">Profesor</td><td class="t">personaId, cargo:enum, disciplinas:uuid[], estado</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>La sesión cerrada es <strong>inmutable</strong>. La diferencia entre lo declarado y lo esperado se
+  registra, no se corrige.</p>
+</section>
+
+<hr class="rule">
+
+<!-- ================= 2 ESTADOS ================= -->
+<section id="estados">
+  <h2><span class="num">02</span>Máquinas de estado</h2>
+  <p class="sub">Toda transición registra quién, cuándo y por qué. Las flechas que no están dibujadas
+  no existen: el agregado las rechaza.</p>
+
+  <h3>2.1 · Membresía</h3>
+<pre class="flow">                 ┌──────────────────────────────┐
+   (alta) ──&gt; VIGENTE  ⇄  SUSPENDIDO ──────&gt; BAJA
+                 └──────────────────────────────┘        │
+                              ▲                          │
+                              └──── reactivación ────────┘
+                                    (cobra REACTIVACION)
+
+VIGENTE→SUSPENDIDO   inhabilita, conserva antigüedad y número
+SUSPENDIDO→VIGENTE   sin cargo
+*→BAJA               libera el número de socio; exige salir del grupo familiar si es titular
+BAJA→VIGENTE         genera cargo REACTIVACION ($30.000 / $40.000 grupo familiar)</pre>
+
+  <h3>2.2 · Cargo</h3>
+<pre class="flow">PENDIENTE ──imputación parcial──&gt; PARCIAL ──imputación total──&gt; PAGADO
+    │                                 │
+    └────────── anulación ────────────┴──&gt; ANULADO   (por contra-asiento, nunca por UPDATE)
+
+vencido = fechaVencimiento &lt; hoy AND estado ≠ PAGADO      ← condición, no estado</pre>
+
+  <h3>2.3 · Recibo y pago</h3>
+<pre class="flow">Recibo   PENDIENTE_PAGO ──&gt; PAGADO ──anulación con motivo──&gt; ANULADO
+
+Pago     INICIADO ──&gt; PENDIENTE ──&gt; APROBADO ──&gt; REEMBOLSADO
+                          ├──&gt; RECHAZADO
+                          └──&gt; EXPIRADO        (lo declara J2, no el usuario)</pre>
+
+  <h3>2.4 · Turno y reserva</h3>
+<pre class="flow">Turno     DISPONIBLE ⇄ BLOQUEADO
+               │
+               ▼
+Reserva   RETENIDA(TTL) ──pago aprobado──&gt; CONFIRMADA ──&gt; CUMPLIDA
+               │                                │
+               │                                ├──&gt; CANCELADA  (dentro de la ventana)
+               ▼                                └──&gt; AUSENTE    (marcada por recepción)
+           EXPIRADA        ← la declara J1, devuelve el turno a DISPONIBLE</pre>
+
+  <h3>2.5 · Lote de liquidación</h3>
+<pre class="flow">BORRADOR ──J7──&gt; CALCULANDO ──&gt; CALCULADA ──aprobación humana──&gt; APLICANDO ──J8──&gt; APLICADA
+                      │                                              │
+                      └──&gt; ERROR_CALCULO                             ├──&gt; ERROR_APLICACION (reanudable)
+                                                                     └──&gt; REVERTIDA (contra-asientos)</pre>
+  <p><code>Re-Iniciar Liquidación</code> existe en OurClub porque el proceso falla a la mitad. Acá el
+  estado <code>APLICANDO</code> es reanudable por diseño: cada chunk confirma su propia transacción y
+  la unicidad <code>(persona, concepto, período)</code> hace que reanudar no duplique nada.</p>
+
+  <h3>2.6 · Alta online — el estado que no puede existir</h3>
+<pre class="flow">INICIADO ──&gt; PAGO_PENDIENTE ──&gt; PAGO_APROBADO ──&gt; SOCIO_CREADO
+                    │                   │
+                    ▼                   ▼ (falla el alta)
+                EXPIRADO         reintento automático ×N ──&gt; REVISION_MANUAL
+                                                              (nunca se pierde)</pre>
+  <div class="box risk">
+    <div class="lbl">El antipatrón que se está corrigiendo</div>
+    <p>OurClub tiene un estado llamado <code>Pago Ok. Error Alta</code> y un tablero para contarlos:
+    plata cobrada sin socio creado. Acá esa combinación <strong>siempre termina resolviéndose</strong>
+    — o se completa el alta por reintento, o queda en una cola de revisión visible con alerta, o se
+    compensa el pago. Nunca se queda quieta y en silencio.</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ================= 3 JOBS ================= -->
+<section id="jobs">
+  <h2><span class="num">03</span>Procesos de background</h2>
+  <p class="sub">El núcleo de este documento.</p>
+</section>
+
+<section id="jobs-infra">
+  <h3>3.1 · Infraestructura y reglas comunes</h3>
+
+  <h4>Motor</h4>
+  <p>Hoy la expiración de holds corre como <em>hosted timer</em> de 30 s (ADR-006). Eso alcanza para un
+  solo proceso y para un job. Con once no alcanza: <strong>Hangfire con almacenamiento en
+  PostgreSQL</strong>, que ya estaba previsto para M4b. Aporta persistencia de la agenda, reintentos
+  con backoff, historial de ejecución y panel de control.</p>
+
+  <div class="box risk">
+    <div class="lbl">El riesgo específico de este sistema: multi-tenancy sin request</div>
+    <p>La resolución de tenant es por <em>claim</em> o por <em>Host</em> (Rule Zero de M1).
+    <strong>Un job no tiene ninguno de los dos</strong>: corre sin request HTTP. Si el contexto de
+    tenant queda vacío, los filtros globales de EF o bien no filtran nada —fuga entre clubes— o bien
+    filtran todo y el job procesa cero filas sin fallar.</p>
+    <p>Regla: <strong>todo job recibe el <code>TenantId</code> como parámetro explícito</strong> y abre
+    un ámbito de tenant antes de tocar el <code>DbContext</code>. Un despachador enumera los tenants
+    activos y encola una ejecución por tenant. Un tenant que falla no bloquea a los demás.</p>
+  </div>
+
+  <h4>Reglas que cumple todo job, sin excepción</h4>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Regla</th><th>Por qué</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Idempotente</td><td>Hangfire puede reintentar y el proceso puede morir a mitad. Correr dos veces tiene que dar el mismo resultado que correr una</td></tr>
+      <tr><td class="k">Lock distribuido por (job, tenant)</td><td>con más de una instancia de la API, dos réplicas ejecutarían lo mismo a la vez</td></tr>
+      <tr><td class="k">Acotado y por lotes</td><td>procesa N ítems por corrida con <code>SKIP LOCKED</code>; nunca una transacción sobre 3.050 socios</td></tr>
+      <tr><td class="k">Reanudable</td><td>el progreso se persiste; reiniciar continúa, no recomienza</td></tr>
+      <tr><td class="k">Hora local del club</td><td>todo lo que sea "día" usa <code>America/Argentina/Buenos_Aires</code>, no UTC. Un job diario a las 00:00 UTC corre a las 21:00 del día anterior</td></tr>
+      <tr><td class="k">Sin efectos externos dentro de la transacción</td><td>mails y llamadas a terceros salen por outbox, nunca dentro del <code>commit</code></td></tr>
+      <tr><td class="k">Emite métrica de resultado</td><td>ítems procesados, fallidos, duración y antigüedad del pendiente más viejo</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="jobs-tabla">
+  <h3>3.2 · Inventario</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th>#</th><th>Job</th><th>Cadencia</th><th>Criticidad</th><th>¿Falla en silencio?</th></tr></thead>
+    <tbody>
+      <tr><td class="k">J1</td><td><a href="#J1">Expiración de reservas</a></td><td>30 s</td><td><span class="chip no">CRÍTICA</span></td><td>Sí — deja de vender</td></tr>
+      <tr><td class="k">J2</td><td><a href="#J2">Conciliación de pagos</a></td><td>5 min</td><td><span class="chip no">CRÍTICA</span></td><td>Sí — cobra sin entregar</td></tr>
+      <tr><td class="k">J3</td><td><a href="#J3">Reproceso de webhooks</a></td><td>1 min</td><td><span class="chip no">CRÍTICA</span></td><td>Sí</td></tr>
+      <tr><td class="k">J4</td><td><a href="#J4">Despachador de notificaciones</a></td><td>30 s</td><td><span class="chip part">ALTA</span></td><td>Sí</td></tr>
+      <tr><td class="k">J5</td><td><a href="#J5">Apertura de agenda</a></td><td>diaria</td><td><span class="chip part">ALTA</span></td><td>Sí — a los 30 días</td></tr>
+      <tr><td class="k">J6</td><td><a href="#J6">Snapshot de habilitación</a></td><td>diaria</td><td><span class="chip no">CRÍTICA</span></td><td>Sí</td></tr>
+      <tr><td class="k">J7</td><td><a href="#J7">Preliquidación</a></td><td>bajo demanda</td><td><span class="chip part">ALTA</span></td><td>No — lo reporta el usuario</td></tr>
+      <tr><td class="k">J8</td><td><a href="#J8">Aplicación de liquidación</a></td><td>bajo demanda</td><td><span class="chip no">CRÍTICA</span></td><td>No</td></tr>
+      <tr><td class="k">J9</td><td><a href="#J9">Avisos de cobranza</a></td><td>diaria</td><td><span class="chip inf">MEDIA</span></td><td>Sí</td></tr>
+      <tr><td class="k">J10</td><td><a href="#J10">Recordatorio de reservas</a></td><td>cada hora</td><td><span class="chip inf">MEDIA</span></td><td>Sí</td></tr>
+      <tr><td class="k">J11</td><td><a href="#J11">Retención y purga</a></td><td>diaria</td><td><span class="chip inf">MEDIA</span></td><td>Sí — meses después</td></tr>
+      <tr><td class="k">J12</td><td><a href="#J12">Anonimización por retención</a></td><td>mensual</td><td colspan="2"><span class="chip vio">DIFERIDO A M6</span></td></tr>
+      <tr><td class="k">J13</td><td><a href="#J13">Baja automática por mora</a></td><td>mensual</td><td colspan="2"><span class="chip vio">PROPUESTO — APAGADO</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="jobs-fichas">
+  <h3>3.3 · Ficha de cada job</h3>
+
+  <!-- J1 -->
+  <div class="job" id="J1">
+    <header><span class="id">J1</span><h4>Expiración de reservas</h4><span class="chip inf">cada 30 s</span><span class="chip yes">YA EXISTE — EXTENDER</span></header>
+    <div class="body"><dl>
+      <dt>Qué hace</dt><dd>Busca holds vencidos (<code>expiraEn &lt; ahora</code>, estado <code>RETENIDA</code>), los pasa a <code>EXPIRADA</code> y devuelve la capacidad con un <code>UPDATE</code> condicional.</dd>
+      <dt>Alcance</dt><dd><strong>Unificado</strong>: entradas de partido y turnos de cancha usan el mismo job. Un turno es un asiento de capacidad 1 — no se duplica el proceso.</dd>
+      <dt>Idempotencia</dt><dd>El <code>UPDATE</code> lleva el estado en el <code>WHERE</code>. Correrlo dos veces no devuelve capacidad dos veces.</dd>
+      <dt>Concurrencia</dt><dd><code>SELECT … FOR UPDATE SKIP LOCKED</code> por lotes; varias instancias pueden correrlo sin pisarse.</dd>
+      <dt>Si no corre</dt><dd class="crit">La capacidad queda retenida por holds muertos y el evento aparece agotado sin estarlo. En día de partido, minutos de caída equivalen a entradas no vendidas.</dd>
+      <dt>Alerta</dt><dd>Antigüedad del hold vencido más viejo &gt; 2 minutos.</dd>
+      <dt>Estado actual</dt><dd>Implementado en M3 como hosted timer (ADR-006) y cubierto por tests de expiración por reloj. Falta extenderlo a turnos y moverlo a Hangfire.</dd>
+    </dl></div>
+  </div>
+
+  <!-- J2 -->
+  <div class="job" id="J2">
+    <header><span class="id">J2</span><h4>Conciliación de pagos con el proveedor</h4><span class="chip inf">cada 5 min</span></header>
+    <div class="body"><dl>
+      <dt>Qué hace</dt><dd>Toma pagos en <code>PENDIENTE</code> con más de 10 minutos, <strong>consulta al proveedor el estado real</strong> y aplica exactamente el mismo camino de liquidación que usa el webhook.</dd>
+      <dt>Por qué existe</dt><dd>Los webhooks se pierden: caídas de red, despliegues, timeouts del proveedor. Sin este job hay socios que pagaron y no tienen su entrada, su reserva o su cuota acreditada, <strong>y el sistema no se entera</strong>.</dd>
+      <dt>Idempotencia</dt><dd>Reutiliza el <em>settle</em> guardado por estado que ya está construido y testeado en M4a; si el webhook llegó primero, el job no hace nada.</dd>
+      <dt>Escalamiento</dt><dd>Backoff creciente. Pasadas N horas sin resolución, el pago se marca para <strong>revisión manual</strong> y aparece en una bandeja visible. Nunca se descarta.</dd>
+      <dt>Si no corre</dt><dd class="crit">Es exactamente el <code>Pago Ok. Error Alta</code> de OurClub: plata cobrada sin contraprestación, acumulándose en silencio.</dd>
+      <dt>Alerta</dt><dd>Cantidad de pagos pendientes con más de 30 minutos.</dd>
+    </dl></div>
+  </div>
+
+  <!-- J3 -->
+  <div class="job" id="J3">
+    <header><span class="id">J3</span><h4>Reproceso de la bandeja de webhooks</h4><span class="chip inf">cada 1 min</span></header>
+    <div class="body"><dl>
+      <dt>Qué hace</dt><dd>Barre <code>WebhookEvents</code> recibidos pero no procesados —o con error transitorio— y reintenta el procesamiento con backoff.</dd>
+      <dt>Por qué es distinto de J2</dt><dd><strong>J3 procesa lo que llegó; J2 busca lo que nunca llegó.</strong> El endpoint acusa recibo y persiste de inmediato, para que un error propio no dispare los reintentos del proveedor; el procesamiento real es asincrónico y es este job quien lo garantiza.</dd>
+      <dt>Idempotencia</dt><dd>Clave única <code>(Provider, ProviderEventId)</code> ya implementada en M4a: la deduplicación es por id de notificación del proveedor, no por id de pago.</dd>
+      <dt>Si no corre</dt><dd class="crit">Se acumulan notificaciones sin aplicar. J2 lo tapa parcialmente, pero con 5 minutos de retraso y una llamada extra al proveedor por cada una.</dd>
+      <dt>Alerta</dt><dd>Eventos sin procesar con más de 5 minutos, y cualquier evento que agote sus reintentos.</dd>
+    </dl></div>
+  </div>
+
+  <!-- J4 -->
+  <div class="job" id="J4">
+    <header><span class="id">J4</span><h4>Despachador de notificaciones (outbox)</h4><span class="chip inf">cada 30 s</span></header>
+    <div class="body"><dl>
+      <dt>Qué hace</dt><dd>Toma mensajes pendientes de la tabla outbox, los envía por el canal correspondiente, registra el resultado y reintenta con backoff exponencial. Tras N intentos quedan en <code>FALLIDO</code>, visibles y reenviables a mano.</dd>
+      <dt>Por qué outbox y no envío directo</dt><dd>El envío no puede vivir dentro de la transacción de negocio. Si el mail sale y la transacción se revierte, se notificó algo que no ocurrió; si la transacción confirma y el mail falla, se perdió sin rastro. La fila del outbox se escribe <strong>en la misma transacción</strong> que el hecho que la origina.</dd>
+      <dt>Qué transporta</dt><dd>Comprobante de pago · credencial digital · bienvenida · aviso de vencimiento (J9) · recordatorio de reserva (J10) · confirmación y cancelación de reserva · recuperación de acceso.</dd>
+      <dt>Si no corre</dt><dd>Nadie recibe nada y el sistema sigue pareciendo sano. Es el fallo silencioso más fácil de pasar por alto.</dd>
+      <dt>Alerta</dt><dd>Antigüedad del mensaje pendiente más viejo &gt; 10 minutos.</dd>
+    </dl></div>
+  </div>
+
+  <!-- J5 -->
+  <div class="job" id="J5">
+    <header><span class="id">J5</span><h4>Apertura de agenda de canchas</h4><span class="chip inf">diario · 03:00 hora del club</span></header>
+    <div class="body"><dl>
+      <dt>Qué hace</dt><dd>Tres pasos, en orden: <strong>(1)</strong> materializa los turnos del día <code>hoy + ventana</code> (30 días configurables) según la grilla horaria de cada espacio activo; <strong>(2)</strong> aplica los bloqueos vigentes; <strong>(3)</strong> extiende las series recurrentes activas creando las reservas de turno fijo dentro de la ventana recién abierta.</dd>
+      <dt>Por qué materializar</dt><dd>Calcular la disponibilidad al vuelo desde la grilla es elegante pero no deja contra qué hacer el <code>UPDATE</code> atómico que evita la doble reserva. La fila del turno <strong>es</strong> el punto de serialización.</dd>
+      <dt>Idempotencia</dt><dd><code>UNIQUE (espacio, inicio)</code> más <em>upsert</em> que nunca pisa un turno ya reservado o bloqueado.</dd>
+      <dt>Si no corre</dt><dd>No pasa nada hoy. Dentro de 30 días no hay turnos que reservar. <strong>Es el job cuya falla tarda más en notarse</strong>, y por eso se monitorea por horizonte, no por ejecución.</dd>
+      <dt>Alerta</dt><dd>Horizonte abierto por espacio &lt; 20 días.</dd>
+    </dl></div>
+  </div>
+
+  <!-- J6 -->
+  <div class="job" id="J6">
+    <header><span class="id">J6</span><h4>Snapshot de habilitación</h4><span class="chip inf">diario · 04:00 + por evento</span></header>
+    <div class="body"><dl>
+      <dt>Qué hace</dt><dd>Recalcula por persona los meses de deuda y el estado derivado, compara con la proyección materializada, corrige las divergencias y deja registro de cada corrección.</dd>
+      <dt>Por qué hace falta si ya se actualiza por evento</dt><dd class="crit"><strong>Porque el paso del tiempo no es un evento.</strong> Un socio que deja de pagar no genera ninguna acción: nadie toca su cuenta, nadie hace nada. Sin este job se queda habilitado para siempre. El recálculo por evento mantiene el dato fresco cuando algo ocurre; este job es el que hace efectivo que <em>no</em> ocurra nada.</dd>
+      <dt>Segunda función</dt><dd>Red de seguridad: detecta divergencias entre la proyección y la verdad de la cuenta corriente. Toda divergencia es un bug, y quedar registrada es lo que permite encontrarlo.</dd>
+      <dt>Si no corre</dt><dd class="crit">Morosos que siguen entrando al estadio y comprando a precio de socio; o al revés, socios al día rebotados en el molinete. Ambas fallas se descubren en la puerta, con gente esperando.</dd>
+      <dt>Alerta</dt><dd><code>CalculadaEn</code> más vieja que 26 h en cualquier fila; cantidad de divergencias corregidas &gt; 0.</dd>
+    </dl></div>
+  </div>
+
+  <!-- J7 -->
+  <div class="job" id="J7">
+    <header><span class="id">J7</span><h4>Preliquidación — cálculo de novedades</h4><span class="chip inf">bajo demanda</span></header>
+    <div class="body"><dl>
+      <dt>Disparador</dt><dd>Un humano elige período, tipo de concepto y fecha de vencimiento. La ejecución va a background por volumen: ~3.050 socios × conceptos × resolución de grupo familiar, beca y excepción.</dd>
+      <dt>Qué produce</dt><dd>Un lote en estado <code>CALCULADA</code> con una línea por socio: categoría actual, <strong>categoría siguiente</strong>, edad calculada, monto bruto, descuento aplicado, monto neto y excepciones detectadas. <strong>No escribe nada en la cuenta corriente.</strong></dd>
+      <dt>Por qué existe la etapa</dt><dd>El proceso recategoriza por edad, o sea cambia el precio de miles de socios sin intervención humana. La previsualización es lo que convierte eso en una decisión revisada en vez de un hecho consumado.</dd>
+      <dt>Idempotencia</dt><dd>Clave <code>(tenant, período, tipoConcepto)</code>. Recalcular descarta el lote anterior sólo si sigue en <code>CALCULADA</code>; un lote aplicado no se puede recalcular.</dd>
+      <dt>Ejecución</dt><dd>Por chunks con progreso persistido y reanudable. La UI muestra avance real, no un spinner.</dd>
+      <dt>Si no corre</dt><dd>Falla ruidosa: el usuario está esperando el resultado.</dd>
+    </dl></div>
+  </div>
+
+  <!-- J8 -->
+  <div class="job" id="J8">
+    <header><span class="id">J8</span><h4>Aplicación de liquidación</h4><span class="chip inf">bajo demanda · tras aprobación</span></header>
+    <div class="body"><dl>
+      <dt>Disparador</dt><dd>Aprobación explícita del lote calculado, por un rol <strong>distinto</strong> del que lo calculó — ver <a href="#roles">sección 6</a>.</dd>
+      <dt>Qué hace</dt><dd>Crea los cargos en la cuenta corriente, aplica las recategorizaciones aprobadas, marca el lote <code>APLICADA</code> y encola los avisos de J9.</dd>
+      <dt>Idempotencia</dt><dd class="crit">La garantía es <code>UNIQUE (persona, concepto, período)</code> en la base, <strong>no el estado del lote</strong>. Si el proceso muere a mitad y se reanuda, los cargos ya creados chocan contra el índice y se saltean. Confiar en un flag de proceso es lo que produce liquidaciones duplicadas.</dd>
+      <dt>Transaccionalidad</dt><dd>Un <code>commit</code> por chunk, no uno global. Una transacción de 3.050 socios bloquea la cuenta corriente entera y no se puede reanudar.</dd>
+      <dt>Reversión</dt><dd>Existe "revertir lote": genera contra-asientos por cada cargo no imputado. Los cargos ya pagados no se revierten — se resuelven a mano.</dd>
+      <dt>Si no corre</dt><dd class="crit">No hay deuda del mes: no hay cobranza, no hay mora, la habilitación no cambia y el club no factura.</dd>
+      <dt>Efectos posteriores</dt><dd>Dispara J6 (habilitación) y J9 (avisos) para las personas alcanzadas.</dd>
+    </dl></div>
+  </div>
+
+  <!-- J9 -->
+  <div class="job" id="J9">
+    <header><span class="id">J9</span><h4>Avisos de cobranza</h4><span class="chip inf">diario · 09:00 hora del club</span></header>
+    <div class="body"><dl>
+      <dt>Qué hace</dt><dd>Aplica reglas de calendario sobre los cargos pendientes —N días antes del vencimiento, el día del vencimiento, N días después— y encola mensajes en el outbox.</dd>
+      <dt>Por qué está en el MVP</dt><dd>Es la palanca de cobranza más barata que existe. Con el outbox ya construido, cuesta un job y una tabla de reglas; el efecto sobre la mora es directo.</dd>
+      <dt>Idempotencia</dt><dd><code>UNIQUE (cargo, tipoAviso)</code>. Nadie recibe el mismo aviso dos veces aunque el job corra diez veces en un día.</dd>
+      <dt>Cuidado</dt><dd>Respeta la preferencia de contacto de la persona y no envía a socios de baja. Un aviso de cobranza mal dirigido erosiona exactamente la relación que sostiene el negocio.</dd>
+      <dt>Si no corre</dt><dd>Sube la mora sin ninguna señal técnica de que algo esté mal.</dd>
+    </dl></div>
+  </div>
+
+  <!-- J10 -->
+  <div class="job" id="J10">
+    <header><span class="id">J10</span><h4>Recordatorio de reservas</h4><span class="chip inf">cada hora</span></header>
+    <div class="body"><dl>
+      <dt>Qué hace</dt><dd>Busca reservas confirmadas que empiezan dentro de las próximas N horas y sin recordatorio enviado, y encola el mensaje.</dd>
+      <dt>Por qué</dt><dd>El no-show es el problema número uno de las canchas: el turno se pierde y ya no se puede revender. Un recordatorio a tiempo es la contramedida más barata.</dd>
+      <dt>Idempotencia</dt><dd>Marca <code>recordatorioEnviadoEn</code> en la reserva, escrita junto con la fila del outbox.</dd>
+      <dt>Si no corre</dt><dd>Sube el no-show. Invisible desde el sistema.</dd>
+    </dl></div>
+  </div>
+
+  <!-- J11 -->
+  <div class="job" id="J11">
+    <header><span class="id">J11</span><h4>Retención y purga</h4><span class="chip inf">diario · 05:00</span></header>
+    <div class="body"><dl>
+      <dt>Qué purga</dt><dd>Refresh tokens vencidos · registros de idempotencia fuera de ventana · holds expirados con más de N días · eventos de webhook ya procesados con más de N días · turnos pasados nunca reservados.</dd>
+      <dt>Qué NO purga nunca</dt><dd class="crit">Movimientos de cuenta corriente, recibos, pagos, sesiones de caja y bitácora de auditoría. <strong>Son el libro contable del club</strong> y sólo salen por la política de retención legal (J12), nunca por higiene técnica.</dd>
+      <dt>Si no corre</dt><dd>Las tablas de idempotencia y webhooks crecen sin límite y degradan las escrituras más calientes. Se nota meses después, como lentitud sin causa aparente.</dd>
+    </dl></div>
+  </div>
+
+  <!-- J12 -->
+  <div class="job" id="J12">
+    <header><span class="id">J12</span><h4>Anonimización por retención</h4><span class="chip vio">mensual · diferido a M6</span></header>
+    <div class="body"><dl>
+      <dt>Qué hace</dt><dd>Personas dadas de baja hace más de N años, sin deuda ni movimientos, quedan anonimizadas: se borran los datos personales y se conservan los agregados contables.</dd>
+      <dt>Bloqueo</dt><dd>Requiere una decisión del club sobre el plazo de retención. No es una decisión técnica.</dd>
+    </dl></div>
+  </div>
+
+  <!-- J13 -->
+  <div class="job" id="J13">
+    <header><span class="id">J13</span><h4>Baja automática por mora</h4><span class="chip vio">mensual · propuesto, apagado por defecto</span></header>
+    <div class="body"><dl>
+      <dt>Origen de la sospecha</dt><dd>El dashboard actual muestra <strong>2.202 bajas contra 669 altas</strong> en doce meses. Un ratio de 3,3 a 1 sugiere que hoy existe algún mecanismo de depuración, automático o manual masivo. Hay que preguntarlo antes de replicarlo.</dd>
+      <dt>Qué haría</dt><dd class="crit"><strong>Nunca ejecutar la baja.</strong> Produciría una lista propuesta que un humano aprueba, igual que la preliquidación. Dar de baja a un socio por un proceso automático sin revisión es la clase de decisión que se descubre cuando la persona llega a la puerta del estadio.</dd>
+      <dt>Estado</dt><dd>Apagado hasta que el club confirme la política.</dd>
+    </dl></div>
+  </div>
+</section>
+
+<section id="jobs-no">
+  <h3>3.4 · Jobs que deliberadamente no existen</h3>
+  <p>Tan importante como la lista anterior. Cada uno de estos aparece por defecto en sistemas
+  parecidos y acá se resuelve sin proceso.</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Job ausente</th><th>Cómo se resuelve en su lugar</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Marcar cargos vencidos</td><td>Vencido es la condición <code>fechaVencimiento &lt; hoy AND estado ≠ PAGADO</code>. Un job que escribe un estado que ya es derivable sólo agrega una ventana en la que el dato está mal</td></tr>
+      <tr><td class="k">Recalcular antigüedad del socio</td><td>Derivada de <code>FechaAlta</code> más los meses acreditados. Se calcula al mostrar</td></tr>
+      <tr><td class="k">Recalcular saldos de cuenta corriente</td><td>El saldo se actualiza en la misma transacción que el movimiento, con concurrencia optimista. Un job de recálculo nocturno sería tapar un bug de transaccionalidad</td></tr>
+      <tr><td class="k">Generar exportables pesados</td><td>Con ~3.050 socios, el padrón completo y el listado de deudores se resuelven sincrónicos. Con diez veces ese volumen habría que revisarlo</td></tr>
+      <tr><td class="k">Refrescar caché de disponibilidad</td><td>Ya existe caché con ETag y comportamiento <em>fail-open</em> desde M2; se invalida por escritura, no por reloj</td></tr>
+      <tr><td class="k">Cerrar cajas abiertas</td><td>Una sesión que quedó abierta es un problema operativo que tiene que ver un humano, no algo que cierre un proceso a las 3 de la mañana</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="jobs-cond">
+  <h3>3.5 · Jobs condicionales</h3>
+  <p class="sub">Aparecen según cómo se respondan las preguntas abiertas del alcance. Por eso la
+  respuesta a "cuántos procesos" es 11 <em>hoy</em>, y hasta 17 según esas decisiones.</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Si…</th><th>Aparece</th><th>Peso</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="k">El molinete sigue integrándose por archivo</td>
+        <td><strong>C1 · Exportación de padrón habilitado.</strong> Genera y entrega el archivo de personas autorizadas antes de cada evento, y procesa el archivo de accesos de vuelta</td>
+        <td><span class="chip part">1 job</span></td>
+      </tr>
+      <tr>
+        <td class="k">El club emite factura electrónica</td>
+        <td><strong>C2 · Cola de emisión fiscal.</strong> ARCA se cae y responde lento: la emisión tiene que ser asincrónica con reintentos, y el comprobante interno no puede depender de que el fiscal salga en el mismo instante</td>
+        <td><span class="chip part">1 job</span></td>
+      </tr>
+      <tr>
+        <td class="k">Se convive con OurClub en vez de cortar</td>
+        <td><strong>C3 · Sincronización de padrón.</strong> Conciliación bidireccional, resolución de conflictos y detección de divergencias. <strong>Es el argumento técnico más fuerte a favor de migrar de una vez</strong></td>
+        <td><span class="chip no">1 job caro</span></td>
+      </tr>
+      <tr>
+        <td class="k">Entra el débito automático (post-MVP)</td>
+        <td><strong>C4 · Generación de lote · C5 · Presentación · C6 · Procesamiento de respuesta y rechazos.</strong> Son tres procesos, no uno: el ciclo es asincrónico y con vuelta atrás parcial. El estado <code>RECHAZOS PROCESADOS</code> del sistema actual es terminal y distinto de <code>FINALIZADA</code></td>
+        <td><span class="chip no">3 jobs</span></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="box">
+    <div class="lbl">Lectura</div>
+    <p>El débito automático no sólo es la exclusión más costosa del alcance: es también la que
+    <strong>más triplica la superficie de procesos</strong>. Conviene planificarlo como un bloque
+    propio, no como "una feature más" del módulo de cobranza.</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ================= 4 CONCURRENCIA ================= -->
+<section id="concurrencia">
+  <h2><span class="num">04</span>Concurrencia y consistencia</h2>
+  <p class="sub">Dónde hay contención real y con qué mecanismo se resuelve cada una.</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Punto de contención</th><th>Mecanismo</th><th>Nota</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Turno de cancha / asiento</td><td><code>UPDATE</code> condicional atómico sobre la capacidad</td><td>Ya validado en M3 con la prueba obligatoria: 500 holds paralelos contra 15 cupos → exactamente 15 y 485 conflictos limpios</td></tr>
+      <tr><td class="k">Doble liquidación del período</td><td><code>UNIQUE (persona, concepto, periodo)</code></td><td>La base es la garantía, no el estado del lote ni un semáforo en memoria</td></tr>
+      <tr><td class="k">Generación de número de socio</td><td>Secuencia por tenant + índice único</td><td>Dos altas simultáneas en mostrador compiten por el mismo número; sin unicidad en base, se asigna repetido</td></tr>
+      <tr><td class="k">Alta de persona con el mismo documento</td><td>Índice único <code>(tenant, tipoDoc, numeroDoc)</code></td><td>El alta online y la de mostrador pueden coincidir en el mismo segundo</td></tr>
+      <tr><td class="k">Edición concurrente de ficha</td><td>Concurrencia optimista con <code>xmin</code></td><td>Mismo patrón ya usado en el catálogo de M2</td></tr>
+      <tr><td class="k">Saldo de cuenta corriente</td><td>Movimientos <em>append-only</em>; saldo actualizado en la misma transacción</td><td>Nunca leer-modificar-escribir en dos pasos</td></tr>
+      <tr><td class="k">Cobro doble por reintento del cliente</td><td>Clave de idempotencia por operación</td><td>Ya implementado en M3 con replay y conflicto 409</td></tr>
+      <tr><td class="k">Webhook duplicado del proveedor</td><td><code>UNIQUE (Provider, ProviderEventId)</code></td><td>M4a: la deduplicación va por id de notificación; usar algo más grueso descarta la aprobación real</td></tr>
+      <tr><td class="k">Dos instancias del mismo job</td><td>Lock distribuido por <code>(job, tenant)</code></td><td>Nuevo — hoy no hace falta porque hay un solo job y una sola instancia</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ================= 5 API ================= -->
+<section id="api">
+  <h2><span class="num">05</span>Superficie de API</h2>
+  <p class="sub">Agrupada por recurso. El contrato se escribe a mano antes del código, como el resto del
+  proyecto, y el frontend se genera desde ahí.</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Grupo</th><th>Operaciones</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Personas</td><td>buscar (documento · apellido · número de socio · código de credencial) · obtener · crear · actualizar · adjuntar documentación</td></tr>
+      <tr><td class="k">Membresías</td><td>alta · baja · suspender · reactivar · cambiar categoría · cambiar número · historia</td></tr>
+      <tr><td class="k">Grupos familiares</td><td>crear · agregar integrante · quitar integrante · cambiar titular · disolver</td></tr>
+      <tr><td class="k">Cuenta corriente</td><td>listar movimientos · deuda por mes · agregar cargo manual · anular cargo · resumen del grupo familiar</td></tr>
+      <tr><td class="k">Cobranza</td><td>abrir sesión de caja · cobrar · emitir recibo · anular recibo · cerrar sesión · consultar cierre</td></tr>
+      <tr><td class="k">Liquidación</td><td>crear lote · calcular (→ J7) · listar novedades · aprobar y aplicar (→ J8) · revertir · estado del lote</td></tr>
+      <tr><td class="k">Catálogo</td><td>conceptos · precios por categoría · descuentos · categorías de socio</td></tr>
+      <tr><td class="k">Habilitación</td><td><strong>consultar por documento o código de credencial</strong> — es el endpoint del molinete y de la boletería; respuesta mínima y muy rápida</td></tr>
+      <tr><td class="k">Espacios y agenda</td><td>espacios · grilla horaria · bloqueos · tarifas · disponibilidad por día y espacio</td></tr>
+      <tr><td class="k">Reservas</td><td>retener turno · confirmar con pago · cancelar · marcar ausente · series recurrentes · consulta</td></tr>
+      <tr><td class="k">Pagos</td><td>iniciar · consultar estado · webhook anónimo (ya existe) · bandeja de revisión manual</td></tr>
+      <tr><td class="k">Portal del socio</td><td>mi cuenta · mi deuda · pagar · mi credencial · reservar · mis reservas · mis datos</td></tr>
+      <tr><td class="k">Operación</td><td>estado de los jobs · bandeja de pagos en revisión · divergencias de habilitación · outbox fallido</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ================= 6 ROLES ================= -->
+<section id="roles">
+  <h2><span class="num">06</span>Roles y permisos</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Rol</th><th>Puede</th><th>No puede</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Mesa de socios</td><td>buscar y editar personas, altas y bajas, grupos familiares, cobrar en su sesión de caja</td><td>anular recibos ajenos, aplicar liquidación, cambiar precios</td></tr>
+      <tr><td class="k">Tesorería</td><td>catálogo de precios, calcular y aplicar liquidación, anular recibos, ver todos los cierres de caja</td><td>editar datos personales del padrón</td></tr>
+      <tr><td class="k">Recepción de canchas</td><td>agenda, reservar, cancelar, marcar ausente, cobrar reservas</td><td>tocar el padrón o la cuenta corriente</td></tr>
+      <tr><td class="k">Control de acceso</td><td>consultar habilitación, registrar ingresos</td><td>ver deuda, montos ni datos de contacto</td></tr>
+      <tr><td class="k">Profesor</td><td>ver su agenda y sus grupos</td><td>todo lo demás</td></tr>
+      <tr><td class="k">Socio</td><td>su propia cuenta, sus pagos, sus reservas, sus datos</td><td>ver a nadie más, salvo integrantes de su grupo familiar</td></tr>
+      <tr><td class="k">Administrador</td><td>todo, incluida la configuración</td><td>—</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="box warn">
+    <div class="lbl">Separación de funciones</div>
+    <p><strong>Quien calcula la liquidación no puede aprobarla.</strong> J7 y J8 se disparan con
+    permisos distintos. Es la única barrera real contra un error de parametrización que se aplica a
+    3.000 socios de una sola vez, y contra el uso indebido deliberado.</p>
+    <p>Mismo criterio en la anulación de recibos: la anulación siempre lleva motivo, queda en auditoría
+    y no la puede hacer quien emitió el recibo.</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ================= 7 INTEGRACIONES ================= -->
+<section id="integraciones">
+  <h2><span class="num">07</span>Integraciones externas</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Integración</th><th>Modo</th><th>Qué pasa si se cae</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Pasarela de pago</td><td>Redirección a formulario alojado + webhook + consulta de estado</td><td>No se puede cobrar online. El mostrador sigue funcionando. J2 recupera todo lo que quedó a medias cuando vuelve</td></tr>
+      <tr><td class="k">Email</td><td>SMTP o proveedor, siempre detrás del outbox</td><td>Nada se pierde: los mensajes se acumulan y salen solos al reponerse</td></tr>
+      <tr><td class="k">Control de acceso (molinete)</td><td><strong>API de habilitación como camino principal, exportación por archivo como respaldo</strong></td><td>Con la API caída se usa el archivo del día. Hoy el proveedor sólo soporta archivo — ver C1</td></tr>
+      <tr><td class="k">RENAPER</td><td>Validación de identidad — <span class="chip no">fuera del MVP</span></td><td>Cuando entre: necesita tabla de mapeo de catálogos explícita y un panel de salud propio. El problema real que monitorean en OurClub no son las caídas sino las provincias sin mapear</td></tr>
+      <tr><td class="k">ARCA / facturación</td><td>Condicional — ver C2</td><td>La emisión fiscal nunca puede bloquear el cobro: se cobra, se emite el comprobante interno, y el fiscal sale por cola</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ================= 8 MIGRACIÓN ================= -->
+<section id="migracion">
+  <h2><span class="num">08</span>Migración del padrón</h2>
+  <p class="sub">La fase cero. No es un módulo, pero define la fecha de puesta en marcha.</p>
+
+  <h4>Qué hay que traer, en orden de dependencia</h4>
+  <ol class="qs">
+    <li><strong>Personas</strong> — con documento, fecha de nacimiento y contacto. Sin fecha de
+      nacimiento no se puede categorizar; hay que medir cuántas faltan antes de prometer fechas.</li>
+    <li><strong>Membresías</strong> — número de socio, categoría, estado y <strong>fecha de alta</strong>.
+      La antigüedad tiene peso estatutario: si se migra mal, se le quitan años de club a gente que los
+      tiene, y eso se reclama.</li>
+    <li><strong>Grupos familiares</strong> — con su titular. Es donde va a aparecer la basura: grupos de
+      un integrante, categorías de grupo sin grupo, titulares dados de baja. <strong>El sistema nuevo
+      no los va a aceptar</strong>, así que hay que decidir caso por caso antes de migrar, no durante.</li>
+    <li><strong>Saldos de cuenta corriente</strong> — decisión: ¿se migra el histórico completo o sólo
+      el saldo de apertura por persona? <strong>Recomendación: saldo de apertura</strong>, con el
+      histórico conservado como archivo de consulta fuera del sistema operativo. Migrar movimientos
+      viejos importa inconsistencias contables que después hay que defender.</li>
+    <li><strong>Becas y excepciones vigentes</strong> — si no vienen, se factura mal el primer mes a la
+      gente más sensible.</li>
+    <li><strong>Códigos de credencial</strong> — sin esto el molinete no reconoce a nadie el primer
+      partido.</li>
+  </ol>
+
+  <div class="box risk">
+    <div class="lbl">Regla de la migración</div>
+    <p>Cada corrida de migración es <strong>idempotente y reejecutable</strong>, y produce un
+    <strong>informe de rechazos</strong> con el motivo por registro. Se corre muchas veces contra una
+    copia hasta que el informe queda vacío o explicado. La migración termina cuando el informe está
+    aceptado, no cuando el script no falla.</p>
+    <p>En OurClub la migración <strong>nunca terminó</strong>: sigue viva una pantalla de conciliación
+    con un flag <code>migrable</code> sí/no. Un residuo permanente es el resultado esperable de migrar
+    sin criterio de cierre.</p>
+  </div>
+</section>
+
+<hr class="rule">
+
+<!-- ================= 9 OBSERVABILIDAD ================= -->
+<section id="observabilidad">
+  <h2><span class="num">09</span>Observabilidad de los procesos</h2>
+
+  <div class="box">
+    <div class="lbl">El principio</div>
+    <p><strong>Se alerta sobre el efecto pendiente, no sobre la ejecución.</strong> Un job que falla
+    emite un error y se ve. Un job que <em>nunca arranca</em> —porque no quedó agendado, porque el
+    despliegue lo perdió, porque el lock quedó tomado— no emite nada. Monitorear "el job falló" no
+    detecta el modo de falla más común.</p>
+  </div>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Job</th><th>Señal que se vigila</th><th>Umbral</th></tr></thead>
+    <tbody>
+      <tr><td class="k">J1</td><td>antigüedad del hold vencido más viejo sin expirar</td><td>&gt; 2 min</td></tr>
+      <tr><td class="k">J2</td><td>pagos en pendiente</td><td>&gt; 30 min</td></tr>
+      <tr><td class="k">J3</td><td>eventos de webhook sin procesar · eventos que agotaron reintentos</td><td>&gt; 5 min · &gt; 0</td></tr>
+      <tr><td class="k">J4</td><td>antigüedad del mensaje pendiente más viejo · mensajes fallidos</td><td>&gt; 10 min · &gt; 0</td></tr>
+      <tr><td class="k">J5</td><td>horizonte de agenda abierto por espacio</td><td>&lt; 20 días</td></tr>
+      <tr><td class="k">J6</td><td>edad del snapshot más viejo · divergencias corregidas</td><td>&gt; 26 h · &gt; 0</td></tr>
+      <tr><td class="k">J8</td><td>lotes atascados en <code>APLICANDO</code></td><td>&gt; 1 h</td></tr>
+      <tr><td class="k">J11</td><td>filas en tablas de idempotencia y webhooks</td><td>crecimiento sostenido</td></tr>
+      <tr><td class="k">Todos</td><td>ejecuciones exitosas en las últimas 24 h por (job, tenant)</td><td>= 0 cuando debería ser ≥ 1</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>Además, una <strong>pantalla de operación</strong> dentro del sistema —no sólo el panel de
+  Hangfire— con: última corrida y resultado por job, bandeja de pagos en revisión manual, outbox
+  fallido y divergencias de habilitación. Es lo que mira quien administra el club, que no va a entrar
+  a un panel técnico.</p>
+</section>
+
+<hr class="rule">
+
+<!-- ================= 10 RIESGOS ================= -->
+<section id="riesgos">
+  <h2><span class="num">10</span>Riesgos técnicos</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Riesgo</th><th>Por qué</th><th>Mitigación</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="k">Tenant vacío en background</td>
+        <td>La resolución de tenant es por claim o Host; un job no tiene ninguno de los dos. El fallo puede ser fuga entre clubes o proceso que no hace nada sin fallar</td>
+        <td>Tenant explícito por parámetro, ámbito abierto antes del <code>DbContext</code>, y un test que verifica que un job sin tenant <strong>lanza excepción</strong> en vez de procesar</td>
+      </tr>
+      <tr>
+        <td class="k">Zona horaria</td>
+        <td>"Día" es en hora del club. Un job diario en UTC corre a las 21:00 del día anterior y liquida el mes equivocado el día 1</td>
+        <td>Todo cálculo de calendario pasa por la zona del tenant; casos de prueba en los bordes de mes y en cambios de hora</td>
+      </tr>
+      <tr>
+        <td class="k">Liquidación duplicada</td>
+        <td>Es el error más caro posible: 3.000 socios facturados dos veces, y la corrección es tan visible como el error</td>
+        <td>Unicidad en base como garantía dura, aprobación por rol distinto, y reversión por contra-asientos ya construida antes de la primera corrida real</td>
+      </tr>
+      <tr>
+        <td class="k">Recategorización silenciosa</td>
+        <td>Cambia el precio de miles de socios sin que nadie apriete nada</td>
+        <td>Previsualización obligatoria, excepciones como dato versionado por estatuto, e informe posterior de todos los cambios aplicados</td>
+      </tr>
+      <tr>
+        <td class="k">Padrón sucio heredado</td>
+        <td>Los datos actuales violan invariantes que el sistema nuevo va a imponer: grupos de un integrante, categorías huérfanas</td>
+        <td>Resolver antes de migrar con informe de rechazos, no relajar las invariantes para que la migración entre</td>
+      </tr>
+      <tr>
+        <td class="k">Proyección de habilitación desfasada</td>
+        <td>Se lee en la puerta del estadio con gente esperando; un dato viejo se transforma en un conflicto presencial</td>
+        <td>Actualización por evento + reconciliación nocturna + registro de divergencias + alerta por edad del snapshot</td>
+      </tr>
+      <tr>
+        <td class="k">Un solo proceso corriendo todo</td>
+        <td>Once jobs compartiendo el proceso de la API compiten con el tráfico del día de partido, que es justo cuando más carga hay</td>
+        <td>Los jobs corren en un proceso propio con su propia escala; el pico de boletería no puede quedar detrás de una liquidación</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<footer>
+  Diseño detallado — Socios y Reservas de Canchas · 13/08/2026 · continúa el
+  <a href="alcance-socios-mvp.html">Alcance MVP</a> aprobado.
+  Base documental: relevamiento de OurClub en <code>forever/ourclub/</code>.
+</footer>
+
+</main>
+</div>
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var map = {};
+  links.forEach(function(a){
+    var id = a.getAttribute('href').slice(1);
+    if (document.getElementById(id)) map[id] = a;
+  });
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting){
+        links.forEach(function(l){ l.classList.remove('on'); });
+        var a = map[e.target.id];
+        if (a) a.classList.add('on');
+      }
+    });
+  }, { rootMargin: '0px 0px -74% 0px', threshold: 0 });
+  document.querySelectorAll('section[id]').forEach(function(s){ obs.observe(s); });
+})();
+</script>
+</body>
+</html>

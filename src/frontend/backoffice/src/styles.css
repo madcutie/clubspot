@@ -1,0 +1,105 @@
+/*
+ * Base de la consola. El diseño resuelve casi todo con estilos inline, así que
+ * acá viven sólo las tres cosas que un objeto de estilo no puede expresar:
+ * el reset, las animaciones y los estados :hover / :focus.
+ *
+ * Las reglas de interacción llevan !important a propósito: pisan la propiedad
+ * equivalente del estilo inline, que de otro modo siempre gana.
+ */
+
+body {
+  margin: 0;
+  background: #f7f7f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+input,
+select,
+button {
+  font-family: Geist, system-ui, sans-serif;
+}
+
+input::placeholder {
+  color: #6e6e66;
+}
+
+a {
+  color: #1f7a4d;
+}
+
+a:hover {
+  color: #17603c;
+}
+
+@keyframes fadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slidein {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+div::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+div::-webkit-scrollbar-thumb {
+  background: #d9d9d4;
+  border-radius: 9px;
+  border: 3px solid #f7f7f5;
+}
+
+/* ── Estados de interacción ────────────────────────────────────────────────── */
+
+/* Botón secundario: el borde se marca y el texto se oscurece. */
+.h-ghost:hover {
+  border-color: #b2b2ab !important;
+  color: #0f0f0d !important;
+}
+
+/* Cualquier caja con borde que se marca al pasar por encima. */
+.h-borde:hover {
+  border-color: #b2b2ab !important;
+}
+
+/* Selector de club: marca más suave, es un control de contexto. */
+.h-borde-suave:hover {
+  border-color: #cbcbc5 !important;
+}
+
+/* Botón principal verde. */
+.h-primario:hover {
+  background: #17603c !important;
+}
+
+/* Ítem de lista o botón sin borde que se resalta con fondo. */
+.h-fondo:hover {
+  background: #f0f0ec !important;
+}
+
+/* Acción destructiva discreta: el borde y el texto viran a naranja. */
+.h-quitar:hover {
+  border-color: #efc9b2 !important;
+  color: #a24f29 !important;
+}
+
+/* Campos de texto: el foco reemplaza al outline del navegador. */
+.f-borde:focus {
+  border-color: #b2b2ab !important;
+}

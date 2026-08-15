@@ -1,0 +1,446 @@
+<title>Chaco For Ever en Números</title>
+<style>
+  :root{
+    --paper:#F5F4F1; --surface:#FFFFFF; --ink:#141519; --graphite:#5C5E66;
+    --hair:#D8D6D0; --stripe:#141519;
+    --money:#1D6B4F; --alert:#A8372A; --free:#8A6A1F;
+    --money-bg:#E4EFE9; --alert-bg:#F6E4E1; --free-bg:#F3EBD8;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#101114; --surface:#191A1E; --ink:#F0EFEC; --graphite:#9A9CA4;
+      --hair:#2E3036; --stripe:#F0EFEC;
+      --money:#5FC79B; --alert:#EE8577; --free:#D6B45C;
+      --money-bg:#152A22; --alert-bg:#2E1A17; --free-bg:#2A2415;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#101114; --surface:#191A1E; --ink:#F0EFEC; --graphite:#9A9CA4;
+    --hair:#2E3036; --stripe:#F0EFEC;
+    --money:#5FC79B; --alert:#EE8577; --free:#D6B45C;
+    --money-bg:#152A22; --alert-bg:#2E1A17; --free-bg:#2A2415;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    font-size:16px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:0 24px 96px}
+
+  /* ---- scoreboard display face ---- */
+  .disp{
+    font-family:"Arial Narrow","Helvetica Neue Condensed",
+                "Liberation Sans Narrow",Haettenschweiler,sans-serif;
+    font-stretch:condensed; font-weight:700;
+    text-transform:uppercase; letter-spacing:.01em; line-height:1;
+  }
+  .mono{
+    font-family:Consolas,"Cascadia Mono",ui-monospace,monospace;
+    font-variant-numeric:tabular-nums;
+  }
+  .lbl{
+    font-family:Consolas,"Cascadia Mono",ui-monospace,monospace;
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--graphite);
+  }
+
+  /* ---- club stripe rail ---- */
+  .rail{
+    height:14px;
+    background:repeating-linear-gradient(90deg,
+      var(--stripe) 0 9px, transparent 9px 18px);
+    opacity:.9;
+  }
+
+  header{padding:44px 0 28px}
+  h1{margin:0}
+  h1 .disp{font-size:clamp(44px,8vw,84px); display:block; text-wrap:balance}
+  .sub{margin:14px 0 0; color:var(--graphite); max-width:62ch}
+
+  h2{margin:0 0 4px}
+  h2 .disp{font-size:clamp(24px,3.4vw,34px)}
+  section{padding-top:52px}
+  .sechead{border-top:2px solid var(--ink); padding-top:12px; margin-bottom:26px}
+  .sechead p{margin:6px 0 0; color:var(--graphite); max-width:70ch; font-size:15px}
+
+  /* ---- cards ---- */
+  .grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px}
+  .grid3{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px}
+  .card{
+    background:var(--surface); border:1px solid var(--hair);
+    padding:22px; display:flex; flex-direction:column; gap:10px;
+  }
+  .card.hot{border-left:4px solid var(--money)}
+  .card.cold{border-left:4px solid var(--free)}
+  .fig{font-size:clamp(34px,5.5vw,52px); line-height:1; letter-spacing:-.01em}
+  .fig.money{color:var(--money)}
+  .fig.alert{color:var(--alert)}
+  .fig.free{color:var(--free)}
+  .cap{font-size:14px; color:var(--graphite)}
+
+  .kv{display:flex; justify-content:space-between; gap:16px;
+      border-top:1px solid var(--hair); padding-top:7px; font-size:14px}
+  .kv:first-of-type{border-top:0}
+  .kv b{font-family:Consolas,ui-monospace,monospace; font-variant-numeric:tabular-nums; font-weight:600}
+
+  .pill{
+    display:inline-block; padding:3px 9px; font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; font-family:Consolas,ui-monospace,monospace;
+    border-radius:2px; align-self:flex-start;
+  }
+  .p-money{background:var(--money-bg); color:var(--money)}
+  .p-free{background:var(--free-bg); color:var(--free)}
+  .p-alert{background:var(--alert-bg); color:var(--alert)}
+
+  /* ---- tables ---- */
+  .twrap{overflow-x:auto; border:1px solid var(--hair); background:var(--surface)}
+  table{border-collapse:collapse; width:100%; font-size:14px; min-width:520px}
+  th,td{padding:10px 14px; text-align:left; border-bottom:1px solid var(--hair)}
+  th{font-family:Consolas,ui-monospace,monospace; font-size:11px; letter-spacing:.1em;
+     text-transform:uppercase; color:var(--graphite); font-weight:600}
+  td.n{text-align:right; font-family:Consolas,ui-monospace,monospace;
+       font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:0}
+  tfoot td{font-weight:700; border-top:2px solid var(--ink)}
+
+  /* ---- meter ---- */
+  .meter{height:8px; background:var(--hair); position:relative; overflow:hidden}
+  .meter i{position:absolute; inset:0 auto 0 0; display:block}
+
+  /* ---- screenshots ---- */
+  figure{margin:22px 0 0; background:var(--surface); border:1px solid var(--hair)}
+  figure img{display:block; width:100%; height:auto}
+  figcaption{padding:9px 14px; border-top:1px solid var(--hair);
+             font-family:Consolas,ui-monospace,monospace; font-size:11px;
+             letter-spacing:.08em; text-transform:uppercase; color:var(--graphite)}
+
+  ol.take{counter-reset:t; list-style:none; padding:0; margin:0;
+          display:flex; flex-direction:column; gap:14px}
+  ol.take li{counter-increment:t; display:grid; grid-template-columns:38px 1fr; gap:14px;
+             background:var(--surface); border:1px solid var(--hair); padding:16px 18px}
+  ol.take li::before{
+    content:counter(t); font-family:"Arial Narrow",sans-serif; font-weight:700;
+    font-size:28px; line-height:1; color:var(--graphite);
+  }
+  ol.take strong{display:block; margin-bottom:2px}
+
+  .note{font-size:13px; color:var(--graphite); margin-top:14px;
+        border-left:2px solid var(--hair); padding-left:12px}
+  footer{margin-top:64px; padding-top:18px; border-top:1px solid var(--hair);
+         font-size:13px; color:var(--graphite)}
+</style>
+
+<div class="rail"></div>
+<div class="wrap">
+
+<header>
+  <p class="lbl">Club Atlético Chaco For Ever · Tablero OurClub V1.44 · corte 12·08·2026</p>
+  <h1><span class="disp">Chaco For Ever<br>en Números</span></h1>
+  <p class="sub">Datos extraídos del backoffice de gestión, en modo consulta. Cada bloque
+  incluye la captura de la pantalla de origen.</p>
+</header>
+
+<section>
+  <div class="sechead">
+    <h2><span class="disp">Los dos eventos vigentes</span></h2>
+    <p>Ambos figuran el <b>02/08/2026 a las 15:30</b> en el estadio Juan Alberto García.
+    Sólo uno vende entradas; el otro existe únicamente para acreditar accesos sin cargo.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card hot">
+      <span class="pill p-money">Evento 244 · vende</span>
+      <div class="disp" style="font-size:22px">Chaco For Ever – Deportivo Morón</div>
+      <div class="fig disp money">$6.425.000</div>
+      <p class="cap">Recaudación total. Fecha 23 del Torneo Nacional 2026.</p>
+      <div class="kv"><span>Tickets entregados</span><b>1.169</b></div>
+      <div class="kv"><span>Vendidos</span><b>989</b></div>
+      <div class="kv"><span>Protocolo (sin cargo)</span><b>180</b></div>
+      <div class="kv"><span>Capacidad habilitada</span><b>27.200</b></div>
+      <div class="kv"><span>Ocupación</span><b>4,3 %</b></div>
+    </div>
+
+    <div class="card cold">
+      <span class="pill p-free">Evento 243 · no vende</span>
+      <div class="disp" style="font-size:22px">Protocolo Chaco For Ever – San Miguel</div>
+      <div class="fig disp free">$0</div>
+      <p class="cap">Evento sombra: el 100 % de sus accesos es protocolo.</p>
+      <div class="kv"><span>Tickets entregados</span><b>440</b></div>
+      <div class="kv"><span>Vendidos</span><b>0</b></div>
+      <div class="kv"><span>Protocolo (sin cargo)</span><b>440</b></div>
+      <div class="kv"><span>Capacidad habilitada</span><b>9.450</b></div>
+      <div class="kv"><span>Ocupación</span><b>4,7 %</b></div>
+    </div>
+  </div>
+
+  <p class="note">Los dos eventos comparten fecha, hora y escenario pero nombran rivales
+  distintos (Morón y San Miguel). O el evento de protocolo quedó con el nombre del partido
+  anterior, o corresponden a dos partidos cargados con la misma fecha. <b>Conviene
+  confirmarlo antes de citar los números como un solo partido.</b></p>
+
+  <figure>
+    <img src="__IMG_02__" alt="Pantalla de tickets entregados del evento Chaco For Ever – Deportivo Morón: 1.169 entregados, 989 vendidas, 180 preferenciales, capacidad 27.200">
+    <figcaption>Eventos › Dashboard › Tickets entregados — evento 244</figcaption>
+  </figure>
+  <figure>
+    <img src="__IMG_04__" alt="Pantalla de tickets entregados del evento Protocolo Chaco For Ever – San Miguel: 440 entregados, 0 vendidas, 440 preferenciales, capacidad 9.450">
+    <figcaption>Eventos › Dashboard › Tickets entregados — evento 243</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sechead">
+    <h2><span class="disp">De dónde salen los $6,4 millones</span></h2>
+    <p>Nueve de cada diez pesos de boletería los ponen los socios. La venta online ya
+    superó a la caja física.</p>
+  </div>
+
+  <div class="grid3">
+    <div class="card">
+      <span class="lbl">Socios</span>
+      <div class="fig disp money">$5.775.000</div>
+      <p class="cap">90 % de la recaudación</p>
+    </div>
+    <div class="card">
+      <span class="lbl">No socios</span>
+      <div class="fig disp">$650.000</div>
+      <p class="cap">10 % de la recaudación</p>
+    </div>
+    <div class="card">
+      <span class="lbl">Online vs caja</span>
+      <div class="fig disp">52 / 48</div>
+      <p class="cap">Online PagoTIC $3.350.000 (687 tickets) · Caja $3.075.000 (302 tickets)</p>
+    </div>
+  </div>
+
+  <div class="twrap" style="margin-top:20px">
+    <table>
+      <thead><tr>
+        <th>Sector</th><th style="text-align:right">Socios</th>
+        <th style="text-align:right">No socios</th><th style="text-align:right">Total</th>
+        <th style="text-align:right">Tickets</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>Tribuna Calle 15</td><td class="n">$3.020.000</td><td class="n">$80.000</td><td class="n">$3.100.000</td><td class="n">351</td></tr>
+        <tr><td>Platea Calle 14</td><td class="n">$2.355.000</td><td class="n">$330.000</td><td class="n">$2.685.000</td><td class="n">301</td></tr>
+        <tr><td>Platea VIP</td><td class="n">$400.000</td><td class="n">$240.000</td><td class="n">$640.000</td><td class="n">81</td></tr>
+        <tr><td>Tribuna Popular</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">436</td></tr>
+      </tbody>
+      <tfoot><tr><td>Total</td><td class="n">$5.775.000</td><td class="n">$650.000</td><td class="n">$6.425.000</td><td class="n">1.169</td></tr></tfoot>
+    </table>
+  </div>
+
+  <p class="note">La Tribuna Popular entregó 436 tickets y no figura en el desglose de
+  recaudación por sector: sus entradas se registraron sin importe asignado a ese sector.
+  El total por período (07/2026 $1.200.000 con 78 tickets + 08/2026 $5.225.000 con 404
+  tickets) suma 482 tickets, no 989 — <b>los dos cortes no cierran entre sí</b>.</p>
+
+  <figure>
+    <img src="__IMG_01__" alt="Pantalla de recaudación del evento: total $6.425.000, desglose por método de pago, por sector y por tipo de ventana">
+    <figcaption>Eventos › Dashboard › Recaudación — evento 244</figcaption>
+  </figure>
+  <figure>
+    <img src="__IMG_05__" alt="Pantalla de recaudación del evento protocolo, completamente vacía: sin monto ni desglose">
+    <figcaption>Eventos › Dashboard › Recaudación — evento 243 (sin datos: no vende)</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sechead">
+    <h2><span class="disp">Quién entró de verdad</span></h2>
+    <p>El molinete registra el ingreso real. Comparado contra los accesos habilitados,
+    aparece la brecha más grande del tablero.</p>
+  </div>
+
+  <div class="grid3">
+    <div class="card">
+      <span class="lbl">Entradas vendidas</span>
+      <div class="fig disp money">96 %</div>
+      <div class="meter" style="margin:6px 0 4px"><i style="width:96%;background:var(--money)"></i></div>
+      <p class="cap">957 ingresos sobre 989 habilitados</p>
+    </div>
+    <div class="card">
+      <span class="lbl">Protocolo</span>
+      <div class="fig disp alert">27 %</div>
+      <div class="meter" style="margin:6px 0 4px"><i style="width:27%;background:var(--alert)"></i></div>
+      <p class="cap">49 ingresos sobre 180 habilitados</p>
+    </div>
+    <div class="card">
+      <span class="lbl">Platea VIP</span>
+      <div class="fig disp alert">0 %</div>
+      <div class="meter" style="margin:6px 0 4px"><i style="width:2%;background:var(--alert)"></i></div>
+      <p class="cap">0 ingresos sobre 81 habilitados — puerta sin lecturas</p>
+    </div>
+  </div>
+
+  <div class="twrap" style="margin-top:20px">
+    <table>
+      <thead><tr><th>Puerta</th><th style="text-align:right">Ingresos</th><th style="text-align:right">Habilitados</th><th style="text-align:right">Uso</th></tr></thead>
+      <tbody>
+        <tr><td>Puerta 4 — Tribuna Popular / Calle 15</td><td class="n">436</td><td class="n">436</td><td class="n">100 %</td></tr>
+        <tr><td>Puerta 3 — Calle 15</td><td class="n">342</td><td class="n">351</td><td class="n">97 %</td></tr>
+        <tr><td>Puerta 2 — Platea Calle 14</td><td class="n">228</td><td class="n">301</td><td class="n">75 %</td></tr>
+        <tr><td>Puerta 1 — Platea VIP</td><td class="n">0</td><td class="n">81</td><td class="n">0 %</td></tr>
+      </tbody>
+      <tfoot><tr><td>Total evento 244</td><td class="n">1.006</td><td class="n">1.169</td><td class="n">86 %</td></tr></tfoot>
+    </table>
+  </div>
+
+  <p class="note">Sumando los dos eventos del 02/08: <b>1.609 accesos habilitados, de los
+  cuales 620 (39 %) fueron sin cargo</b>, y sólo 178 de esos 620 pasaron el molinete.
+  Se acredita mucho más de lo que se usa.</p>
+
+  <figure>
+    <img src="__IMG_03__" alt="Registro de accesos por sector, origen y puerta: 1.006 ingresos sobre 1.169 habilitados, 86 por ciento">
+    <figcaption>Eventos › Dashboard › Registro de accesos — evento 244</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sechead">
+    <h2><span class="disp">La masa societaria</span></h2>
+    <p>El dato que más pesa en el mediano plazo, y el que peor viene.</p>
+  </div>
+
+  <div class="grid3">
+    <div class="card">
+      <span class="lbl">Bajas · últimos 12 meses</span>
+      <div class="fig disp alert">2.202</div>
+      <p class="cap">76,7 % del movimiento del padrón</p>
+    </div>
+    <div class="card">
+      <span class="lbl">Altas · últimos 12 meses</span>
+      <div class="fig disp">669</div>
+      <p class="cap">23,3 % — se pierden socios 3,3 a 1</p>
+    </div>
+    <div class="card">
+      <span class="lbl">Socios activos</span>
+      <div class="fig disp">3.047</div>
+      <p class="cap">Promedio de activos ene–ago 2026: 1.918</p>
+    </div>
+  </div>
+
+  <div class="grid3" style="margin-top:16px">
+    <div class="card">
+      <span class="lbl">Pagó la cuota de julio</span>
+      <div class="fig disp">1.882</div>
+      <div class="meter" style="margin:6px 0 4px"><i style="width:62%;background:var(--money)"></i></div>
+      <p class="cap">62 % de los socios activos</p>
+    </div>
+    <div class="card">
+      <span class="lbl">Empadronados</span>
+      <div class="fig disp">1.277</div>
+      <div class="meter" style="margin:6px 0 4px"><i style="width:42%;background:var(--money)"></i></div>
+      <p class="cap">41,9 % tiene identidad digital validada</p>
+    </div>
+    <div class="card">
+      <span class="lbl">Cuota mensual · categoría Activo</span>
+      <div class="fig disp">$25.000</div>
+      <p class="cap">$22.000 dentro de grupo familiar</p>
+    </div>
+  </div>
+
+  <p class="note">Estimación de contexto, no dato del sistema: 1.882 cuotas cobradas a un
+  promedio aproximado de $23.000 son del orden de <b>$43 millones al mes</b>, unas siete
+  veces la boletería de un partido. La cuota social, no la entrada, es el ingreso principal.</p>
+
+  <figure>
+    <img src="__IMG_06__" alt="Dashboard de socios: torta de altas y bajas 23,3 contra 76,7 por ciento, curva de socios vigentes 2026 y totales 3.047 activos, 1.278 pago agosto, 1.882 pago julio">
+    <figcaption>Dashboard › Socios — altas y bajas, socios vigentes</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sechead">
+    <h2><span class="disp">Deportes</span></h2>
+    <p>El área deportiva mueve más gente que la masa societaria pagadora, y en su mayoría
+    no son socios del club.</p>
+  </div>
+
+  <div class="grid3">
+    <div class="card">
+      <span class="lbl">Deportistas activos</span>
+      <div class="fig disp">2.505</div>
+      <p class="cap">En 11 disciplinas</p>
+    </div>
+    <div class="card">
+      <span class="lbl">No socios</span>
+      <div class="fig disp alert">68,6 %</div>
+      <div class="meter" style="margin:6px 0 4px"><i style="width:68.6%;background:var(--alert)"></i></div>
+      <p class="cap">1.719 no socios contra 786 socios</p>
+    </div>
+    <div class="card">
+      <span class="lbl">Pagó la cuota de julio</span>
+      <div class="fig disp">501</div>
+      <div class="meter" style="margin:6px 0 4px"><i style="width:20%;background:var(--money)"></i></div>
+      <p class="cap">20 % de los deportistas activos</p>
+    </div>
+  </div>
+
+  <div class="twrap" style="margin-top:20px">
+    <table>
+      <thead><tr><th>Disciplina</th><th style="text-align:right">Deportistas</th><th style="text-align:right">Part.</th></tr></thead>
+      <tbody>
+        <tr><td>Fútbol</td><td class="n">888</td><td class="n">36 %</td></tr>
+        <tr><td>Vóley</td><td class="n">515</td><td class="n">21 %</td></tr>
+        <tr><td>Gimnasia artística</td><td class="n">262</td><td class="n">11 %</td></tr>
+        <tr><td>Básquet</td><td class="n">213</td><td class="n">9 %</td></tr>
+        <tr><td>Handball</td><td class="n">191</td><td class="n">8 %</td></tr>
+        <tr><td>Karate</td><td class="n">164</td><td class="n">7 %</td></tr>
+        <tr><td>Patín</td><td class="n">128</td><td class="n">6 %</td></tr>
+        <tr><td>Hockey</td><td class="n">122</td><td class="n">5 %</td></tr>
+        <tr><td>Zumba · Taekwondo · Ritmos</td><td class="n">37</td><td class="n">3 %</td></tr>
+      </tbody>
+      <tfoot><tr><td>Total inscripciones</td><td class="n">2.520</td><td class="n">100 %</td></tr></tfoot>
+    </table>
+  </div>
+
+  <figure>
+    <img src="__IMG_07__" alt="Dashboard de deportes: 31,4 por ciento socios contra 68,6 por ciento no socios, 2.505 activos, 334 pago agosto, 501 pago julio">
+    <figcaption>Dashboard › Deportes — socios vs no socios</figcaption>
+  </figure>
+  <figure>
+    <img src="__IMG_08__" alt="Totales por disciplina y por categoría: fútbol 888, vóley 515, gimnasia artística 262 y detalle de categorías de vóley">
+    <figcaption>Dashboard › Deportes — totales por disciplina y categoría</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sechead">
+    <h2><span class="disp">Cinco conclusiones</span></h2>
+  </div>
+  <ol class="take">
+    <li><div><strong>El socio es el negocio, dos veces.</strong> Aporta el 90 % de la
+    recaudación de boletería y, por cuota social, un múltiplo de lo que deja un partido.
+    Cualquier decisión que empeore la experiencia del socio golpea las dos líneas.</div></li>
+
+    <li><div><strong>La fuga es el problema real.</strong> 2.202 bajas contra 669 altas en
+    doce meses. Hoy el sistema cuenta la fuga pero no tiene ninguna pantalla pensada para
+    frenarla.</div></li>
+
+    <li><div><strong>Cobrar no es lo mismo que estar al día.</strong> Hay 3.047 socios
+    "activos" y 1.882 que pagaron julio. El propio tablero define al socio vigente como el
+    que abonó la cuota, no como el que figura activo.</div></li>
+
+    <li><div><strong>Se acredita mucho más de lo que se usa.</strong> 620 accesos sin cargo
+    entre los dos eventos y sólo 178 pasaron el molinete. Vale revisar el criterio de los
+    protocolos.</div></li>
+
+    <li><div><strong>Hay agujeros de medición.</strong> Puerta 1 sin lecturas, Tribuna
+    Popular sin recaudación asignada, y dos cortes de tickets que no cierran entre sí.
+    Antes de tomar decisiones sobre estos números conviene cerrar la instrumentación.</div></li>
+  </ol>
+</section>
+
+<footer>
+  Fuente: backoffice OurClub V1.44 del Club Atlético Chaco For Ever, consultado el
+  12/08/2026 en modo lectura. Las capturas corresponden a las pantallas indicadas en cada
+  epígrafe. Los porcentajes derivados y la estimación de ingresos por cuota están marcados
+  como tales.
+</footer>
+
+</div>
+<div class="rail"></div>

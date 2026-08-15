@@ -2,10 +2,6 @@ using System.Globalization;
 
 namespace ClubSpot.SharedKernel.Primitives;
 
-/// <summary>
-/// Mes calendario al que pertenece un cargo. Es la unidad de la liquidación y de la deuda:
-/// "debe julio" es una afirmación sobre un <see cref="Period"/>, no sobre un rango de fechas.
-/// </summary>
 public readonly record struct Period : IComparable<Period>
 {
     public int Year { get; }
@@ -24,7 +20,7 @@ public readonly record struct Period : IComparable<Period>
     public static Period Parse(string value) =>
         TryParse(value, out var period)
             ? period
-            : throw new FormatException($"Período inválido: '{value}'. Formato esperado aaaa-mm.");
+            : throw new FormatException($"Invalid period: '{value}'. Expected format yyyy-mm.");
 
     public static bool TryParse(string? value, out Period period)
     {
@@ -45,7 +41,6 @@ public readonly record struct Period : IComparable<Period>
     public DateOnly FirstDay() => new(Year, Month, 1);
     public DateOnly LastDay() => new(Year, Month, DateTime.DaysInMonth(Year, Month));
 
-    /// <summary>Cantidad de meses transcurridos desde <paramref name="other"/> hasta este período.</summary>
     public int MonthsSince(Period other) => (Year - other.Year) * 12 + (Month - other.Month);
 
     public int CompareTo(Period other) => (Year, Month).CompareTo((other.Year, other.Month));

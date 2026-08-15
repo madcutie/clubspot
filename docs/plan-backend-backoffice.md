@@ -29,6 +29,11 @@ Fecha del plan: 14/08/2026. Actualizado el 15/08/2026 (idioma y fases — ver re
 > `Modules.Finance`, `Modules.Reservas` → `Modules.Bookings`, `Modules.Futbol` →
 > `Modules.Football`.
 >
+> *Ajuste posterior del mismo día ([ADR-0006](adr/0006-codigo-entero-en-ingles-casi-sin-comentarios.md)):
+> el código va **entero** en inglés — también comentarios, mensajes de excepción y nombres de
+> tests — y con casi cero comentarios. Donde este plan diga nombres de tests en español,
+> leerlos en inglés.*
+>
 > **2. Fases más chicas.** Las fases F0–F4 de la sección 8 se reagrupan así (el contenido no
 > cambia, sólo el corte): **A1** renombres a inglés · **A2** persistencia + tenancy · **A3**
 > auth JWT · **A4** módulos por club + borde HTTP (juntas equivalen a F0) · **B** = F1 + F2

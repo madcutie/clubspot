@@ -1,6 +1,6 @@
 # ADR-0004 — Identificadores en inglés, textos en español
 
-**Fecha:** 15/08/2026 · **Estado:** Aceptada
+**Fecha:** 15/08/2026 · **Estado:** Reemplazada por [ADR-0006](0006-codigo-entero-en-ingles-casi-sin-comentarios.md)
 
 ## Contexto
 

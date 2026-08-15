@@ -45,10 +45,12 @@ interno: no publicar, no copiar a ejemplos, no usar en tests.
 
 - **Los commits los hace el usuario.** No hacer `git commit` ni `git push` salvo pedido
   explícito. (Regla heredada de cómo trabaja en sus otros repos — confirmar si cambia.)
-- **Idioma** (decisión del 15/08/2026, reemplaza al "todo en español" original): los
-  **identificadores de código van en inglés** —clases, métodos, tablas, endpoints, proyectos,
-  ids de módulo—; los **textos que lee una persona van en español** —documentación, comentarios,
-  mensajes de error, nombres de tests, nombres comerciales—. Detalle en la sección 6.
+- **Idioma** (ADR-0006, 15/08/2026, reemplaza al "todo en español" original): **el código va
+  entero en inglés** —identificadores, comentarios, mensajes de excepción y nombres de tests—.
+  En español queda lo que no es código: la documentación del repo y los textos que ve el
+  usuario final. Detalle en la sección 6.
+- **Comentarios: casi cero** (ADR-0006). Sólo lo muy importante que el código no puede decir
+  por sí mismo; nada de doc-comments decorativos.
 - **Sin primera persona** en documentos entregables. Voz impersonal.
 - **No inventar números.** Si algo es una estimación, decirlo. El usuario lleva estos
   documentos a reuniones con el club.
@@ -156,13 +158,16 @@ Es requisito del producto, no una feature futura.
 
 - **.NET 10**, `nullable` habilitado, `TreatWarningsAsErrors=true`, `InvariantGlobalization=false`
   (el club opera en es-AR y las fechas y montos dependen de la cultura).
-- **Idioma** (decisión del 15/08/2026): **identificadores en inglés, textos en español.**
-  Clases, métodos, tablas, columnas, endpoints, proyectos e ids de módulo van en inglés
-  (`Person`, `Court`, `Booking`, `Schedule`, `Period`, `Money`, `IClock`). Lo que lee una
-  persona va en español: comentarios, mensajes de error, nombres de tests
-  (`El_catalogo_del_producto_es_valido`) y nombres comerciales (`DisplayName = "Socios"`).
-  El vocabulario del club (glosario del relevamiento) se usa para la UI y los textos, no para
-  los identificadores.
+- **Idioma** (ADR-0006): **el código va entero en inglés** — clases, métodos, tablas,
+  columnas, endpoints, proyectos, ids de módulo, comentarios, mensajes de excepción y nombres
+  de tests (`The_product_catalog_is_valid`). En español queda lo que no es código: la
+  documentación del repo (ADRs, plan, bitácora, este archivo), los textos de la UI y los
+  nombres comerciales (`DisplayName = "Socios"`). Los errores de la API viajan con código de
+  regla; el texto en español que ve el operador lo pone el frontend.
+- **Comentarios: casi cero** (ADR-0006). Se comenta únicamente lo muy importante que el código
+  no puede decir solo —una invariante no obvia, una lista blanca, un orden obligatorio, un
+  "a propósito" que sin nota parecería un error—, en una o dos líneas y en inglés. Prohibidos
+  los doc-comments decorativos y los resúmenes de lo que ya dice la firma.
 - **Nunca un `decimal` suelto para plata**: se usa `Money`, que lleva la moneda.
 - **Nunca `DateTime.Now`**: se inyecta `IClock`. Todo lo que el negocio llama "día" se resuelve
   con `ClubCalendar` en la zona del club, no en UTC.

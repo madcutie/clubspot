@@ -1,10 +1,5 @@
 namespace ClubSpot.SharedKernel.Modularity;
 
-/// <summary>
-/// Todos los módulos que el producto sabe ofrecer, con su grafo de dependencias validado.
-/// Es único para el producto: qué módulos tiene contratado cada club lo dice
-/// <see cref="ITenantModules"/>.
-/// </summary>
 public sealed class ModuleCatalog
 {
     private readonly Dictionary<ModuleId, IClubModule> _modules;
@@ -17,7 +12,7 @@ public sealed class ModuleCatalog
         {
             if (!_modules.TryAdd(module.Id, module))
                 throw new InvalidOperationException(
-                    $"El módulo '{module.Id}' está declarado más de una vez.");
+                    $"Module '{module.Id}' is declared more than once.");
         }
 
         Validate();
@@ -35,11 +30,6 @@ public sealed class ModuleCatalog
 
     public bool Exists(ModuleId id) => _modules.ContainsKey(id);
 
-    /// <summary>
-    /// Expande una selección de módulos a su cierre transitivo e incorpora los del núcleo.
-    /// Contratar <c>padel</c> trae <c>bookings</c>, <c>finance</c> y <c>core</c> sin que
-    /// nadie tenga que acordarse de tildarlos.
-    /// </summary>
     public IReadOnlySet<ModuleId> Resolve(IEnumerable<ModuleId> selected)
     {
         var resolved = new HashSet<ModuleId>(CoreModules);
@@ -53,10 +43,6 @@ public sealed class ModuleCatalog
         }
     }
 
-    /// <summary>
-    /// Módulos habilitados que dejarían de tener sus dependencias si se apagara
-    /// <paramref name="id"/>. Si devuelve algo, el apagado se rechaza.
-    /// </summary>
     public IReadOnlyCollection<ModuleId> DependentsOf(ModuleId id, IReadOnlySet<ModuleId> enabled) =>
         [.. enabled.Where(other => other != id && Get(other).DependsOn.Contains(id))];
 
@@ -68,11 +54,10 @@ public sealed class ModuleCatalog
             {
                 if (!_modules.ContainsKey(dependency))
                     throw new InvalidOperationException(
-                        $"El módulo '{module.Id}' depende de '{dependency}', que no está declarado.");
+                        $"Module '{module.Id}' depends on '{dependency}', which is not declared.");
             }
         }
 
-        // Un ciclo haría que Resolve nunca termine y que no exista un orden de arranque válido.
         var visiting = new HashSet<ModuleId>();
         var done = new HashSet<ModuleId>();
         foreach (var module in _modules.Values) DetectCycle(module.Id, visiting, done, []);
@@ -84,7 +69,7 @@ public sealed class ModuleCatalog
 
         if (!visiting.Add(id))
             throw new InvalidOperationException(
-                $"Dependencia circular entre módulos: {string.Join(" → ", path.Append(id))}.");
+                $"Circular module dependency: {string.Join(" → ", path.Append(id))}.");
 
         path.Add(id);
         foreach (var dependency in _modules[id].DependsOn) DetectCycle(dependency, visiting, done, path);
@@ -96,4 +81,4 @@ public sealed class ModuleCatalog
 }
 
 public sealed class UnknownModuleException(ModuleId id)
-    : InvalidOperationException($"El módulo '{id}' no existe en el catálogo del producto.");
+    : InvalidOperationException($"Module '{id}' does not exist in the product catalog.");

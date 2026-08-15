@@ -16,7 +16,7 @@ actualización en el plan).
 |---|---|---|
 | Plan | Diseño del plan + documentos movidos + links arreglados | ✅ 14/08/2026 |
 | A1 | Renombres a inglés (`Period`, ids de módulo, tests, docs) + reestructura por capas con Application (ADR-0005) | 🚧 código listo 15/08/2026 — **falta build+tests** (el usuario pidió no compilar aún) |
-| A2 | Persistencia (EF Core + PostgreSQL, `CoreDbContext`, tabla `club`) + tenancy (`AsyncLocal`, filtro global, guardia en `SaveChanges`) + infra Testcontainers | ⬜ |
+| A2 | Persistencia (EF Core + PostgreSQL, `CoreDbContext`, tabla `club`) + tenancy (`AsyncLocal`, filtro global, guardia en `SaveChanges`) + infra Testcontainers | 🚧 código listo 15/08/2026 — falta scaffoldear la migración inicial y build+tests |
 | A3 | Auth: tablas `user`/`user_role`, hash, `POST /api/auth/session` → JWT, roles y políticas | ⬜ |
 | A4 | Módulos por club (`club_module`), `GET /api/context`, gating 404, ProblemDetails, CORS, seed | ⬜ |
 | B | Schedules, Courts y People: agregados, GET/PUT masivos con xmin, búsqueda y ficha, endpoints y tests | ⬜ |
@@ -27,6 +27,58 @@ Leyenda: ⬜ pendiente · 🚧 en curso · ✅ terminada (build + tests verdes).
 ---
 
 ## Entradas
+
+### 15/08/2026 (4) — ADR-0006: código entero en inglés, casi sin comentarios. Backend reescrito.
+
+**Decisión del usuario:** casi cero comentarios (sólo lo muy importante) y el código siempre
+en inglés, comentarios incluidos. Quedó como [ADR-0006], que **reemplaza al ADR-0004**;
+mensajes de excepción y nombres de tests también pasan a inglés por ser código.
+
+**Qué se hizo:** reescritos los 20 archivos `.cs` del backend: doc-comments eliminados (quedan
+sólo notas de una o dos líneas en inglés sobre invariantes no obvias), mensajes de excepción en
+inglés, nombres de tests en inglés (`The_product_catalog_is_valid`). Los asserts que dependían
+de mensajes en español se ajustaron. `DisplayName`/`Description` de los manifiestos siguen en
+español (texto de UI). Actualizados `AGENTS.md` (§3 y §6), el índice de ADRs y la nota del plan.
+
+**Dónde quedó / próximo paso:** igual que la entrada (3) — todo sin compilar; en la
+verificación: scaffold de la migración inicial + `dotnet build` + `dotnet test`. Después A3.
+
+### 15/08/2026 (3) — A2: persistencia + tenancy, código completo sin verificar.
+
+**Qué se hizo:**
+
+- **SharedKernel/Tenancy**: `ITenantOwned` (marca de entidad por tenant) +
+  `TenantMismatchException` · `ITenantScopeFactory` (apertura de ámbitos) ·
+  `AsyncLocalTenantContext` (implementa contexto y factory sobre `AsyncLocal`; vive en
+  SharedKernel y no en Infrastructure porque no depende de nada, igual que `SystemClock`).
+- **Domain/Core**: agregado `Club` — primera carpeta de módulo en Domain. Id = TenantId,
+  slug único, zona horaria, moneda, `DepositPercent` (la seña, default 50 se define al crear).
+  No es `ITenantOwned` a propósito: es el registro de tenants (lista blanca de un elemento).
+- **Infrastructure/Persistence**: `ModuleDbContextBase` (filtro global por tenant vía
+  `HasQueryFilter` sobre toda entidad `ITenantOwned` + guardia en `SaveChanges` que estampa el
+  tenant en altas y lanza `TenantMismatchException` ante tenant ajeno; fuera de ámbito lanza
+  `MissingTenantException`) · `TenantIdConverter` como convención · `CoreDbContext` (esquema
+  `core`, tabla `club` con unique de slug y check de seña 0–100) · `CoreDbContextFactory`
+  (design-time para `dotnet ef`) · extensiones de DI `AddClubSpotTenancy` /
+  `AddClubSpotPersistence`.
+- **Paquetes**: Infrastructure → `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.0 +
+  `Microsoft.EntityFrameworkCore.Design` · IntegrationTests → `Testcontainers.PostgreSql`
+  4.4.0 · manifiesto de herramientas `.config/dotnet-tools.json` con `dotnet-ef`.
+  ⚠️ Versiones elegidas sin restore (no se compiló): ajustar si el restore las rechaza.
+- **Tests**: unidad `AsyncLocalTenantContextTests` (sin ámbito lanza, anidado restaura, doble
+  Dispose inocuo, no se filtra entre flujos async) · integración `PostgresFixture`
+  (Testcontainers, requiere Docker) + `ClubPersistenceTests` (roundtrip por slug, slug único,
+  check de seña impuesto por la base).
+- Decisión chica: `Respawn` no se agrega todavía (recién hace falta cuando varios tests
+  compartan datos, fase B). `ITransactionRunner` tampoco: recién en fase C.
+
+**Dónde quedó / próximo paso:** falta **scaffoldear la migración inicial** — sin ella,
+`MigrateAsync` del fixture no crea nada y los tests de integración fallan. En la verificación:
+`cd src/backend && dotnet tool restore && dotnet ef migrations add InitialCore --project
+src/Infrastructure/ClubSpot.Infrastructure --startup-project src/Api/ClubSpot.Api --context
+CoreDbContext --output-dir Persistence/Migrations/Core`, después `dotnet build` + `dotnet test`
+(integración necesita Docker). En verde: A1 y A2 ✅. Siguiente fase: A3 (auth JWT). Pendiente
+menor arrastrado: tests de primitivas de SharedKernel (Money, Period, ClubCalendar).
 
 ### 15/08/2026 (2) — Reestructura por capas (ADR-0005) y creación de los ADRs.
 

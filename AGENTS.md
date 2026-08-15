@@ -28,6 +28,7 @@ Leer antes de proponer cualquier cosa de dominio. Están en `docs/`:
 | `docs/referencia-ourclub/alcance-socios-mvp.html` | **Alcance del MVP aprobado.** Qué entra, qué no, y por qué. Incluye la decisión sobre arqueo de caja y las 7 preguntas abiertas |
 | `docs/referencia-ourclub/diseno-detallado-socios.html` | **Diseño detallado.** Modelo de dominio con campos y tipos, 8 máquinas de estado, los 11 jobs, concurrencia, roles, migración del padrón |
 | `docs/referencia-ourclub/` | **Relevamiento de OurClub — el sistema que usa el club hoy, no este producto.** 26 módulos, ~70 pantallas, campos y tipos, políticas de acceso, inconsistencias a no replicar. Es material de consulta, no especificación: leer primero [`docs/referencia-ourclub/AGENTS.md`](docs/referencia-ourclub/AGENTS.md) |
+| [`docs/adr/`](docs/adr/README.md) | **Decisiones de arquitectura escritas en piedra** (ADRs): monolito modular, agenda en lectura, auth propia, idioma, capas. No se rediscuten; si una cambia, se escribe un ADR nuevo |
 
 Ante una duda de dominio: **primero buscar en esos documentos**, no improvisar. Si la respuesta
 no está, es una pregunta para el usuario, no una decisión a tomar sola.
@@ -44,7 +45,10 @@ interno: no publicar, no copiar a ejemplos, no usar en tests.
 
 - **Los commits los hace el usuario.** No hacer `git commit` ni `git push` salvo pedido
   explícito. (Regla heredada de cómo trabaja en sus otros repos — confirmar si cambia.)
-- **Todo en español**: documentación, comentarios, mensajes de error, nombres de dominio.
+- **Idioma** (decisión del 15/08/2026, reemplaza al "todo en español" original): los
+  **identificadores de código van en inglés** —clases, métodos, tablas, endpoints, proyectos,
+  ids de módulo—; los **textos que lee una persona van en español** —documentación, comentarios,
+  mensajes de error, nombres de tests, nombres comerciales—. Detalle en la sección 6.
 - **Sin primera persona** en documentos entregables. Voz impersonal.
 - **No inventar números.** Si algo es una estimación, decirlo. El usuario lleva estos
   documentos a reuniones con el club.
@@ -60,11 +64,16 @@ interno: no publicar, no copiar a ejemplos, no usar en tests.
 
 ## 4. Arquitectura
 
-**Monolito modular** en .NET 10. Un solo host, un solo despliegue, módulos con frontera real.
+**Monolito modular** en .NET 10. Un solo host, un solo despliegue. Las decisiones grandes de
+arquitectura están escritas en piedra en [`docs/adr/`](docs/adr/README.md) — **leerlas antes de
+proponer un cambio estructural**; si una decisión cambia, se escribe un ADR nuevo, no se edita
+el viejo.
 
-Todo el código fuente cuelga de `src/`, con backend y frontend separados. La solución .NET vive
-entera dentro de `src/backend/` —incluidos `global.json` y `Directory.Build.props`—, así que esa
-carpeta se puede abrir sola y compila.
+La estructura es **por capas** (ADR-0005, espejo del proyecto anubis del usuario): las capas
+son proyectos, los módulos son **carpetas** dentro de cada capa. Todo el código fuente cuelga
+de `src/`, con backend y frontend separados. La solución .NET vive entera dentro de
+`src/backend/` —incluidos `global.json` y `Directory.Build.props`—, así que esa carpeta se
+puede abrir sola y compila.
 
 ```
 src/
@@ -73,51 +82,58 @@ src/
 │  ├─ global.json
 │  ├─ Directory.Build.props
 │  └─ src/
-│     ├─ api/
-│     │  └─ ClubSpot.Api/            host: endpoints, DI, arranque
-│     ├─ ClubSpot.SharedKernel/      primitivas + contratos entre módulos + modularidad
-│     ├─ ClubSpot.Modules.Clubes/    personas, usuarios (núcleo) + socios
-│     ├─ ClubSpot.Modules.Finanzas/  conceptos, cuenta corriente, liquidación, caja, recibos, pagos
-│     ├─ ClubSpot.Modules.Reservas/  motor de turnos: espacios, grilla, turnos, reservas
-│     ├─ ClubSpot.Modules.Padel/     lo propio del pádel, sobre el motor de reservas
-│     ├─ ClubSpot.Modules.Futbol/    lo propio del fútbol, sobre el motor de reservas
-│     ├─ ClubSpot.Infrastructure/    EF Core, persistencia, tenancy, gateways
-│     ├─ ClubSpot.Jobs/              los procesos de background
-│     └─ tests/
+│     ├─ Core/
+│     │  ├─ ClubSpot.SharedKernel/     primitivas: Money, TenantId, IClock, ModuleId, ModuleCatalog
+│     │  ├─ ClubSpot.Domain/           agregados y servicios de dominio puros — carpeta por módulo
+│     │  └─ ClubSpot.Application/      casos de uso (handlers) y puertos — carpeta por módulo
+│     ├─ Infrastructure/
+│     │  └─ ClubSpot.Infrastructure/   EF Core, repositorios, tenancy, gateways
+│     ├─ Api/
+│     │  └─ ClubSpot.Api/              host: endpoints, JWT, middleware, DI, arranque
+│     └─ Tests/
 │        ├─ ClubSpot.UnitTests/
 │        └─ ClubSpot.IntegrationTests/
 └─ frontend/
    ├─ backoffice/                    consola del club (React+Vite) — ver sección 10
    └─ reservas/                      prototipo React+Vite del portal de reservas (ya existía)
 
-docs/                                alcance, diseño detallado y relevamiento
+docs/                                alcance, diseño detallado, relevamiento y ADRs
 ```
+
+Referencias entre capas: `Api → Application + Infrastructure` · `Infrastructure → Application`
+· `Application → Domain` · `Domain → SharedKernel`. Los manifiestos del catálogo de módulos
+viven en `Application/Modularity/ProductModules.cs`. `Jobs` se recreará como proyecto cuando
+existan los jobs.
 
 ### Grafo de módulos
 
 ```
-nucleo (core, no se puede apagar)
- ├─ finanzas ──────────► nucleo
- ├─ socios ────────────► nucleo, finanzas
- └─ reservas ──────────► nucleo, finanzas
-      ├─ padel ────────► reservas
-      └─ futbol ───────► reservas
+core (núcleo, no se puede apagar)
+ ├─ finance ───────────► core
+ ├─ members ───────────► core, finance
+ └─ bookings ──────────► core, finance
+      ├─ padel ────────► bookings
+      └─ football ─────► bookings
 ```
 
-**Por qué existe `reservas` si el usuario pidió "pádel" y "fútbol" como módulos separados:**
+**Por qué existe `bookings` si el usuario pidió "pádel" y "fútbol" como módulos separados:**
 el motor —espacio, grilla, turno, reserva, cobro— es el mismo, y duplicarlo sería duplicar la
-parte más delicada del sistema. `padel` y `futbol` existen como módulos contratables y contienen
-lo que sí difiere entre deportes.
+parte más delicada del sistema. `padel` y `football` existen como módulos contratables y
+contienen lo que sí difiere entre deportes.
 
-**Por qué `socios` y `reservas` dependen de `finanzas`:** ambos generan cargos y cobran. Sin
+**Por qué `members` y `bookings` dependen de `finance`:** ambos generan cargos y cobran. Sin
 módulo de dinero no hay nada que hacer con una cuota ni con un turno vendido.
 
 ### Reglas de frontera entre módulos
 
-- Un módulo **no referencia** a otro, salvo `padel`/`futbol` → `reservas`.
-- Lo que necesitan compartir va como **contrato en `SharedKernel`**, implementado por el módulo
-  dueño y cableado por DI. Ejemplo: la habilitación del socio la define `socios` y la consume
-  `reservas` sin conocerlo.
+Los módulos ya no son proyectos, así que la frontera **no la impone el compilador**: es
+convención de carpetas, cuidada en revisión (ADR-0005).
+
+- Una carpeta de módulo (`Domain/Bookings/`, `Application/Bookings/`) **no usa tipos** de la
+  carpeta de otro módulo, salvo lo propio de `padel`/`football` sobre `bookings`.
+- Lo que dos módulos necesitan compartir va como **contrato** (interfaz), implementado por el
+  módulo dueño y cableado por DI. Ejemplo: la habilitación del socio la define `members` y la
+  consume `bookings` sin conocerlo.
 - La lógica de dominio **nunca pregunta si un módulo está habilitado**. Eso se resuelve en el
   borde: el endpoint responde 404 y el job no se encola.
 
@@ -129,8 +145,8 @@ Es requisito del producto, no una feature futura.
   dependencias, si es núcleo).
 - `ModuleCatalog` valida el grafo al arrancar: dependencias inexistentes o ciclos hacen fallar
   el arranque, no producen comportamiento raro en runtime.
-- `ModuleCatalog.Resolve` expande al cierre transitivo: contratar `padel` trae `reservas`,
-  `finanzas` y `nucleo` solos.
+- `ModuleCatalog.Resolve` expande al cierre transitivo: contratar `padel` trae `bookings`,
+  `finance` y `core` solos.
 - `ITenantModules` dice qué tiene contratado el club en curso.
 - **Módulo apagado ⇒ 404, no 403.** Quien no contrató un módulo no tiene por qué enterarse de
   que existe.
@@ -140,9 +156,13 @@ Es requisito del producto, no una feature futura.
 
 - **.NET 10**, `nullable` habilitado, `TreatWarningsAsErrors=true`, `InvariantGlobalization=false`
   (el club opera en es-AR y las fechas y montos dependen de la cultura).
-- **Idioma:** el lenguaje del negocio va en español (`Socio`, `GrupoFamiliar`, `Cargo`, `Recibo`,
-  `Periodo`, `Turno`, `Reserva`); lo genérico y técnico, en inglés (`Money`, `IClock`,
-  `Repository`, `Handler`).
+- **Idioma** (decisión del 15/08/2026): **identificadores en inglés, textos en español.**
+  Clases, métodos, tablas, columnas, endpoints, proyectos e ids de módulo van en inglés
+  (`Person`, `Court`, `Booking`, `Schedule`, `Period`, `Money`, `IClock`). Lo que lee una
+  persona va en español: comentarios, mensajes de error, nombres de tests
+  (`El_catalogo_del_producto_es_valido`) y nombres comerciales (`DisplayName = "Socios"`).
+  El vocabulario del club (glosario del relevamiento) se usa para la UI y los textos, no para
+  los identificadores.
 - **Nunca un `decimal` suelto para plata**: se usa `Money`, que lleva la moneda.
 - **Nunca `DateTime.Now`**: se inyecta `IClock`. Todo lo que el negocio llama "día" se resuelve
   con `ClubCalendar` en la zona del club, no en UTC.
@@ -191,10 +211,10 @@ y recalcular saldos (se actualizan en la misma transacción del movimiento).
 
 | | Qué |
 |---|---|
-| ✅ | Solución con los 11 proyectos y el grafo de referencias |
+| ✅ | Solución por capas (7 proyectos: SharedKernel, Domain, Application, Infrastructure, Api y 2 de tests) |
 | ✅ | `SharedKernel`: `TenantId`, `ITenantContext`, `IClock` + `ClubCalendar`, `Money`, `Periodo` |
 | ✅ | Modularidad: `ModuleId`, `IClubModule`, `ModuleCatalog` (valida grafo y cierre transitivo), `ITenantModules` |
-| ✅ | Manifiestos de módulo de `nucleo` y `socios` |
+| ✅ | Manifiestos de módulo de `core` y `members` |
 | ✅ | Documentos en `docs/` y prototipo de reservas en `src/frontend/reservas/` |
 | ✅ | Cascarón del backoffice en `src/frontend/backoffice/` — 4 pantallas contra un mock (sección 10) |
 | ⬜ | Todo lo demás — ver abajo |
@@ -231,7 +251,7 @@ Leyenda: ✅ hecho · 🚧 bloqueado · ⬜ pendiente
 | ⬜ | **Observabilidad** | Métricas por job y **pantalla de operación** dentro del sistema: última corrida, pagos en revisión manual, outbox fallido, divergencias de habilitación |
 | ⬜ | **Contrato de API** | Decidir si se sigue el enfoque contract-first del repo anterior (OpenAPI escrito a mano, frontend generado desde ahí) |
 
-### 9.2 Módulo `nucleo`
+### 9.2 Módulo `core`
 
 | | Parte |
 |---|---|
@@ -242,7 +262,7 @@ Leyenda: ✅ hecho · 🚧 bloqueado · ⬜ pendiente
 | ⬜ | Usuarios, roles y asignación |
 | ⬜ | Configuración del club: zona horaria, moneda, datos institucionales |
 
-### 9.3 Módulo `socios`
+### 9.3 Módulo `members`
 
 | | Parte |
 |---|---|
@@ -255,7 +275,7 @@ Leyenda: ✅ hecho · 🚧 bloqueado · ⬜ pendiente
 | ⬜ | Alta express de mostrador ("socio al minuto") |
 | ⬜ | **Alta online**: pago → alta, sin que pueda quedar plata cobrada sin socio creado |
 
-### 9.4 Módulo `finanzas`
+### 9.4 Módulo `finance`
 
 | | Parte |
 |---|---|
@@ -269,7 +289,7 @@ Leyenda: ✅ hecho · 🚧 bloqueado · ⬜ pendiente
 | ⬜ | **Pagos**: gateway abstraído, checkout, webhook idempotente, conciliación (J2), bandeja de revisión manual |
 | ⬜ | Listados exportables: deudores, cobranza del período, altas y bajas. **Sin dashboards** |
 
-### 9.5 Módulo `reservas`
+### 9.5 Módulo `bookings`
 
 | | Parte |
 |---|---|
@@ -282,7 +302,7 @@ Leyenda: ✅ hecho · 🚧 bloqueado · ⬜ pendiente
 | ⬜ | API de agenda día/semana — la UI espera diseño |
 | ⬜ | Elegibilidad vía el contrato de habilitación |
 
-### 9.6 Módulos `padel` y `futbol`
+### 9.6 Módulos `padel` y `football`
 
 | | Parte |
 |---|---|
@@ -315,11 +335,11 @@ Cada fase deja algo utilizable. Del documento de diseño:
 | Fase | Contenido | Al terminar |
 |---|---|---|
 | 0 | Plataforma (9.1) + migración del padrón (9.8) | hay socios reales en el sistema |
-| 1 | `nucleo` + `socios` sin dinero: buscador y ficha | el mostrador puede consultar y dar de alta |
-| 2 | `finanzas`: conceptos, liquidación, cuenta corriente | existe la deuda |
+| 1 | `core` + `members` sin dinero: buscador y ficha | el mostrador puede consultar y dar de alta |
+| 2 | `finance`: conceptos, liquidación, cuenta corriente | existe la deuda |
 | 3 | Cobro de mostrador, recibos, cierre de caja | el club cobra |
 | 4 | Portal del socio + pago online | el socio se autogestiona |
-| 5 | `reservas` + `padel` + `futbol` | las canchas se venden |
+| 5 | `bookings` + `padel` + `football` | las canchas se venden |
 | 6 | Habilitación como servicio consumible desde afuera | queda listo para integrar con lo que venga |
 
 La habilitación se **define** en la fase 1 aunque se **integre** en la 6: es la bisagra del

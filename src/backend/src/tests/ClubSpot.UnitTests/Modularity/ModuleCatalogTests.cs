@@ -1,22 +1,18 @@
-using ClubSpot.Modules.Clubes;
-using ClubSpot.Modules.Finanzas;
-using ClubSpot.Modules.Futbol;
-using ClubSpot.Modules.Padel;
-using ClubSpot.Modules.Reservas;
+using ClubSpot.Application.Modularity;
 using ClubSpot.SharedKernel.Modularity;
 
 namespace ClubSpot.UnitTests.Modularity;
 
 public class ModuleCatalogTests
 {
-    private static ModuleCatalog Catalogo() => new(
+    private static ModuleCatalog Catalog() => new(
     [
-        new NucleoModule(),
-        new SociosModule(),
-        new FinanzasModule(),
-        new ReservasModule(),
+        new CoreModule(),
+        new MembersModule(),
+        new FinanceModule(),
+        new BookingsModule(),
         new PadelModule(),
-        new FutbolModule()
+        new FootballModule()
     ]);
 
     [Fact]
@@ -24,62 +20,62 @@ public class ModuleCatalogTests
     {
         // Construir el catálogo valida el grafo: si alguien declara una dependencia
         // inexistente o introduce un ciclo, esto falla acá y no en producción.
-        var catalogo = Catalogo();
+        var catalog = Catalog();
 
-        Assert.Equal(6, catalogo.All.Count);
+        Assert.Equal(6, catalog.All.Count);
     }
 
     [Fact]
-    public void Nucleo_es_el_unico_modulo_que_no_se_puede_apagar()
+    public void Core_es_el_unico_modulo_que_no_se_puede_apagar()
     {
-        var core = Catalogo().CoreModules;
+        var core = Catalog().CoreModules;
 
-        Assert.Equal([ModuleId.Nucleo], core);
+        Assert.Equal([ModuleId.Core], core);
     }
 
     [Fact]
     public void Contratar_padel_arrastra_todo_lo_que_necesita()
     {
-        var habilitados = Catalogo().Resolve([ModuleId.Padel]);
+        var enabled = Catalog().Resolve([ModuleId.Padel]);
 
         Assert.Equal(
-            [ModuleId.Nucleo, ModuleId.Finanzas, ModuleId.Reservas, ModuleId.Padel],
-            habilitados.OrderBy(m => m.Value).ToHashSet(),
+            [ModuleId.Core, ModuleId.Finance, ModuleId.Bookings, ModuleId.Padel],
+            enabled.OrderBy(m => m.Value).ToHashSet(),
             HashSet<ModuleId>.CreateSetComparer());
 
-        Assert.DoesNotContain(ModuleId.Socios, habilitados);
-        Assert.DoesNotContain(ModuleId.Futbol, habilitados);
+        Assert.DoesNotContain(ModuleId.Members, enabled);
+        Assert.DoesNotContain(ModuleId.Football, enabled);
     }
 
     [Fact]
-    public void Un_club_sin_nada_contratado_igual_tiene_el_nucleo()
+    public void Un_club_sin_nada_contratado_igual_tiene_el_core()
     {
-        var habilitados = Catalogo().Resolve([]);
+        var enabled = Catalog().Resolve([]);
 
-        Assert.Equal([ModuleId.Nucleo], habilitados);
+        Assert.Equal([ModuleId.Core], enabled);
     }
 
     [Fact]
-    public void Socios_no_se_puede_contratar_sin_finanzas()
+    public void Members_no_se_puede_contratar_sin_finance()
     {
         // La cuota es la razón de ser del padrón societario: sin cuenta corriente no hay deuda,
         // sin deuda no hay habilitación, y la condición de socio no decide nada.
-        var habilitados = Catalogo().Resolve([ModuleId.Socios]);
+        var enabled = Catalog().Resolve([ModuleId.Members]);
 
-        Assert.Contains(ModuleId.Finanzas, habilitados);
+        Assert.Contains(ModuleId.Finance, enabled);
     }
 
     [Fact]
-    public void Apagar_reservas_se_rechaza_si_hay_deportes_contratados()
+    public void Apagar_bookings_se_rechaza_si_hay_deportes_contratados()
     {
-        var catalogo = Catalogo();
-        var habilitados = catalogo.Resolve([ModuleId.Padel, ModuleId.Futbol]);
+        var catalog = Catalog();
+        var enabled = catalog.Resolve([ModuleId.Padel, ModuleId.Football]);
 
-        var dependientes = catalogo.DependentsOf(ModuleId.Reservas, habilitados);
+        var dependents = catalog.DependentsOf(ModuleId.Bookings, enabled);
 
         Assert.Equal(
-            [ModuleId.Padel, ModuleId.Futbol],
-            dependientes.OrderBy(m => m.Value).ToHashSet(),
+            [ModuleId.Padel, ModuleId.Football],
+            dependents.OrderBy(m => m.Value).ToHashSet(),
             HashSet<ModuleId>.CreateSetComparer());
     }
 
@@ -87,7 +83,7 @@ public class ModuleCatalogTests
     public void Un_modulo_con_dependencia_inexistente_no_deja_arrancar()
     {
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            new ModuleCatalog([new NucleoModule(), new ModuloRoto()]));
+            new ModuleCatalog([new CoreModule(), new BrokenModule()]));
 
         Assert.Contains("no está declarado", ex.Message);
     }
@@ -96,7 +92,7 @@ public class ModuleCatalogTests
     public void Un_ciclo_entre_modulos_no_deja_arrancar()
     {
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            new ModuleCatalog([new ModuloCiclicoA(), new ModuloCiclicoB()]));
+            new ModuleCatalog([new CyclicModuleA(), new CyclicModuleB()]));
 
         Assert.Contains("circular", ex.Message);
     }
@@ -105,12 +101,12 @@ public class ModuleCatalogTests
     public void Dos_modulos_con_el_mismo_id_no_dejan_arrancar()
     {
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            new ModuleCatalog([new NucleoModule(), new NucleoModule()]));
+            new ModuleCatalog([new CoreModule(), new CoreModule()]));
 
         Assert.Contains("más de una vez", ex.Message);
     }
 
-    private sealed class ModuloRoto : ClubModuleBase
+    private sealed class BrokenModule : ClubModuleBase
     {
         public override ModuleId Id => ModuleId.From("roto");
         public override string DisplayName => "Roto";
@@ -118,7 +114,7 @@ public class ModuleCatalogTests
         public override IReadOnlyCollection<ModuleId> DependsOn => [ModuleId.From("fantasma")];
     }
 
-    private sealed class ModuloCiclicoA : ClubModuleBase
+    private sealed class CyclicModuleA : ClubModuleBase
     {
         public override ModuleId Id => ModuleId.From("ciclo-a");
         public override string DisplayName => "A";
@@ -126,7 +122,7 @@ public class ModuleCatalogTests
         public override IReadOnlyCollection<ModuleId> DependsOn => [ModuleId.From("ciclo-b")];
     }
 
-    private sealed class ModuloCiclicoB : ClubModuleBase
+    private sealed class CyclicModuleB : ClubModuleBase
     {
         public override ModuleId Id => ModuleId.From("ciclo-b");
         public override string DisplayName => "B";

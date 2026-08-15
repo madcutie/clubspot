@@ -19,12 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ClubSpot.SharedKernel\ClubSpot.SharedKernel.csproj" />
-    <ProjectReference Include="..\..\ClubSpot.Modules.Clubes\ClubSpot.Modules.Clubes.csproj" />
-    <ProjectReference Include="..\..\ClubSpot.Modules.Reservas\ClubSpot.Modules.Reservas.csproj" />
-    <ProjectReference Include="..\..\ClubSpot.Modules.Padel\ClubSpot.Modules.Padel.csproj" />
-    <ProjectReference Include="..\..\ClubSpot.Modules.Futbol\ClubSpot.Modules.Futbol.csproj" />
-    <ProjectReference Include="..\..\ClubSpot.Modules.Finanzas\ClubSpot.Modules.Finanzas.csproj" />
+    <ProjectReference Include="..\..\Core\ClubSpot.SharedKernel\ClubSpot.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\Core\ClubSpot.Domain\ClubSpot.Domain.csproj" />
+    <ProjectReference Include="..\..\Core\ClubSpot.Application\ClubSpot.Application.csproj" />
   </ItemGroup>
 
 </Project>

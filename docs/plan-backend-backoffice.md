@@ -3,7 +3,45 @@
 > **Estado de avance:** ver [`plan-backend-backoffice.bitacora.md`](plan-backend-backoffice.bitacora.md).
 > Antes de retomar este plan, leer la bitácora: dice qué fase está en curso y dónde quedó.
 
-Fecha del plan: 14/08/2026.
+Fecha del plan: 14/08/2026. Actualizado el 15/08/2026 (idioma y fases — ver recuadro).
+
+> **Actualización 15/08/2026 — dos decisiones del usuario que modifican este plan:**
+>
+> **1. Identificadores en inglés, textos en español.** Todo identificador de código —clases,
+> métodos, tablas, columnas, endpoints, proyectos, ids de módulo— va en inglés; comentarios,
+> mensajes de error, nombres de tests y nombres comerciales siguen en español. El plan está
+> escrito con los nombres en español; al implementar se traducen así:
+>
+> | En el plan | En el código | | En el plan | En el código |
+> |---|---|---|---|---|
+> | `Persona` | `Person` | | módulo `nucleo` | `core` |
+> | `Nota` | `Note` | | módulo `socios` | `members` |
+> | `Usuario` / `Rol` | `User` / `Role` | | módulo `finanzas` | `finance` |
+> | `Cancha` | `Court` | | módulo `reservas` | `bookings` |
+> | `Horario` / `Tramo` | `Schedule` / `TimeRange` | | módulo `futbol` | `football` |
+> | `Reserva` | `Booking` | | `/api/personas` | `/api/people` |
+> | `Deporte` | `Sport` | | `/api/canchas` | `/api/courts` |
+> | `Periodo` | `Period` | | `/api/horarios` | `/api/schedules` |
+> | esquema `nucleo` | `core` | | `/api/reservas` | `/api/bookings` |
+> | esquema `reservas` | `bookings` | | `/api/contexto` | `/api/context` |
+>
+> Los proyectos ya fueron renombrados: `Modules.Clubes` → `Modules.Core`, `Modules.Finanzas` →
+> `Modules.Finance`, `Modules.Reservas` → `Modules.Bookings`, `Modules.Futbol` →
+> `Modules.Football`.
+>
+> **2. Fases más chicas.** Las fases F0–F4 de la sección 8 se reagrupan así (el contenido no
+> cambia, sólo el corte): **A1** renombres a inglés · **A2** persistencia + tenancy · **A3**
+> auth JWT · **A4** módulos por club + borde HTTP (juntas equivalen a F0) · **B** = F1 + F2
+> (Schedules, Courts, People) · **C** = F3 + F4 (agenda, reservas y conexión del frontend).
+> El estado por fase se lleva en la bitácora.
+>
+> **3. Arquitectura por capas** ([ADR-0005](adr/0005-capas-con-application-modulos-como-carpetas.md)):
+> las capas son proyectos (`ClubSpot.SharedKernel` / `Domain` / `Application` /
+> `Infrastructure` / `Api`), los módulos son **carpetas** dentro de Domain y Application.
+> Donde este plan dice "proyecto `ClubSpot.Modules.X`" leer "carpeta `X/` en Domain y
+> Application"; los handlers y las interfaces de repositorio van en `Application/<módulo>/`,
+> los agregados y servicios de dominio en `Domain/<módulo>/`. Los proyectos `Modules.*` y
+> `Jobs` ya no existen.
 
 ## 1. Contexto
 

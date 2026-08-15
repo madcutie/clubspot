@@ -37,7 +37,7 @@ public sealed class ModuleCatalog
 
     /// <summary>
     /// Expande una selección de módulos a su cierre transitivo e incorpora los del núcleo.
-    /// Contratar <c>padel</c> trae <c>reservas</c>, <c>finanzas</c> y <c>nucleo</c> sin que
+    /// Contratar <c>padel</c> trae <c>bookings</c>, <c>finance</c> y <c>core</c> sin que
     /// nadie tenga que acordarse de tildarlos.
     /// </summary>
     public IReadOnlySet<ModuleId> Resolve(IEnumerable<ModuleId> selected)

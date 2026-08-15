@@ -1,17 +1,17 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/api/ClubSpot.Api/ClubSpot.Api.csproj" />
-    <Project Path="src/ClubSpot.Infrastructure/ClubSpot.Infrastructure.csproj" />
-    <Project Path="src/ClubSpot.Jobs/ClubSpot.Jobs.csproj" />
-    <Project Path="src/ClubSpot.Modules.Clubes/ClubSpot.Modules.Clubes.csproj" />
-    <Project Path="src/ClubSpot.Modules.Finanzas/ClubSpot.Modules.Finanzas.csproj" />
-    <Project Path="src/ClubSpot.Modules.Futbol/ClubSpot.Modules.Futbol.csproj" />
-    <Project Path="src/ClubSpot.Modules.Padel/ClubSpot.Modules.Padel.csproj" />
-    <Project Path="src/ClubSpot.Modules.Reservas/ClubSpot.Modules.Reservas.csproj" />
-    <Project Path="src/ClubSpot.SharedKernel/ClubSpot.SharedKernel.csproj" />
+  <Folder Name="/Core/">
+    <Project Path="src/Core/ClubSpot.SharedKernel/ClubSpot.SharedKernel.csproj" />
+    <Project Path="src/Core/ClubSpot.Domain/ClubSpot.Domain.csproj" />
+    <Project Path="src/Core/ClubSpot.Application/ClubSpot.Application.csproj" />
   </Folder>
-  <Folder Name="/tests/">
-    <Project Path="src/tests/ClubSpot.IntegrationTests/ClubSpot.IntegrationTests.csproj" />
-    <Project Path="src/tests/ClubSpot.UnitTests/ClubSpot.UnitTests.csproj" />
+  <Folder Name="/Infrastructure/">
+    <Project Path="src/Infrastructure/ClubSpot.Infrastructure/ClubSpot.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/Api/">
+    <Project Path="src/Api/ClubSpot.Api/ClubSpot.Api.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="src/Tests/ClubSpot.UnitTests/ClubSpot.UnitTests.csproj" />
+    <Project Path="src/Tests/ClubSpot.IntegrationTests/ClubSpot.IntegrationTests.csproj" />
   </Folder>
 </Solution>

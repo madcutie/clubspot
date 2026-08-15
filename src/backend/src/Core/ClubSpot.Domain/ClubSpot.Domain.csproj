@@ -1,8 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\ClubSpot.SharedKernel\ClubSpot.SharedKernel.csproj" />
-    <ProjectReference Include="..\ClubSpot.Modules.Reservas\ClubSpot.Modules.Reservas.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

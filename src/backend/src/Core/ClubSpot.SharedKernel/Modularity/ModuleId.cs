@@ -27,10 +27,10 @@ public readonly record struct ModuleId
     public override string ToString() => Value;
 
     // Catálogo del producto. Agregar acá es la única forma de que exista un módulo nuevo.
-    public static readonly ModuleId Nucleo = From("nucleo");
-    public static readonly ModuleId Socios = From("socios");
-    public static readonly ModuleId Finanzas = From("finanzas");
-    public static readonly ModuleId Reservas = From("reservas");
+    public static readonly ModuleId Core = From("core");
+    public static readonly ModuleId Members = From("members");
+    public static readonly ModuleId Finance = From("finance");
+    public static readonly ModuleId Bookings = From("bookings");
     public static readonly ModuleId Padel = From("padel");
-    public static readonly ModuleId Futbol = From("futbol");
+    public static readonly ModuleId Football = From("football");
 }

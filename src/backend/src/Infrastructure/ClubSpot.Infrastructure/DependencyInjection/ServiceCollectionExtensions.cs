@@ -1,4 +1,5 @@
 using ClubSpot.Application.Core.Users;
+using ClubSpot.Application.Core.People;
 using ClubSpot.Infrastructure.Auth;
 using ClubSpot.Infrastructure.Modularity;
 using ClubSpot.Infrastructure.Persistence;
@@ -26,6 +27,9 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<CoreDbContext>(options =>
             options.UseNpgsql(connectionString, npgsql =>
                 npgsql.MigrationsHistoryTable(CoreDbContext.MigrationsHistoryTable, CoreDbContext.Schema)));
+        services.AddDbContext<BookingsDbContext>(options =>
+            options.UseNpgsql(connectionString, npgsql =>
+                npgsql.MigrationsHistoryTable(BookingsDbContext.MigrationsHistoryTable, BookingsDbContext.Schema)));
         return services;
     }
 
@@ -33,6 +37,17 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
+        return services;
+    }
+
+    public static IServiceCollection AddClubSpotPeople(this IServiceCollection services)
+    {
+        services.AddScoped<IPersonRepository, PersonRepository>();
+        services.AddScoped<IPeopleQueries, PeopleQueries>();
+        services.AddScoped<CreatePersonHandler>();
+        services.AddScoped<BlockPeopleHandler>();
+        services.AddScoped<AddNoteHandler>();
+        services.AddScoped<RegisterPersonPaymentHandler>();
         return services;
     }
 

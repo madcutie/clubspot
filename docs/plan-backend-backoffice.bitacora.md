@@ -19,7 +19,7 @@ actualización en el plan).
 | A2 | Persistencia (EF Core + PostgreSQL, `CoreDbContext`, tabla `club`) + tenancy (`AsyncLocal`, filtro global, guardia en `SaveChanges`) + infra Testcontainers | ✅ 15/08/2026 — PostgreSQL local, build y 17 tests verdes |
 | A3 | Auth: tablas `user`/`user_role`, hash, `POST /api/auth/session` → JWT, roles y políticas | ✅ 15/08/2026 — build y 20 tests verdes |
 | A4 | Módulos por club (`club_module`), `GET /api/context`, gating 404, ProblemDetails, CORS, seed | ✅ 15/08/2026 — migración, HTTP real y 22 tests verdes |
-| B | Schedules, Courts y People: agregados, GET/PUT masivos con xmin, búsqueda y ficha, endpoints y tests | ⬜ |
+| B | Schedules, Courts y People: agregados, GET/PUT masivos con xmin, búsqueda y ficha, endpoints y tests | 🚧 16/08/2026 — People completo; Schedules/Courts persistidos y verificados, falta concurrencia/contrato final |
 | C | Agenda y Bookings (exclusion constraint, servicios de dominio, 6 endpoints) + conexión del frontend (`http.ts` reemplaza `mockApi.ts`, se borra `store.ts`, login mínimo) | ⬜ |
 
 Leyenda: ⬜ pendiente · 🚧 en curso · ✅ terminada (build + tests verdes).
@@ -27,6 +27,58 @@ Leyenda: ⬜ pendiente · 🚧 en curso · ✅ terminada (build + tests verdes).
 ---
 
 ## Entradas
+
+### 16/08/2026 — B: Schedules y Courts, primer bloque verificable.
+
+**Qué se hizo:**
+
+- Agregados `Schedule`, franjas semanales, fechas especiales, `Court` y sus invariantes básicas
+  en el módulo `bookings`. Ambos usan filtro por tenant; horarios se persisten como JSONB con
+  converter explícito, compatible con Npgsql 10.
+- Creadas `BookingsDbContext`, su migración inicial y endpoints autenticados/gateados:
+  `GET`/`PUT /api/schedules` y `GET`/`PUT /api/courts`.
+- La FK de cancha a horario usa `RESTRICT`; el reemplazo masivo de horarios detecta el caso y
+  devuelve 409 en vez de producir un 500.
+- Pruebas de dominio y de integración verifican JSONB real y los dos endpoints. Validación HTTP
+  manual contra PostgreSQL local: login, creación y lectura de horario/cancha correctas.
+- `dotnet build` y `dotnet test --no-build` pasaron: 20 unitarios y 11 de integración.
+
+**Dónde quedó / próximo paso:** B sigue en curso. Falta incorporar `xmin`/409 de concurrencia y
+terminar el contrato de configuración, antes de conectar estas pantallas en la fase C.
+
+### 16/08/2026 — Convención física PostgreSQL: camelCase y reset de desarrollo.
+
+**Decisión del usuario:** toda la base PostgreSQL usa camelCase en sus identificadores físicos,
+incluidos tablas, columnas, índices, constraints y la tabla de historial de EF. No existe una
+decisión previa que justificara snake_case; la nomenclatura había sido introducida como default
+de implementación.
+
+**Qué se hizo:**
+
+- Corregidos mappings de `core` y `bookings`, incluido `authorUserId` y los nombres generados
+  explícitamente para índices y constraints.
+- Eliminadas las migraciones de desarrollo no versionadas y regeneradas dos iniciales completas:
+  `InitialCore` y `InitialBookings`.
+- Por confirmación explícita, eliminado el volumen local `clubspot-postgres` y reconstruida la
+  base con Docker Compose. La API aplicó ambos esquemas y el seed desde cero; el login de
+  desarrollo respondió correctamente.
+
+**Dónde quedó / próximo paso:** convención fijada en `AGENTS.md`; toda base local existente debe
+recrearse con `docker compose down -v` y `docker compose up -d postgres` antes de iniciar la
+API. Retomar B con las pruebas HTTP de Schedules y Courts.
+
+### 16/08/2026 — B: People.
+
+**Qué se hizo:**
+
+- Agregados `Person` y `Note` al módulo `core`, con búsqueda normalizada sin acentos, teléfono sólo dígitos, bloqueo, notas y el stub temporal de deuda/pago.
+- Persistidos en `core.person` y `core.person_note` con filtro global de tenant, índices de búsqueda y migración `AddPeople`.
+- Implementados repositorio, consultas paginadas de 14, los endpoints `/api/people`, políticas existentes de personas y gating 404 del módulo `core`.
+- Agregadas pruebas unitarias del agregado y una prueba HTTP de alta, búsqueda, nota, bloqueo y pago.
+
+**Dónde quedó / próximo paso:** People queda implementado y verificado. Schedules y Courts siguen fuera de este bloque; continuar B respetando el trabajo concurrente sobre esas áreas.
+
+---
 
 ### 15/08/2026 (9) — A4: módulos por club y borde HTTP.
 

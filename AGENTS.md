@@ -163,7 +163,10 @@ Es requisito del producto, no una feature futura.
   de tests (`The_product_catalog_is_valid`). En español queda lo que no es código: la
   documentación del repo (ADRs, plan, bitácora, este archivo), los textos de la UI y los
   nombres comerciales (`DisplayName = "Socios"`). Los errores de la API viajan con código de
-  regla; el texto en español que ve el operador lo pone el frontend.
+   regla; el texto en español que ve el operador lo pone el frontend.
+- **Persistencia:** los nombres físicos de PostgreSQL —tablas, columnas, índices, constraints y
+  la tabla de historial de EF— van en **camelCase**. No se adopta `snake_case` por convención
+  implícita.
 - **Comentarios: casi cero** (ADR-0006). Se comenta únicamente lo muy importante que el código
   no puede decir solo —una invariante no obvia, una lista blanca, un orden obligatorio, un
   "a propósito" que sin nota parecería un error—, en una o dos líneas y en inglés. Prohibidos

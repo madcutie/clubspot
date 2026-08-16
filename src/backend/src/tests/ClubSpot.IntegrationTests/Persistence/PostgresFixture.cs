@@ -24,12 +24,24 @@ public sealed class PostgresFixture : IAsyncLifetime
         return new CoreDbContext(options, tenantContext ?? new AsyncLocalTenantContext());
     }
 
+    public BookingsDbContext CreateBookingsDbContext(ITenantContext? tenantContext = null)
+    {
+        var options = new DbContextOptionsBuilder<BookingsDbContext>()
+            .UseNpgsql(ConnectionString, npgsql =>
+                npgsql.MigrationsHistoryTable(BookingsDbContext.MigrationsHistoryTable, BookingsDbContext.Schema))
+            .Options;
+
+        return new BookingsDbContext(options, tenantContext ?? new AsyncLocalTenantContext());
+    }
+
     public async Task InitializeAsync()
     {
         await _container.StartAsync();
 
         await using var db = CreateCoreDbContext();
         await db.Database.MigrateAsync();
+        await using var bookingsDb = CreateBookingsDbContext();
+        await bookingsDb.Database.MigrateAsync();
     }
 
     public Task DisposeAsync() => _container.DisposeAsync().AsTask();

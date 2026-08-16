@@ -8,6 +8,7 @@ using ClubSpot.Application.Modularity;
 using ClubSpot.Infrastructure.DependencyInjection;
 using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.SharedKernel.Modularity;
+using ClubSpot.SharedKernel.Time;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -24,6 +25,8 @@ if (string.IsNullOrWhiteSpace(jwtOptions.Issuer) || string.IsNullOrWhiteSpace(jw
 builder.Services.AddClubSpotTenancy();
 builder.Services.AddClubSpotPersistence(connectionString);
 builder.Services.AddClubSpotAuth();
+builder.Services.AddClubSpotPeople();
+builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddClubSpotModularity();
 builder.Services.AddSingleton(new ModuleCatalog([
     new CoreModule(), new MembersModule(), new FinanceModule(), new BookingsModule(), new PadelModule(), new FootballModule()
@@ -58,6 +61,8 @@ if (app.Environment.IsDevelopment())
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
     await db.Database.MigrateAsync();
+    var bookingsDb = scope.ServiceProvider.GetRequiredService<BookingsDbContext>();
+    await bookingsDb.Database.MigrateAsync();
     var seeder = scope.ServiceProvider.GetRequiredService<DevSeeder>();
     await seeder.SeedAsync();
 }
@@ -70,6 +75,9 @@ app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthorization();
 app.MapAuth();
 app.MapContext();
+app.MapSchedules();
+app.MapCourts();
+app.MapPeople();
 
 app.Run();
 

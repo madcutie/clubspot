@@ -8,12 +8,35 @@ de pádel y fútbol. La venta de entradas para partidos no forma parte de este p
 ## Arranque rápido
 
 ```bash
+docker compose up -d postgres
+
 cd src/backend && dotnet build && dotnet test
 
 cd src/frontend/reservas && pnpm install && pnpm dev
 ```
 
 Requiere el SDK de .NET fijado en `src/backend/global.json` (10.0.3xx) y Node 20+.
+
+## Base local
+
+`compose.yaml` levanta PostgreSQL 17 para desarrollo en `localhost:5432`, con base `clubspot`.
+Sus datos quedan en el volumen `clubspot-postgres`. La API aplica las migraciones pendientes al
+iniciar en `Development`:
+
+```bash
+docker compose up -d postgres
+cd src/backend && dotnet run --project src/Api/ClubSpot.Api
+```
+
+La contraseña por defecto es únicamente para desarrollo local. Para reemplazarla sin
+versionarla, crear `.env` desde `.env.example` y definir el mismo valor para la API:
+
+```bash
+dotnet user-secrets set "ConnectionStrings:ClubSpot" "Host=localhost;Port=5432;Database=clubspot;Username=postgres;Password=YOUR_PASSWORD" --project src/Api/ClubSpot.Api
+```
+
+Los tests de integración no usan esta base ni su volumen: Testcontainers crea su propio
+PostgreSQL descartable y requiere Docker Desktop iniciado.
 
 ## Estructura
 

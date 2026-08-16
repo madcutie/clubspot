@@ -15,10 +15,10 @@ actualización en el plan).
 | Fase | Contenido | Estado |
 |---|---|---|
 | Plan | Diseño del plan + documentos movidos + links arreglados | ✅ 14/08/2026 |
-| A1 | Renombres a inglés (`Period`, ids de módulo, tests, docs) + reestructura por capas con Application (ADR-0005) | 🚧 código listo 15/08/2026 — **falta build+tests** (el usuario pidió no compilar aún) |
-| A2 | Persistencia (EF Core + PostgreSQL, `CoreDbContext`, tabla `club`) + tenancy (`AsyncLocal`, filtro global, guardia en `SaveChanges`) + infra Testcontainers | 🚧 código listo 15/08/2026 — falta scaffoldear la migración inicial y build+tests |
-| A3 | Auth: tablas `user`/`user_role`, hash, `POST /api/auth/session` → JWT, roles y políticas | ⬜ |
-| A4 | Módulos por club (`club_module`), `GET /api/context`, gating 404, ProblemDetails, CORS, seed | ⬜ |
+| A1 | Renombres a inglés (`Period`, ids de módulo, tests, docs) + reestructura por capas con Application (ADR-0005) | ✅ 15/08/2026 — build verde y 14 tests unitarios verdes |
+| A2 | Persistencia (EF Core + PostgreSQL, `CoreDbContext`, tabla `club`) + tenancy (`AsyncLocal`, filtro global, guardia en `SaveChanges`) + infra Testcontainers | ✅ 15/08/2026 — PostgreSQL local, build y 17 tests verdes |
+| A3 | Auth: tablas `user`/`user_role`, hash, `POST /api/auth/session` → JWT, roles y políticas | ✅ 15/08/2026 — build y 20 tests verdes |
+| A4 | Módulos por club (`club_module`), `GET /api/context`, gating 404, ProblemDetails, CORS, seed | ✅ 15/08/2026 — migración, HTTP real y 22 tests verdes |
 | B | Schedules, Courts y People: agregados, GET/PUT masivos con xmin, búsqueda y ficha, endpoints y tests | ⬜ |
 | C | Agenda y Bookings (exclusion constraint, servicios de dominio, 6 endpoints) + conexión del frontend (`http.ts` reemplaza `mockApi.ts`, se borra `store.ts`, login mínimo) | ⬜ |
 
@@ -27,6 +27,105 @@ Leyenda: ⬜ pendiente · 🚧 en curso · ✅ terminada (build + tests verdes).
 ---
 
 ## Entradas
+
+### 15/08/2026 (9) — A4: módulos por club y borde HTTP.
+
+**Qué se hizo:**
+
+- Agregada la entidad `ClubModule` y la migración `AddClubModules`. La tabla `core.club_module`
+  guarda módulos contratados por club con PK `(club_id, module_id)` y FK al registro de tenants.
+- Implementado `TenantModulesProvider`: consulta los módulos del tenant actual mediante el filtro
+  global y los cachea 30 segundos. Registrado el catálogo explícito de los seis módulos.
+- Agregado middleware de resolución de tenant desde el claim JWT, `GET /api/context` autenticado,
+  extensión de gating `RequireModule` que responde 404 y handler central para
+  `ModuleDisabledException`. Configurada CORS para el backoffice local (`:5184`) y
+  ProblemDetails.
+- Agregado seed idempotente de Development: club Chaco For Ever, cierre completo de los seis
+  módulos y usuario administrador de prueba. Sólo usa datos inventados de desarrollo.
+- Pruebas de integración cubren contexto autenticado con los módulos habilitados, 401 sin token
+  y preflight CORS. `dotnet build` pasó sin advertencias y `dotnet test --no-build` pasó: 15
+  unitarios + 7 de integración. Contra PostgreSQL local, la API aplicó migraciones, permitió
+  login y devolvió los seis módulos desde `/api/context`.
+
+**Dónde quedó / próximo paso:** A4 queda ✅ y F0 está terminada. Siguiente fase: B, empezando
+por los agregados y endpoints de Schedules y Courts, seguidos por People.
+
+### 15/08/2026 (8) — A3: autenticación propia con JWT.
+
+**Qué se hizo:**
+
+- Agregados el agregado `User`, el catálogo `Role` de siete roles y la tabla dependiente
+  `user_role`; email único por tenant, hash de contraseña y usuario activo. Generada la
+  migración `AddUsers` en `core`.
+- Agregado `IPasswordHasher` en Application y la implementación con `PasswordHasher<T>` de
+  ASP.NET Core Identity en Infrastructure, sin incorporar el esquema ni el modelo de Identity.
+- Implementados `POST /api/auth/session`, emisión JWT HS256 con `sub`, `tenant`, nombre y un
+  claim de rol por cada asignación; vida útil de 12 horas y respuesta 401 genérica para club,
+  usuario, contraseña o estado inválidos. Las cuatro políticas quedan registradas para usarlas
+  al mapear los endpoints de A4/B.
+- Pruebas: una unitaria de normalización de usuario y dos de integración. La sesión válida usa
+  PostgreSQL real, hash real y verifica claims de tenant y rol; credenciales inválidas devuelven
+  401. `dotnet build` pasó sin advertencias y `dotnet test --no-build` pasó: 15 unitarios + 5
+  de integración.
+
+**Dónde quedó / próximo paso:** A3 queda ✅. Siguiente fase: A4, módulos contratados por club,
+`GET /api/context`, gating 404, ProblemDetails, CORS y seed de Development.
+
+### 15/08/2026 (7) — A2 verificada contra PostgreSQL.
+
+**Qué se hizo:**
+
+- Iniciado Docker Desktop y levantado `postgres` con Docker Compose. El contenedor quedó
+  saludable en `localhost:5432` con el volumen persistente configurado.
+- `dotnet build` pasó sin advertencias ni errores.
+- Iniciada temporalmente la API en Development contra PostgreSQL local: aplicó la migración y
+  `GET /` respondió `200 Hello World!`.
+- `dotnet test --no-build` pasó completo: 14 tests unitarios y 3 de integración con PostgreSQL
+  real mediante Testcontainers.
+
+**Dónde quedó / próximo paso:** A1 y A2 quedan ✅. Siguiente fase: A3, autenticación propia
+con usuarios, roles, hash de contraseña, `POST /api/auth/session` y JWT.
+
+### 15/08/2026 (6) — Entorno PostgreSQL local y finalización pendiente de A2.
+
+**Qué se hizo:**
+
+- Agregado `compose.yaml` en la raíz: PostgreSQL 17 Alpine, base `clubspot`, puerto 5432,
+  volumen persistente, healthcheck y contraseña configurable mediante `.env` (plantilla
+  `.env.example`).
+- La API registra tenancy y persistencia desde `Program.cs`; toma
+  `ConnectionStrings:ClubSpot` y aplica las migraciones de `CoreDbContext` sólo al iniciar en
+  Development. Se habilitó User Secrets para reemplazar la cadena local sin versionarla.
+- Documentado el flujo de desarrollo y la diferencia entre la base persistente local y el
+  PostgreSQL descartable de Testcontainers en `README.md`.
+- `docker compose config` y `dotnet build` pasaron. No se pudo levantar el servicio ni correr
+  integración porque Docker Desktop sigue detenido o no configurado (no existe el pipe
+  `dockerDesktopLinuxEngine`).
+
+**Dónde quedó / próximo paso:** iniciar Docker Desktop y ejecutar `docker compose up -d
+postgres`; luego `cd src/backend && dotnet test --no-build` y arrancar la API para comprobar
+que aplique `InitialCore`. Si los 3 tests de integración pasan, marcar A2 ✅ y continuar con A3.
+
+### 15/08/2026 (5) — Verificación de A1/A2 y migración inicial.
+
+**Qué se hizo:**
+
+- Generada `InitialCore` para `CoreDbContext` en
+  `Infrastructure/Persistence/Migrations/Core/`; crea el esquema `core`, la tabla `club`, el
+  índice único de `slug` y el check de `deposit_percent`.
+- Corregidas las dependencias que impedían verificar: EF Core/Npgsql/EF Design se actualizaron
+  a versiones 10.0.x compatibles y Testcontainers PostgreSQL a 4.14.0. Se fijaron EF Core y
+  Relational 10.0.11 en IntegrationTests para evitar un conflicto con la versión transitiva.
+  El fixture declara explícitamente `postgres:17-alpine`, requerido por la API actual de
+  Testcontainers. La herramienta local `dotnet-ef` quedó en 10.0.11, alineada con EF.
+- `dotnet build` pasó sin advertencias ni errores. Los tests unitarios pasaron: 14/14.
+- Se ejecutó `dotnet test --no-build`: los 3 tests de integración no alcanzaron a correr porque
+  Docker Desktop no está iniciado/configurado (no existe el pipe `docker_engine`). No hubo
+  fallos funcionales reportados por esos tests.
+
+**Dónde quedó / próximo paso:** A1 queda ✅. A2 queda pendiente exclusivamente de iniciar
+Docker y volver a ejecutar `cd src/backend && dotnet test --no-build`; con los 3 tests de
+integración verdes, marcar A2 ✅ y continuar con A3 (auth JWT).
 
 ### 15/08/2026 (4) — ADR-0006: código entero en inglés, casi sin comentarios. Backend reescrito.
 

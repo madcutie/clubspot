@@ -55,10 +55,19 @@ public static class PortalEndpoints
             // The client cannot know the booking id before this call; the return URL gets it here.
             var returnUrl = Microsoft.AspNetCore.WebUtilities.QueryHelpers
                 .AddQueryString(request.ReturnUrl!, "retorno", result.Id.ToString());
-            var session = await gateway!.CreateCheckoutAsync(new CheckoutRequest(
-                result.Id, clubSlug, title, result.ChargeAmount, result.ExpiresAt!.Value, returnUrl),
-                cancellationToken);
-            checkoutUrl = session.Url;
+            try
+            {
+                var session = await gateway!.CreateCheckoutAsync(new CheckoutRequest(
+                    result.Id, clubSlug, title, result.ChargeAmount, result.ExpiresAt!.Value, returnUrl),
+                    cancellationToken);
+                checkoutUrl = session.Url;
+            }
+            catch
+            {
+                // No checkout, no hold: otherwise the slot stays blocked for the whole TTL.
+                await store.CancelAsync(result.Id, cancellationToken);
+                throw;
+            }
         }
 
         return Results.Created($"/api/portal/{clubSlug}/bookings/{result.Id}",

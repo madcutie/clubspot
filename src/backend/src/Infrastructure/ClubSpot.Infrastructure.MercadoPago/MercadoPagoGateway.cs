@@ -40,7 +40,9 @@ public sealed class MercadoPagoGateway(IOptions<MercadoPagoOptions> options) : I
                 Pending = request.ReturnUrl,
                 Failure = request.ReturnUrl
             },
-            AutoReturn = "approved",
+            // Mercado Pago only honours auto_return with https back urls; over plain http
+            // (local dev) the buyer clicks "Volver al sitio" instead.
+            AutoReturn = request.ReturnUrl.StartsWith("https", StringComparison.OrdinalIgnoreCase) ? "approved" : null,
             // Approved or rejected, nothing in between: the 15-minute hold cannot wait out an in_process.
             BinaryMode = true,
             Expires = true,

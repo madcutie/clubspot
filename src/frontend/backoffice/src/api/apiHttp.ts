@@ -207,7 +207,7 @@ interface AgendaBookingResponse {
   customerName: string;
   customerPhone: string | null;
   price: number;
-  status: 'confirmed' | 'cancelled';
+  status: 'confirmed' | 'cancelled' | 'pendingPayment' | 'expired';
 }
 
 interface AgendaCourtResponse {
@@ -236,8 +236,9 @@ export async function fetchAgenda(deporte: Deporte, fecha: string): Promise<Agen
       techada: x.isCovered,
       ventanas: x.windows.map((w): Tramo => [w.opensAtMinute, w.closesAtMinute]),
       turnos: x.slots.map((s) => ({ t: s.startMinute, dur: s.duration, precio: s.price })),
+      // La API sólo manda reservas que bloquean: confirmadas y holds vivos.
       reservas: x.bookings
-        .filter((b) => b.status === 'confirmed')
+        .filter((b) => b.status === 'confirmed' || b.status === 'pendingPayment')
         .map((b) => ({
           id: b.id,
           t: b.startMinute,
@@ -245,6 +246,7 @@ export async function fetchAgenda(deporte: Deporte, fecha: string): Promise<Agen
           persona: b.customerName,
           tel: b.customerPhone,
           precio: b.price,
+          pendientePago: b.status === 'pendingPayment',
         })),
     })),
   };

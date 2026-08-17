@@ -39,7 +39,7 @@ public sealed class AvailabilityCalculatorTests
     private static Booking MakeBooking(int startMinute, int durationMinutes, bool cancelled = false)
     {
         var booking = new Booking(Guid.NewGuid(), Tenant, CourtId, Today, startMinute, durationMinutes,
-            Money.Of(14000m, "ARS"), "Ana Suarez", null, DateTimeOffset.UtcNow, Guid.NewGuid());
+            Money.Of(14000m, "ARS"), "Ana Suarez", null, null, BookingOrigin.Counter, DateTimeOffset.UtcNow, Guid.NewGuid());
         if (cancelled) booking.Cancel(DateTimeOffset.UtcNow);
         return booking;
     }

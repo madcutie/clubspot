@@ -28,6 +28,7 @@ Leer antes de proponer cualquier cosa de dominio. Están en `docs/`:
 | [`docs/adr/`](docs/adr/README.md) | **Decisiones de arquitectura escritas en piedra** (ADRs): monolito modular, agenda en lectura, auth propia, idioma, capas, esquema y persistencia. No se rediscuten; si una cambia, se escribe un ADR nuevo |
 | [`docs/plan-backend-backoffice.md`](docs/plan-backend-backoffice.md) + su [bitácora](docs/plan-backend-backoffice.bitacora.md) | **Plan vigente del backend** y el registro de avance. La bitácora dice qué fase está en curso y dónde quedó |
 | [`docs/plan-disponibilidad-e2e.md`](docs/plan-disponibilidad-e2e.md) + su [bitácora](docs/plan-disponibilidad-e2e.bitacora.md) | **Plan aprobado (16/08/2026)**: disponibilidad de punta a punta —ADR-0013 en el backend, horarios/canchas del backoffice y portal de reservas contra la API real— con catálogo de 16 casos E2E por navegador + SQL. **F1 (backend) cerrada y verificada**; F2–F5 pendientes |
+| [`docs/plan-reserva-online.md`](docs/plan-reserva-online.md) + su [bitácora](docs/plan-reserva-online.bitacora.md) | **Plan aprobado (17/08/2026)**: reserva online desde el portal en 3 etapas. **Etapas 1 y 2 cerradas**: reserva sin pago con vínculo a persona (email → celular → crear), y pago online (hold con TTL perezoso, webhook idempotente, tabla `payments`) verificado con el **gateway fake**; Mercado Pago escrito pero sin probar (faltan credenciales). Etapa 3 (login) pendiente |
 | `src/frontend/backoffice/` | **El mock manda** (decisión del 14/08/2026): donde el prototipo y cualquier otra fuente difieran, gana el prototipo. Ver sección 10 |
 
 > **16/08/2026 — se eliminó `docs/referencia-ourclub/`** (relevamiento de OurClub, alcance del
@@ -207,6 +208,12 @@ con cobro o sin cobro y sin liquidaciones · otro con club + reservas + finanzas
   no puede decir solo —una invariante no obvia, una lista blanca, un orden obligatorio, un
   "a propósito" que sin nota parecería un error—, en una o dos líneas y en inglés. Prohibidos
   los doc-comments decorativos y los resúmenes de lo que ya dice la firma.
+- **Todo SDK de vendor externo va en un proyecto de Infrastructure propio** (decisión del
+  usuario, 17/08/2026): p. ej. las dependencias de MercadoPago viven en
+  `ClubSpot.Infrastructure.MercadoPago`, no en `ClubSpot.Infrastructure`. El proyecto del
+  vendor implementa el puerto que declara Application y se cablea por DI en la Api; el resto
+  de la solución no referencia el SDK. Regla general para cualquier gateway o servicio
+  externo que se integre.
 - **Nunca un `decimal` suelto para plata**: se usa `Money`, que lleva la moneda. Esto incluye
   tarifas y precios de canchas, no sólo deudas y pagos.
 - **Una tabla pertenece a un módulo.** Antes de agregar una columna, preguntarse de quién es el
@@ -252,6 +259,11 @@ cd src/frontend/reservas && npm i && npm run dev     # portal de reservas — :5
 La API corre en `:5037` y **PostgreSQL en el `5433`** (el 5432 lo ocupa otro proyecto;
 override con `CLUBSPOT_PG_PORT`). En Development la API migra y siembra la base sola al
 arrancar. `dotnet ef` necesita `dotnet tool restore` una vez por clon.
+
+**`appsettings.Development.json` no se versiona** (decisión del usuario, 17/08/2026): es la
+configuración local del developer y ahí van también los secretos de dev (p. ej. el access
+token de Mercado Pago). En un clon fresco se crea copiando
+`appsettings.Development.json.example`, que sí está versionado y no lleva ningún secreto.
 
 ## 7. Los procesos de background
 

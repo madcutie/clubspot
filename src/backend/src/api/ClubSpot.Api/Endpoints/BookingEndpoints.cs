@@ -50,7 +50,9 @@ public static class BookingEndpoints
 
     private sealed record BookingRequest(Guid CourtId, DateOnly Date, int StartMinute, int DurationMinutes, string CustomerName, string? CustomerPhone)
     {
-        public BookingCreateInput ToInput(Guid createdBy) => new(CourtId, Date, StartMinute, DurationMinutes, CustomerName, CustomerPhone, createdBy);
+        public BookingCreateInput ToInput(Guid createdBy) =>
+            new(CourtId, Date, StartMinute, DurationMinutes, CustomerName, CustomerPhone, CustomerEmail: null,
+                BookingOrigin.Counter, PaymentMode.Club, createdBy);
     }
 
     private sealed record BookingCreatedResponse(Guid Id, decimal Price);

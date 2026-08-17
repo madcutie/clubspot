@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\Core\ClubSpot.SharedKernel\ClubSpot.SharedKernel.csproj" />
     <ProjectReference Include="..\..\Core\ClubSpot.Domain\ClubSpot.Domain.csproj" />
     <ProjectReference Include="..\..\Core\ClubSpot.Application\ClubSpot.Application.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\ClubSpot.Infrastructure.MercadoPago\ClubSpot.Infrastructure.MercadoPago.csproj" />
   </ItemGroup>
 
 </Project>

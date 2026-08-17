@@ -29,10 +29,13 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
 
   const picked = courts.find((c) => c.i === st.courtIdx && c.free) ?? null;
   const sel =
-    picked && picked.price != null && st.hour != null
+    picked && picked.price != null && st.hour != null && q.data?.date
       ? {
           key: `${st.sport}-${st.dateIdx}-${st.hour}-${picked.i}-${st.dur}`,
+          courtId: picked.id,
           court: `${picked.n} · ${picked.d}`,
+          date: q.data.date,
+          startMinute: st.hour,
           dur: st.dur,
           label: `${hhmm(st.hour)} – ${hhmm(st.hour + st.dur)}`,
           diaLabel: q.data?.dayLong ?? '',

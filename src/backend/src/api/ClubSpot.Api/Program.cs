@@ -11,6 +11,7 @@ using ClubSpot.Domain.Bookings;
 using ClubSpot.Domain.Core;
 using ClubSpot.Domain.Core.People;
 using ClubSpot.Infrastructure.DependencyInjection;
+using ClubSpot.Infrastructure.MercadoPago;
 using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.SharedKernel.Modularity;
 using ClubSpot.SharedKernel.Time;
@@ -32,6 +33,9 @@ builder.Services.AddClubSpotPersistence(connectionString);
 builder.Services.AddClubSpotAuth();
 builder.Services.AddClubSpotPeople();
 builder.Services.AddClubSpotBookings();
+builder.Services.AddClubSpotPayments(builder.Configuration);
+if (builder.Configuration["Payments:Gateway"] == MercadoPagoGateway.GatewayName)
+    builder.Services.AddClubSpotMercadoPago(builder.Configuration);
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddClubSpotModularity();
 builder.Services.AddSingleton(new ModuleCatalog([
@@ -61,6 +65,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<PersonOrigin>(JsonNamingPolicy.CamelCase));
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<Sport>(JsonNamingPolicy.CamelCase));
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<BookingStatus>(JsonNamingPolicy.CamelCase));
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<PaymentMode>(JsonNamingPolicy.CamelCase));
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<ClubSpot.Application.Bookings.PaymentApplyOutcome>(JsonNamingPolicy.CamelCase));
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<Role>(JsonNamingPolicy.CamelCase));
 });
 builder.Services.AddCors(options => options.AddPolicy("backoffice", policy =>
@@ -93,7 +99,9 @@ app.MapCourts();
 app.MapAvailabilityOverrides();
 app.MapBookings();
 app.MapPortal();
+app.MapPayments();
 app.MapPeople();
+if (app.Environment.IsDevelopment()) app.MapDevCheckout();
 
 app.Run();
 

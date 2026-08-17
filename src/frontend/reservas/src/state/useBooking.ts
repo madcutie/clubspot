@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { CourtFilter, Duration, PayMode, Screen, Selection, Sport } from '../domain/types';
+import type { ConfirmedBooking, CourtFilter, Duration, PayMode, Screen, Selection, Sport } from '../domain/types';
 
 /**
  * Estado de UI del flujo de reserva. Los datos (catálogo, disponibilidad)
@@ -20,6 +20,10 @@ export interface BookingState {
   tel: string;
   email: string;
   pago: PayMode;
+  /** Reserva recién confirmada por el servidor (pantalla de éxito). */
+  done: ConfirmedBooking | null;
+  /** Reserva a la que volvió el checkout online (`?retorno={id}`). */
+  retornoId: string | null;
 }
 
 const INITIAL: BookingState = {
@@ -34,11 +38,21 @@ const INITIAL: BookingState = {
   nombre: '',
   tel: '',
   email: '',
-  pago: 'total',
+  pago: 'club',
+  done: null,
+  retornoId: null,
 };
 
+/** La vuelta del checkout entra por `?retorno={id}`; se limpia la URL al leerla. */
+function initialState(): BookingState {
+  const retorno = new URLSearchParams(window.location.search).get('retorno');
+  if (!retorno) return INITIAL;
+  window.history.replaceState({}, '', window.location.pathname);
+  return { ...INITIAL, screen: 'retorno', retornoId: retorno };
+}
+
 export function useBooking() {
-  const [st, setSt] = useState<BookingState>(INITIAL);
+  const [st, setSt] = useState<BookingState>(initialState);
 
   const set = useCallback((patch: Partial<BookingState>) => {
     setSt((prev) => ({ ...prev, ...patch }));
@@ -46,7 +60,9 @@ export function useBooking() {
 
   /** Vuelve al home descartando la selección en curso. */
   const restart = useCallback(() => {
-    setSt((prev) => ({ ...prev, screen: 'home', hour: null, courtIdx: null, sel: null }));
+    setSt((prev) => ({
+      ...prev, screen: 'home', hour: null, courtIdx: null, sel: null, done: null, retornoId: null,
+    }));
   }, []);
 
   const total = st.sel ? st.sel.price : 0;

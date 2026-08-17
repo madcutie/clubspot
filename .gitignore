@@ -28,6 +28,8 @@ dist/
 
 # Entorno y secretos — nunca versionar credenciales del club ni del gateway de pago
 .env
+# Configuración local del developer (clonar desde appsettings.Development.json.example)
+appsettings.Development.json
 .env.*
 !.env.example
 appsettings.Development.local.json

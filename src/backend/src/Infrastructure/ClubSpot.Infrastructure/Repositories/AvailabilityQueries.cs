@@ -1,11 +1,12 @@
 using ClubSpot.Application.Bookings;
 using ClubSpot.Domain.Bookings;
 using ClubSpot.Infrastructure.Persistence;
+using ClubSpot.SharedKernel.Time;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClubSpot.Infrastructure.Repositories;
 
-internal sealed class AvailabilityQueries(ClubSpotDbContext db) : IAvailabilityQueries
+internal sealed class AvailabilityQueries(ClubSpotDbContext db, IClock clock) : IAvailabilityQueries
 {
     public async Task<AvailabilityData> GetDataAsync(Sport sport, DateOnly from, DateOnly to, CancellationToken cancellationToken)
     {
@@ -27,12 +28,15 @@ internal sealed class AvailabilityQueries(ClubSpotDbContext db) : IAvailabilityQ
             .Include(availabilityOverride => availabilityOverride.Dates)
             .ToListAsync(cancellationToken);
 
-        var confirmedBookings = await db.Bookings.AsNoTracking()
+        // A live hold blocks the slot exactly like a confirmed booking; expired ones don't.
+        var now = clock.UtcNow;
+        var activeBookings = await db.Bookings.AsNoTracking()
             .Where(booking => courtIds.Contains(booking.CourtId)
                 && booking.Date >= from && booking.Date <= to
-                && booking.Status == BookingStatus.Confirmed)
+                && (booking.Status == BookingStatus.Confirmed
+                    || (booking.Status == BookingStatus.PendingPayment && booking.ExpiresAt > now)))
             .ToListAsync(cancellationToken);
 
-        return new AvailabilityData(courts, schedules, overrides, confirmedBookings);
+        return new AvailabilityData(courts, schedules, overrides, activeBookings);
     }
 }

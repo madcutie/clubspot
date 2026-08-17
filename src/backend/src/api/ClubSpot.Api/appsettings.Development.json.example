@@ -1,0 +1,23 @@
+{
+  "ConnectionStrings": {
+    "ClubSpot": "Host=localhost;Port=5433;Database=clubspot;Username=postgres;Password=clubspot"
+  },
+  "Payments": {
+    "Gateway": "fake",
+    "MercadoPago": {
+      "AccessToken": "",
+      "WebhookSecret": ""
+    }
+  },
+  "Jwt": {
+    "Issuer": "ClubSpot.Development",
+    "Audience": "ClubSpot.Backoffice",
+    "SigningKey": "development-only-signing-key-must-be-32-characters"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}

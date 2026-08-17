@@ -1,20 +1,85 @@
+import { useState } from 'react';
 import { sportLabel } from '../domain/sport';
-import { durLabel, fmt, senaOf } from '../domain/pricing';
+import { durLabel, fmt } from '../domain/pricing';
+import { ApiError, createBooking, invalidateAvailability, type ApiPaymentMode } from '../api/portalApi';
 import { useClub } from '../api/queries';
+import { saveMyBooking } from '../state/myBookings';
 import { BackTitle, Body, Footer, Header, Screen } from '../ui/Screen';
-import { C, F, card, ctaOff, divider, input, label, optCard, radio, rowLabel, rowValue } from '../ui/theme';
+import { C, F, card, ctaOff, ctaOn, divider, input, label, optCard, radio, rowLabel, rowValue } from '../ui/theme';
 import type { BookingApi } from '../state/useBooking';
+import type { PayMode } from '../domain/types';
 
-// Provisional: política de cancelación pendiente de definición; la reemplaza la regla real.
-const CANCEL_HORAS = 12;
+const API_MODE: Record<PayMode, ApiPaymentMode> = {
+  club: 'club',
+  total: 'onlineFull',
+  sena: 'onlineDeposit',
+};
 
 export function ConfirmScreen({ api }: { api: BookingApi }) {
   const { st, set, total } = api;
 
   const club = useClub();
+  const pagoOnline = club.data?.pagoOnline ?? false;
   const senaPct = club.data?.senaPct ?? 0;
-  const sena = senaOf(total, senaPct);
-  const saldo = total - sena;
+  const sena = Math.round((total * senaPct) / 100);
+  const saldoSena = total - sena;
+
+  const [sending, setSending] = useState(false);
+  const [slotTaken, setSlotTaken] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const ready = st.nombre.trim().length > 0 && st.tel.trim().length > 0;
+  const pago: PayMode = pagoOnline ? st.pago : 'club';
+
+  const confirm = async () => {
+    if (!st.sel || sending) return;
+    setSending(true);
+    setError(null);
+    try {
+      const created = await createBooking({
+        courtId: st.sel.courtId,
+        date: st.sel.date,
+        startMinute: st.sel.startMinute,
+        durationMinutes: st.sel.dur,
+        customerName: st.nombre.trim(),
+        customerPhone: st.tel.trim(),
+        customerEmail: st.email.trim() || null,
+        paymentMode: API_MODE[pago],
+        returnUrl: pago === 'club' ? null : window.location.origin + window.location.pathname,
+      });
+      if (created.checkoutUrl) {
+        // El hold quedó tomado; el resto pasa en el checkout y en la pantalla de retorno.
+        window.location.href = created.checkoutUrl;
+        return;
+      }
+      const done = {
+        id: created.id,
+        sport: st.sport,
+        court: st.sel.court,
+        date: st.sel.date,
+        label: st.sel.label,
+        diaLabel: st.sel.diaLabel,
+        price: created.price,
+        nombre: st.nombre.trim(),
+      };
+      saveMyBooking(done);
+      void invalidateAvailability();
+      set({ screen: 'done', done });
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        setSlotTaken(true);
+        void invalidateAvailability();
+      } else {
+        setError('No se pudo confirmar la reserva. Probá de nuevo en un momento.');
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const backToAvailability = () => {
+    set({ screen: 'avail', hour: null, courtIdx: null, sel: null });
+  };
 
   return (
     <Screen>
@@ -73,68 +138,128 @@ export function ConfirmScreen({ api }: { api: BookingApi }) {
           />
         </div>
 
-        <div style={{ ...label, margin: '26px 0 10px' }}>Forma de pago</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <button type="button" onClick={() => set({ pago: 'total' })} style={optCard(st.pago === 'total')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={radio(st.pago === 'total')} />
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ font: `700 15.5px ${F.body}` }}>Pago total online</div>
-                <div style={{ font: `500 13px/1.45 ${F.body}`, color: C.soft, marginTop: 3 }}>
-                  Abonás el 100% y la cancha queda confirmada.
-                </div>
-              </div>
-              <div style={{ font: `700 16px ${F.display}` }}>{fmt(total)}</div>
+        {pagoOnline ? (
+          <>
+            <div style={{ ...label, margin: '26px 0 10px' }}>Forma de pago</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <PayOption
+                active={pago === 'club'}
+                onClick={() => set({ pago: 'club' })}
+                title="Pagás en el club"
+                detail="El turno queda confirmado a tu nombre y abonás cuando venís a jugar."
+                amount={fmt(total)}
+              />
+              <PayOption
+                active={pago === 'total'}
+                onClick={() => set({ pago: 'total' })}
+                title="Pago total online"
+                detail="Abonás el 100% y la cancha queda confirmada."
+                amount={fmt(total)}
+              />
+              <PayOption
+                active={pago === 'sena'}
+                onClick={() => set({ pago: 'sena' })}
+                title="Seña online + resto en el club"
+                detail={`Pagás el ${senaPct}% para confirmar el turno.`}
+                amount={fmt(sena)}
+                note={`Saldo a pagar en el club: ${fmt(saldoSena)}`}
+              />
             </div>
-          </button>
-
-          <button type="button" onClick={() => set({ pago: 'sena' })} style={optCard(st.pago === 'sena')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={radio(st.pago === 'sena')} />
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ font: `700 15.5px ${F.body}` }}>Seña online + resto en el club</div>
-                <div style={{ font: `500 13px/1.45 ${F.body}`, color: C.soft, marginTop: 3 }}>
-                  Pagás el {senaPct}% para confirmar el turno.
-                </div>
-              </div>
-              <div style={{ font: `700 16px ${F.display}` }}>{fmt(sena)}</div>
-            </div>
-            <div
-              style={{
-                marginTop: 12, padding: '10px 12px', borderRadius: 11,
-                background: 'rgba(255,201,74,.10)', border: '1px solid rgba(255,201,74,.28)',
-                font: `700 13px ${F.body}`, color: C.accent, textAlign: 'left',
-              }}
-            >
-              Saldo a pagar en el club: {fmt(saldo)}
-            </div>
-          </button>
-        </div>
-
-        <div style={{ font: `500 12px/1.5 ${F.body}`, color: C.dim, marginTop: 16 }}>
-          Cancelación sin cargo hasta {CANCEL_HORAS} h antes del turno. Después de ese plazo la
-          seña no se devuelve.
-        </div>
+          </>
+        ) : (
+          <div
+            style={{
+              marginTop: 18, padding: '12px 14px', borderRadius: 12,
+              background: C.surface, border: '1px solid rgba(255,255,255,.10)',
+              font: `500 13px/1.5 ${F.body}`, color: C.soft,
+            }}
+          >
+            <span style={{ font: `700 13px ${F.body}`, color: C.ink }}>Pagás en el club.</span>{' '}
+            El turno queda confirmado a tu nombre y abonás {fmt(total)} cuando venís a jugar.
+          </div>
+        )}
       </Body>
 
       <Footer>
-        {/* Provisional: la reserva online queda gateada hasta que existan hold+TTL y pagos (F2R decisión 7). */}
-        <div
-          role="status"
-          style={{
-            padding: '12px 14px', borderRadius: 12,
-            background: 'rgba(255,201,74,.10)', border: '1px solid rgba(255,201,74,.28)',
-            font: `500 13px/1.5 ${F.body}`, color: '#E9D7AE', textAlign: 'center',
-          }}
-        >
-          La reserva online todavía no está habilitada. Para asegurar este turno, comunicate con
-          el club.
-        </div>
-        <button type="button" disabled style={ctaOff}>
-          Reservar online — próximamente
-        </button>
+        {slotTaken && (
+          <div
+            role="alert"
+            style={{
+              padding: '12px 14px', borderRadius: 12,
+              background: 'rgba(255,201,74,.10)', border: '1px solid rgba(255,201,74,.28)',
+              font: `500 13px/1.5 ${F.body}`, color: '#E9D7AE', textAlign: 'center',
+            }}
+          >
+            Ese turno se acaba de ocupar. Elegí otro horario.
+          </div>
+        )}
+        {error && !slotTaken && (
+          <div
+            role="alert"
+            style={{
+              padding: '12px 14px', borderRadius: 12,
+              background: 'rgba(255,201,74,.10)', border: '1px solid rgba(255,201,74,.28)',
+              font: `500 13px/1.5 ${F.body}`, color: '#E9D7AE', textAlign: 'center',
+            }}
+          >
+            {error}
+          </div>
+        )}
+        {slotTaken ? (
+          <button type="button" onClick={backToAvailability} style={ctaOn}>
+            Ver horarios disponibles
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!ready || sending}
+            onClick={confirm}
+            style={ready && !sending ? ctaOn : ctaOff}
+          >
+            {sending
+              ? 'Confirmando…'
+              : !ready
+                ? 'Completá tus datos'
+                : pago === 'club'
+                  ? 'Confirmar reserva'
+                  : `Continuar al pago — ${fmt(pago === 'sena' ? sena : total)}`}
+          </button>
+        )}
       </Footer>
     </Screen>
+  );
+}
+
+function PayOption({ active, onClick, title, detail, amount, note }: {
+  active: boolean;
+  onClick: () => void;
+  title: string;
+  detail: string;
+  amount: string;
+  note?: string;
+}) {
+  return (
+    <button type="button" onClick={onClick} style={optCard(active)}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={radio(active)} />
+        <div style={{ flex: 1, textAlign: 'left' }}>
+          <div style={{ font: `700 15.5px ${F.body}` }}>{title}</div>
+          <div style={{ font: `500 13px/1.45 ${F.body}`, color: C.soft, marginTop: 3 }}>{detail}</div>
+        </div>
+        <div style={{ font: `700 16px ${F.display}` }}>{amount}</div>
+      </div>
+      {note && (
+        <div
+          style={{
+            marginTop: 12, padding: '10px 12px', borderRadius: 11,
+            background: 'rgba(255,201,74,.10)', border: '1px solid rgba(255,201,74,.28)',
+            font: `700 13px ${F.body}`, color: C.accent, textAlign: 'left',
+          }}
+        >
+          {note}
+        </div>
+      )}
+    </button>
   );
 }
 

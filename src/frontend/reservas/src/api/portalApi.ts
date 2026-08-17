@@ -19,6 +19,7 @@ type ApiSport = 'padel' | 'football';
 interface ApiCatalog {
   club: { name: string; venue: string | null; currency: string; depositPercent: number };
   sports: { sport: ApiSport; courts: ApiCourt[] }[];
+  onlinePayments: boolean;
 }
 
 interface ApiCourt {
@@ -42,9 +43,15 @@ interface ApiSlot {
 
 const API_SPORT: Record<Sport, ApiSport> = { padel: 'padel', futbol: 'football' };
 
+export class ApiError extends Error {
+  constructor(public readonly status: number, path: string) {
+    super(`La API respondió ${status} en ${path}`);
+  }
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}/api/portal/${CLUB_SLUG}${path}`);
-  if (!res.ok) throw new Error(`La API respondió ${res.status} en ${path}`);
+  if (!res.ok) throw new ApiError(res.status, path);
   return res.json() as Promise<T>;
 }
 
@@ -101,6 +108,8 @@ export interface ClubDto {
   moneda: string;
   /** Porcentaje del total que se cobra online cuando se paga con seña. */
   senaPct: number;
+  /** El club tiene un gateway de pago configurado. */
+  pagoOnline: boolean;
 }
 
 export async function fetchClub(): Promise<ClubDto> {
@@ -110,6 +119,7 @@ export async function fetchClub(): Promise<ClubDto> {
     direccion: cat.club.venue ?? '',
     moneda: cat.club.currency,
     senaPct: cat.club.depositPercent,
+    pagoOnline: cat.onlinePayments,
   };
 }
 
@@ -166,6 +176,7 @@ export interface HourDto {
 
 export interface CourtDto {
   i: number;
+  id: string;
   n: string;
   d: string;
   free: boolean;
@@ -183,6 +194,8 @@ export interface SuggestionDto {
 }
 
 export interface AvailabilityDto {
+  /** Fecha ISO del día consultado; null si el índice quedó fuera del rango. */
+  date: string | null;
   /** Duraciones ofrecidas por las canchas del deporte, en minutos. */
   durations: Duration[];
   hours: HourDto[];
@@ -250,6 +263,7 @@ export async function fetchAvailability(q: AvailabilityQuery): Promise<Availabil
             const libre = enHora.find((x) => x.courtIdx === o.i);
             return {
               i: o.i,
+              id: o.c.id,
               n: o.c.n,
               d: o.c.d,
               free: libre != null,
@@ -279,6 +293,7 @@ export async function fetchAvailability(q: AvailabilityQuery): Promise<Availabil
   }
 
   return {
+    date: day?.date ?? null,
     durations,
     hours,
     anyFree,
@@ -289,4 +304,69 @@ export async function fetchAvailability(q: AvailabilityQuery): Promise<Availabil
     dayShort: date ? dayLabelOf(date, false) : '',
     dayLong: date ? dayLabelOf(date, true) : '',
   };
+}
+
+// ── Reserva ──────────────────────────────────────────────────────────────────
+
+export type ApiPaymentMode = 'club' | 'onlineFull' | 'onlineDeposit';
+export type BookingStatus = 'confirmed' | 'cancelled' | 'pendingPayment' | 'expired';
+
+export interface BookingRequest {
+  courtId: string;
+  date: string;
+  startMinute: number;
+  durationMinutes: number;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string | null;
+  paymentMode: ApiPaymentMode;
+  /** Adónde vuelve el checkout; el servidor le agrega `retorno={id}`. */
+  returnUrl: string | null;
+}
+
+export interface BookingCreated {
+  id: string;
+  price: number;
+  /** Lo que se cobra online (la seña o el total); igual al precio en modo club. */
+  chargeAmount: number;
+  status: BookingStatus;
+  expiresAt: string | null;
+  checkoutUrl: string | null;
+}
+
+export async function createBooking(request: BookingRequest): Promise<BookingCreated> {
+  const res = await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!res.ok) throw new ApiError(res.status, '/bookings');
+  return res.json() as Promise<BookingCreated>;
+}
+
+export interface BookingSnapshot {
+  id: string;
+  courtId: string;
+  courtName: string;
+  sport: ApiSport;
+  date: string;
+  startMinute: number;
+  durationMinutes: number;
+  price: number;
+  paidAmount: number;
+  status: BookingStatus;
+  paymentMode: ApiPaymentMode;
+  expiresAt: string | null;
+}
+
+export function fetchBooking(id: string): Promise<BookingSnapshot> {
+  return getJson<BookingSnapshot>(`/bookings/${id}`);
+}
+
+/**
+ * La disponibilidad cambió (se reservó o se perdió un turno): se invalida todo,
+ * porque días, contadores y grilla derivan del mismo payload cacheado.
+ */
+export function invalidateAvailability(): Promise<void> {
+  return queryClient.invalidateQueries();
 }

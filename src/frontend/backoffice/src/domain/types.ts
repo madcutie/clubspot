@@ -78,7 +78,7 @@ export interface TurnoDisponible {
   precio: number;
 }
 
-/** Reserva confirmada del día, con el snapshot de precio del servidor. */
+/** Reserva del día, con el snapshot de precio del servidor. */
 export interface ReservaDia {
   id: string;
   t: number;
@@ -86,6 +86,8 @@ export interface ReservaDia {
   persona: string;
   tel: string | null;
   precio: number;
+  /** Hold de pago online todavía sin acreditar; bloquea el turno hasta vencer. */
+  pendientePago: boolean;
 }
 
 /** Una cancha en la agenda del día, tal como la calcula el backend. */

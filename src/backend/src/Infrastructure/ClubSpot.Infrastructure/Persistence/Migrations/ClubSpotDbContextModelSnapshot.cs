@@ -113,7 +113,7 @@ namespace ClubSpot.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("createdAt");
 
-                    b.Property<Guid>("CreatedBy")
+                    b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("createdBy");
 
@@ -135,6 +135,24 @@ namespace ClubSpot.Infrastructure.Persistence.Migrations
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("integer")
                         .HasColumnName("durationMinutes");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expiresAt");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("origin");
+
+                    b.Property<string>("PaymentMode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("paymentMode");
+
+                    b.Property<Guid?>("PersonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("personId");
 
                     b.Property<int>("StartMinute")
                         .HasColumnType("integer")
@@ -168,6 +186,9 @@ namespace ClubSpot.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pkBookings");
+
+                    b.HasIndex("PersonId")
+                        .HasDatabaseName("ixBookingsPersonId");
 
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ixBookingsTenantId");
@@ -295,6 +316,79 @@ namespace ClubSpot.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("uxCourtsTenantIdSportSortOrder");
 
                     b.ToTable("courts", "public");
+                });
+
+            modelBuilder.Entity("ClubSpot.Domain.Bookings.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bookingId");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("createdAt");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("externalId");
+
+                    b.Property<string>("Gateway")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("gateway");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenantId");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "ClubSpot.Domain.Bookings.Payment.Amount#Money", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(14, 2)
+                                .HasColumnType("numeric(14,2)")
+                                .HasColumnName("amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character(3)")
+                                .HasColumnName("currency")
+                                .IsFixedLength();
+                        });
+
+                    b.HasKey("Id")
+                        .HasName("pkPayments");
+
+                    b.HasIndex("BookingId")
+                        .HasDatabaseName("ixPaymentsBookingId");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ixPaymentsTenantId");
+
+                    b.HasIndex("Gateway", "ExternalId")
+                        .IsUnique()
+                        .HasDatabaseName("uxPaymentsGatewayExternalId");
+
+                    b.ToTable("payments", "public");
                 });
 
             modelBuilder.Entity("ClubSpot.Domain.Bookings.Schedule", b =>
@@ -623,6 +717,12 @@ namespace ClubSpot.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fkBookingsCourtId");
+
+                    b.HasOne("ClubSpot.Domain.Core.People.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fkBookingsPersonId");
                 });
 
             modelBuilder.Entity("ClubSpot.Domain.Bookings.Court", b =>
@@ -633,6 +733,16 @@ namespace ClubSpot.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fkCourtsScheduleId");
+                });
+
+            modelBuilder.Entity("ClubSpot.Domain.Bookings.Payment", b =>
+                {
+                    b.HasOne("ClubSpot.Domain.Bookings.Booking", null)
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fkPaymentsBookingId");
                 });
 
             modelBuilder.Entity("ClubSpot.Domain.Core.ClubModule", b =>

@@ -5,6 +5,7 @@
     <Project Path="src/Core/ClubSpot.Application/ClubSpot.Application.csproj" />
   </Folder>
   <Folder Name="/Infrastructure/">
+    <Project Path="src/Infrastructure/ClubSpot.Infrastructure.MercadoPago/ClubSpot.Infrastructure.MercadoPago.csproj" />
     <Project Path="src/Infrastructure/ClubSpot.Infrastructure/ClubSpot.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/Api/">

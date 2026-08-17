@@ -6,7 +6,7 @@ public sealed record AvailabilityData(
     IReadOnlyList<Court> Courts,
     IReadOnlyDictionary<Guid, Schedule> Schedules,
     IReadOnlyList<AvailabilityOverride> Overrides,
-    IReadOnlyList<Booking> ConfirmedBookings);
+    IReadOnlyList<Booking> ActiveBookings);
 
 public interface IAvailabilityQueries
 {

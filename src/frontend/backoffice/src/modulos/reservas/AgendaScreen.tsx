@@ -316,13 +316,18 @@ function Turno({
         borderRadius: 8,
         textAlign: 'left',
         overflow: 'hidden',
-        border: `1px solid ${activo ? c.verde : c.verdeBorde}`,
-        background: c.verdeFondoSuave,
+        border: reserva.pendientePago
+          ? '1px dashed #c9971f'
+          : `1px solid ${activo ? c.verde : c.verdeBorde}`,
+        background: reserva.pendientePago ? 'rgba(201,151,31,.08)' : c.verdeFondoSuave,
       }}
     >
       <span style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, height: 14 }}>
         <span
-          style={{ width: 6, height: 6, borderRadius: '50%', flex: 'none', background: c.verdePunto }}
+          style={{
+            width: 6, height: 6, borderRadius: '50%', flex: 'none',
+            background: reserva.pendientePago ? '#c9971f' : c.verdePunto,
+          }}
         />
         <span style={{ font: `400 10.5px ${mono}`, color: c.textoDato, lineHeight: '14px' }}>
           {hhmm(reserva.t)}–{hhmm(reserva.t + reserva.dur)}
@@ -356,7 +361,7 @@ function Turno({
           textOverflow: 'ellipsis',
         }}
       >
-        {pesos(reserva.precio)}
+        {reserva.pendientePago ? `${pesos(reserva.precio)} · pago pendiente` : pesos(reserva.precio)}
       </span>
     </button>
   );

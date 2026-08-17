@@ -1,4 +1,5 @@
 using ClubSpot.Domain.Bookings;
+using ClubSpot.Domain.Core.People;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -23,12 +24,17 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         });
         builder.Property(booking => booking.CustomerName).HasColumnName("customerName").HasMaxLength(120);
         builder.Property(booking => booking.CustomerPhone).HasColumnName("customerPhone").HasMaxLength(40);
+        builder.Property(booking => booking.PersonId).HasColumnName("personId");
         builder.Property(booking => booking.Status).HasColumnName("status").HasConversion<string>();
+        builder.Property(booking => booking.Origin).HasColumnName("origin").HasConversion<string>();
+        builder.Property(booking => booking.PaymentMode).HasColumnName("paymentMode").HasConversion<string>();
+        builder.Property(booking => booking.ExpiresAt).HasColumnName("expiresAt");
         builder.Property(booking => booking.CreatedAt).HasColumnName("createdAt");
         builder.Property(booking => booking.CreatedBy).HasColumnName("createdBy");
         builder.Property(booking => booking.CancelledAt).HasColumnName("cancelledAt");
         builder.HasIndex(booking => new { booking.TenantId, booking.Date });
         builder.HasIndex(booking => new { booking.CourtId, booking.Date });
         builder.HasOne<Court>().WithMany().HasForeignKey(booking => booking.CourtId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Person>().WithMany().HasForeignKey(booking => booking.PersonId).OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -9,6 +9,10 @@
     <ProjectReference Include="..\..\Infrastructure\ClubSpot.Infrastructure\ClubSpot.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\Infrastructure\ClubSpot.Infrastructure.MercadoPago\ClubSpot.Infrastructure.MercadoPago.csproj" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>

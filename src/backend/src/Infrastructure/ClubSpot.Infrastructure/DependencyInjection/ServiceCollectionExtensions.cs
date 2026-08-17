@@ -4,11 +4,13 @@ using ClubSpot.Application.Core.Users;
 using ClubSpot.Application.Core.People;
 using ClubSpot.Infrastructure.Auth;
 using ClubSpot.Infrastructure.Modularity;
+using ClubSpot.Infrastructure.Payments;
 using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.Infrastructure.Repositories;
 using ClubSpot.SharedKernel.Modularity;
 using ClubSpot.SharedKernel.Tenancy;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ClubSpot.Infrastructure.DependencyInjection;
@@ -32,6 +34,16 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    // Registers the options and the dev fake only. Real vendors live in their own projects
+    // (e.g. ClubSpot.Infrastructure.MercadoPago) and are wired by the host.
+    public static IServiceCollection AddClubSpotPayments(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<PaymentsOptions>(configuration.GetSection(PaymentsOptions.SectionName));
+        if (configuration[$"{PaymentsOptions.SectionName}:Gateway"] == FakePaymentGateway.GatewayName)
+            services.AddScoped<IPaymentGateway, FakePaymentGateway>();
+        return services;
+    }
+
     public static IServiceCollection AddClubSpotAuth(this IServiceCollection services)
     {
         services.AddScoped<IUserRepository, UserRepository>();
@@ -43,6 +55,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<IPersonRepository, PersonRepository>();
         services.AddScoped<IPeopleQueries, PeopleQueries>();
+        services.AddScoped<IPeopleLink, PeopleLink>();
         services.AddScoped<CreatePersonHandler>();
         services.AddScoped<BlockPeopleHandler>();
         services.AddScoped<AddNoteHandler>();

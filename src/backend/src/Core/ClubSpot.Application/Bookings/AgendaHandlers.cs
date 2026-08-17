@@ -26,7 +26,7 @@ public sealed class GetAgendaHandler(IAvailabilityQueries queries, IClubSettings
         var courts = data.Courts.Select(court =>
         {
             var schedule = data.Schedules[court.ScheduleId];
-            var bookings = data.ConfirmedBookings
+            var bookings = data.ActiveBookings
                 .Where(booking => booking.CourtId == court.Id && booking.Date == date)
                 .OrderBy(booking => booking.StartMinute)
                 .ToList();

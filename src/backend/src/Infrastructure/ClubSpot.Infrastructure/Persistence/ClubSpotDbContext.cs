@@ -25,6 +25,7 @@ public sealed class ClubSpotDbContext(DbContextOptions<ClubSpotDbContext> option
     public DbSet<Court> Courts => Set<Court>();
     public DbSet<AvailabilityOverride> AvailabilityOverrides => Set<AvailabilityOverride>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -45,6 +46,7 @@ public sealed class ClubSpotDbContext(DbContextOptions<ClubSpotDbContext> option
         modelBuilder.ApplyConfiguration(new AvailabilityOverrideConfiguration());
         modelBuilder.ApplyConfiguration(new AvailabilityOverrideDateConfiguration());
         modelBuilder.ApplyConfiguration(new BookingConfiguration());
+        modelBuilder.ApplyConfiguration(new PaymentConfiguration());
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {

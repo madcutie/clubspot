@@ -134,6 +134,119 @@ public sealed class PortalEndpointsTests(PostgresFixture postgres)
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task A_portal_booking_creates_and_links_the_person()
+    {
+        await ResetBookingsAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 7);
+
+        var response = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
+        {
+            courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
+            customerName = "Carla Ruiz", customerPhone = "362 411-2233", customerEmail = "Carla@Test.com"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<BookingCreatedResponse>(TestJsonOptions.Default);
+        Assert.Equal(slot.Price, created!.Price);
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        var booking = await db.Bookings.SingleAsync(candidate => candidate.Id == created.Id);
+        Assert.Equal(BookingOrigin.Portal, booking.Origin);
+        Assert.Null(booking.CreatedBy);
+        Assert.NotNull(booking.PersonId);
+        var person = await db.People.SingleAsync(candidate => candidate.Id == booking.PersonId);
+        Assert.Equal("carla@test.com", person.Email);
+        Assert.Equal("3624112233", person.PhoneDigits);
+    }
+
+    [Fact]
+    public async Task A_returning_email_reuses_the_person_even_with_a_new_phone()
+    {
+        await ResetBookingsAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 8);
+        var second = await FirstSlotAsync(client, daysAhead: 9);
+
+        var first = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
+        {
+            courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
+            customerName = "Diego Paz", customerPhone = "362 400-0001", customerEmail = "diego@test.com"
+        });
+        var repeat = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
+        {
+            courtId = second.Court.Id, date = second.Date, startMinute = second.Slot.StartMinute,
+            durationMinutes = second.Slot.Duration,
+            customerName = "Diego Paz", customerPhone = "362 999-9999", customerEmail = "diego@test.com"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, repeat.StatusCode);
+        var firstId = (await first.Content.ReadFromJsonAsync<BookingCreatedResponse>(TestJsonOptions.Default))!.Id;
+        var repeatId = (await repeat.Content.ReadFromJsonAsync<BookingCreatedResponse>(TestJsonOptions.Default))!.Id;
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        var persons = await db.Bookings
+            .Where(booking => booking.Id == firstId || booking.Id == repeatId)
+            .Select(booking => booking.PersonId)
+            .ToListAsync();
+        Assert.Equal(2, persons.Count);
+        Assert.Single(persons.Distinct());
+    }
+
+    [Fact]
+    public async Task The_same_slot_cannot_be_sold_twice_from_the_portal()
+    {
+        await ResetBookingsAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 10);
+        var request = new
+        {
+            courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
+            customerName = "Eva Sosa", customerPhone = "362 400-0002", customerEmail = (string?)null
+        };
+
+        var first = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", request);
+        var second = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", request);
+
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_portal_booking_without_a_phone_is_a_bad_request()
+    {
+        await ResetBookingsAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 11);
+
+        var response = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
+        {
+            courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
+            customerName = "Sin Telefono", customerPhone = "  ", customerEmail = (string?)null
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    private async Task<(CourtResponse Court, DateOnly Date, SlotResponse Slot)> FirstSlotAsync(HttpClient client, int daysAhead)
+    {
+        var date = Today().AddDays(daysAhead);
+        var availability = await GetAvailabilityAsync(client, date);
+        var day = Assert.Single(availability.Days);
+        var dayCourt = day.Courts.First(court => court.Slots.Count > 0);
+        var catalog = await client.GetFromJsonAsync<CatalogResponse>("/api/portal/chaco-for-ever/catalog", TestJsonOptions.Default);
+        var court = catalog!.Sports.SelectMany(group => group.Courts).Single(candidate => candidate.Id == dayCourt.CourtId);
+        return (court, date, dayCourt.Slots[0]);
+    }
+
     private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
 
     private static async Task<AvailabilityResponse> GetAvailabilityAsync(HttpClient client, DateOnly date)
@@ -158,11 +271,15 @@ public sealed class PortalEndpointsTests(PostgresFixture postgres)
         var tenantContext = new AsyncLocalTenantContext();
         await using var db = postgres.CreateDbContext(tenantContext);
         using var scope = tenantContext.BeginScope(SeedTenant);
+        db.Payments.RemoveRange(db.Payments);
+        db.Bookings.RemoveRange(db.Bookings);
         db.AvailabilityOverrides.RemoveRange(db.AvailabilityOverrides);
         db.Courts.RemoveRange(db.Courts);
         db.Schedules.RemoveRange(db.Schedules);
         await db.SaveChangesAsync();
     }
+
+    private sealed record BookingCreatedResponse(Guid Id, decimal Price);
 
     private sealed record SessionResponse(string AccessToken);
     private sealed record ClubResponse(string Name, string? Venue, string Currency, int DepositPercent);

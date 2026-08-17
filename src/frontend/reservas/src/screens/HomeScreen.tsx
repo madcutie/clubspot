@@ -194,9 +194,11 @@ export function HomeScreen({ api }: { api: BookingApi }) {
               alignItems: 'center',
             }}
           >
-            <div style={{ font: `700 12px ${F.body}`, color: C.accent, letterSpacing: '.06em' }}>SEÑA</div>
+            <div style={{ font: `700 12px ${F.body}`, color: C.accent, letterSpacing: '.06em' }}>PAGO</div>
             <div style={{ font: `500 13px/1.45 ${F.body}`, color: C.soft }}>
-              Podés confirmar tu turno pagando solo la seña y abonar el resto en el club.
+              {club.data?.pagoOnline
+                ? 'Pagás como prefieras: en el club, online o solo la seña.'
+                : 'Reservás online y pagás en el club cuando venís a jugar.'}
             </div>
           </div>
         </div>

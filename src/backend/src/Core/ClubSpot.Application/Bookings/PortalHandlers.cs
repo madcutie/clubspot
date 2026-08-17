@@ -68,7 +68,7 @@ public sealed class GetPortalAvailabilityHandler(IAvailabilityQueries queries, I
             var courts = data.Courts
                 .Select(court => new PortalDayCourt(court.Id, AvailabilityCalculator
                     .SlotsFor(court, data.Schedules[court.ScheduleId], data.Overrides,
-                        data.ConfirmedBookings.Where(booking => booking.CourtId == court.Id && booking.Date == currentDate).ToList(),
+                        data.ActiveBookings.Where(booking => booking.CourtId == court.Id && booking.Date == currentDate).ToList(),
                         currentDate, today, nowMinute)
                     .Select(slot => new PortalSlot(slot.StartMinute, slot.DurationMinutes, slot.Price.Amount))
                     .ToList()))

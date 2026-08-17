@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using ClubSpot.Domain.Core;
 using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.SharedKernel.Tenancy;
+using ClubSpot.IntegrationTests.Json;
 using ClubSpot.IntegrationTests.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -37,7 +38,7 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
             DateTimeOffset.UtcNow);
 
         var tenantContext = new AsyncLocalTenantContext();
-        await using (var db = postgres.CreateCoreDbContext(tenantContext))
+        await using (var db = postgres.CreateDbContext(tenantContext))
         {
             db.Clubs.Add(club);
             await db.SaveChangesAsync();
@@ -52,7 +53,7 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
         {
             var apiTenantScopeFactory = scope.ServiceProvider.GetRequiredService<ITenantScopeFactory>();
             using var apiTenantScope = apiTenantScopeFactory.BeginScope(club.Id);
-            var apiDb = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
+            var apiDb = scope.ServiceProvider.GetRequiredService<ClubSpotDbContext>();
             Assert.NotNull(await apiDb.Users.SingleOrDefaultAsync(candidate => candidate.Email == user.Email));
         }
         using var client = factory.CreateClient();
@@ -103,10 +104,13 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
 
         client.DefaultRequestHeaders.Authorization = new("Bearer", session!.AccessToken);
         var contextResponse = await client.GetAsync("/api/context");
-        var context = await contextResponse.Content.ReadFromJsonAsync<ContextResponse>();
+        var context = await contextResponse.Content.ReadFromJsonAsync<ContextResponse>(TestJsonOptions.Default);
 
         Assert.Equal(HttpStatusCode.OK, contextResponse.StatusCode);
-        Assert.Equal(["bookings", "core", "finance", "football", "members", "padel"], context!.Modules.Order());
+        Assert.Equal(["bookings", "core", "finance", "members"], context!.Modules.Order());
+        Assert.Equal("Club Atlético Chaco For Ever", context.Club.Name);
+        Assert.Equal("Administrador", context.Operator.Name);
+        Assert.Equal([Role.Administrator], context.Operator.Roles);
     }
 
     [Fact]
@@ -127,5 +131,7 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
     }
 
     private sealed record SessionResponse(string AccessToken);
-    private sealed record ContextResponse(IEnumerable<string> Modules);
+    private sealed record ClubResponse(string Name, string? Venue);
+    private sealed record OperatorResponse(string Name, IReadOnlyCollection<Role> Roles);
+    private sealed record ContextResponse(ClubResponse Club, OperatorResponse Operator, IEnumerable<string> Modules);
 }

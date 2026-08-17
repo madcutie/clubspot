@@ -14,6 +14,20 @@ public sealed class ScheduleTests
         };
 
         Assert.Throws<ArgumentException>(() => new Schedule(
-            Guid.NewGuid(), TenantId.From(Guid.NewGuid()), "Weekdays", "America/Argentina/Buenos_Aires", ranges, []));
+            Guid.NewGuid(), TenantId.From(Guid.NewGuid()), "Weekdays", ranges));
+    }
+
+    [Fact]
+    public void Identical_ranges_on_different_days_are_valid()
+    {
+        var ranges = new Dictionary<DayOfWeek, List<TimeRange>>
+        {
+            [DayOfWeek.Monday] = [new(480, 1380)],
+            [DayOfWeek.Tuesday] = [new(480, 1380)]
+        };
+
+        var schedule = new Schedule(Guid.NewGuid(), TenantId.From(Guid.NewGuid()), "Base", ranges);
+
+        Assert.Equal(2, schedule.WeeklyRanges.Count);
     }
 }

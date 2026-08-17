@@ -1,10 +1,15 @@
 namespace ClubSpot.Domain.Bookings;
 
-public sealed record TimeRange(int OpensAtMinute, int ClosesAtMinute)
+public sealed record TimeRange
 {
-    public void Validate()
+    public int OpensAtMinute { get; }
+    public int ClosesAtMinute { get; }
+
+    public TimeRange(int opensAtMinute, int closesAtMinute)
     {
-        if (OpensAtMinute is < 0 or > 1440 || ClosesAtMinute is < 0 or > 1440 || ClosesAtMinute <= OpensAtMinute)
+        if (opensAtMinute is < 0 or > 1440 || closesAtMinute is < 0 or > 1440 || closesAtMinute <= opensAtMinute)
             throw new ArgumentException("A time range must be within a day and close after it opens.");
+        OpensAtMinute = opensAtMinute;
+        ClosesAtMinute = closesAtMinute;
     }
 }

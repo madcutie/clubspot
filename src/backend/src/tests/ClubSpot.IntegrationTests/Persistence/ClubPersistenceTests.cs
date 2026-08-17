@@ -22,13 +22,13 @@ public sealed class ClubPersistenceTests(PostgresFixture postgres)
     {
         var club = NewClub("club-de-prueba");
 
-        await using (var db = postgres.CreateCoreDbContext())
+        await using (var db = postgres.CreateDbContext())
         {
             db.Clubs.Add(club);
             await db.SaveChangesAsync();
         }
 
-        await using (var db = postgres.CreateCoreDbContext())
+        await using (var db = postgres.CreateDbContext())
         {
             var read = await db.Clubs.SingleAsync(c => c.Slug == "club-de-prueba");
 
@@ -42,11 +42,11 @@ public sealed class ClubPersistenceTests(PostgresFixture postgres)
     [Fact]
     public async Task Duplicate_slugs_are_rejected()
     {
-        await using var db = postgres.CreateCoreDbContext();
+        await using var db = postgres.CreateDbContext();
         db.Clubs.Add(NewClub("slug-repetido"));
         await db.SaveChangesAsync();
 
-        await using var db2 = postgres.CreateCoreDbContext();
+        await using var db2 = postgres.CreateDbContext();
         db2.Clubs.Add(NewClub("slug-repetido"));
 
         await Assert.ThrowsAsync<DbUpdateException>(() => db2.SaveChangesAsync());
@@ -55,7 +55,7 @@ public sealed class ClubPersistenceTests(PostgresFixture postgres)
     [Fact]
     public async Task The_database_enforces_the_deposit_percent_range()
     {
-        await using var db = postgres.CreateCoreDbContext();
+        await using var db = postgres.CreateDbContext();
 
         // The aggregate rejects this in its constructor; force the value through the change
         // tracker to prove the database enforces it too.

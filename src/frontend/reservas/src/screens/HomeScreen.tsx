@@ -1,16 +1,31 @@
-import { CLUB, sportLabel } from '../domain/catalog';
-import { dayLabel } from '../domain/dates';
-import { useDays, useSportCounts } from '../api/queries';
+import { sportLabel } from '../domain/sport';
+import { useClub, useCourtCounts, useDays, useSportCounts } from '../api/queries';
 import { Footer, Screen } from '../ui/Screen';
 import { C, F, ctaOn, sportCard } from '../ui/theme';
 import type { BookingApi } from '../state/useBooking';
+import type { Sport } from '../domain/types';
 
 export function HomeScreen({ api }: { api: BookingApi }) {
   const { st, set } = api;
   const isPadel = st.sport === 'padel';
 
+  const club = useClub();
   const days = useDays(st.sport);
   const counts = useSportCounts(st.dateIdx);
+  const courtCounts = useCourtCounts();
+
+  const canchas = (sport: Sport) => {
+    const n = courtCounts.data?.[sport];
+    if (n == null) return '';
+    return n === 1 ? '1 cancha' : `${n} canchas`;
+  };
+  const sportSub = (sport: Sport) => {
+    const c = canchas(sport);
+    if (counts.data) return c ? `${counts.data[sport]} turnos libres · ${c}` : `${counts.data[sport]} turnos libres`;
+    return c;
+  };
+
+  const diaLargo = days.data?.find((d) => d.i === st.dateIdx)?.long ?? '';
 
   return (
     <Screen>
@@ -25,12 +40,16 @@ export function HomeScreen({ api }: { api: BookingApi }) {
         }}
       >
         <div style={{ maxWidth: 640 }}>
-          <div style={{ font: `700 18px ${F.display}`, letterSpacing: '-.015em' }}>{CLUB.nombre}</div>
-          <div style={{ font: `500 13px ${F.body}`, color: C.muted, marginTop: 2 }}>{CLUB.direccion}</div>
+          <div style={{ font: `700 18px ${F.display}`, letterSpacing: '-.015em' }}>
+            {club.data?.nombre ?? ''}
+          </div>
+          <div style={{ font: `500 13px ${F.body}`, color: C.muted, marginTop: 2 }}>
+            {club.data?.direccion ?? ''}
+          </div>
         </div>
         <button
           type="button"
-          onClick={() => set({ screen: 'mine', tab: 'prox' })}
+          onClick={() => set({ screen: 'mine' })}
           style={{
             flex: 'none',
             minHeight: 44,
@@ -60,7 +79,7 @@ export function HomeScreen({ api }: { api: BookingApi }) {
             ¿Cuándo jugás?
           </div>
           <div style={{ font: `500 15px ${F.body}`, color: C.muted, marginBottom: 20 }}>
-            Elegí deporte y día. Turnos de {CLUB.apertura} a {CLUB.cierre} h.
+            Elegí deporte y día para ver los horarios.
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -71,7 +90,7 @@ export function HomeScreen({ api }: { api: BookingApi }) {
             >
               <div style={{ font: `700 20px ${F.display}`, letterSpacing: '-.015em' }}>Pádel</div>
               <div style={{ font: `500 12.5px ${F.body}`, color: C.muted, marginTop: 3 }}>
-                {counts.data ? `${counts.data.padel} turnos libres · 4 canchas` : '4 canchas'}
+                {sportSub('padel')}
               </div>
             </button>
 
@@ -82,7 +101,7 @@ export function HomeScreen({ api }: { api: BookingApi }) {
             >
               <div style={{ font: `700 20px ${F.display}`, letterSpacing: '-.015em' }}>Fútbol 5</div>
               <div style={{ font: `500 12.5px ${F.body}`, color: C.muted, marginTop: 3 }}>
-                {counts.data ? `${counts.data.futbol} turnos libres · 3 canchas` : '3 canchas'}
+                {sportSub('futbol')}
               </div>
             </button>
           </div>
@@ -185,7 +204,8 @@ export function HomeScreen({ api }: { api: BookingApi }) {
 
       <Footer>
         <div style={{ font: `600 12.5px ${F.body}`, color: C.muted, textAlign: 'center' }}>
-          {sportLabel(st.sport)} · {dayLabel(st.dateIdx, true)}
+          {sportLabel(st.sport)}
+          {diaLargo ? ` · ${diaLargo}` : ''}
         </div>
         <button type="button" onClick={() => set({ screen: 'avail' })} style={ctaOn}>
           Ver horarios

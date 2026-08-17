@@ -1,12 +1,4 @@
-/**
- * Fechas y horas del club.
- *
- * El prototipo trabaja con un "hoy" fijo (14 de agosto de 2026) para que la
- * demo sea siempre la misma. Cuando exista la API, el día lo manda el backend
- * resuelto en la zona del club, nunca `new Date()` del navegador.
- */
-
-export const HOY = { anio: 2026, mes: 7, dia: 14 } as const;
+/** Fechas y horas del club. */
 
 export const MESES = [
   'ene',
@@ -40,9 +32,10 @@ export const DIAS: { dow: number; label: string }[] = [
 /** Hora simulada del reloj del club, en minutos desde medianoche. */
 export const AHORA = 14 * 60 + 30;
 
-/** Día `i` contando desde hoy. */
+/** Día `i` contando desde hoy, en la fecha local del navegador. */
 export function fechaDe(i: number): Date {
-  return new Date(HOY.anio, HOY.mes, HOY.dia + i);
+  const hoy = new Date();
+  return new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + i);
 }
 
 /** "hoy", "mañana" o "sáb 16". */
@@ -82,9 +75,9 @@ export function duracionLarga(minutos: number): string {
   return Math.floor(minutos / 60) + ' h' + (minutos % 60 ? ' 30' : '');
 }
 
-/** Duración de un turno tal como la nombra el mostrador. */
+/** Duración de un turno tal como la nombra el mostrador: "1 h", "1 h 30". */
 export function duracionTurno(minutos: number): string {
-  if (minutos === 60) return '1 h';
-  if (minutos === 90) return '1 h 30';
-  return '2 h';
+  const horas = Math.floor(minutos / 60);
+  const resto = minutos % 60;
+  return resto ? `${horas} h ${resto}` : `${horas} h`;
 }

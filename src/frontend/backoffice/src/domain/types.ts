@@ -5,9 +5,6 @@ export type Deporte = 'padel' | 'futbol';
 /** De dónde salió la ficha: la cargó el club o se registró sola en la app. */
 export type Origen = 'app' | 'mostrador';
 
-/** Cuánto se cobró del turno. */
-export type Pago = 'total' | 'sena' | 'nada';
-
 /** Filtros de la tabla de personas. */
 export type FiltroPersonas = 'todas' | 'sinturnos' | 'mostrador' | 'deuda';
 
@@ -42,22 +39,16 @@ export interface TurnoHistorico {
 /** Tramo horario en minutos desde la medianoche: [apertura, cierre]. */
 export type Tramo = [number, number];
 
-/** Día con horario propio que pisa al semanal. Sin tramos = cerrado. */
-export interface FechaEspecial {
-  fecha: string;
-  tramos: Tramo[];
-}
-
 export interface Horario {
   id: string;
   nombre: string;
-  tz: string;
   /** Tramos por día de la semana, indexados como `Date.getDay()` (0 = domingo). */
   semanal: Record<number, Tramo[]>;
-  fechas: FechaEspecial[];
+  version?: number;
 }
 
 export interface Cancha {
+  id: string;
   deporte: Deporte;
   /** Índice de la cancha dentro de su deporte. */
   ci: number;
@@ -77,54 +68,41 @@ export interface Cancha {
   precioNoche: number;
   /** Minuto en que empieza la tarifa nocturna. */
   noche: number;
+  version?: number;
 }
 
-/** Hueco de la grilla: no hay turno vendido. */
-export interface SlotLibre {
-  libre: true;
+/** Arranque que se puede vender, con la duración y el precio que fijó el servidor. */
+export interface TurnoDisponible {
   t: number;
-  ci: number;
-  /** Cantidad de filas de 30 min que ocupa. */
-  span: number;
-  /** El horario del club no cubre esta franja. */
-  cerrado: boolean;
-  /** Cae fuera de los arranques permitidos por el incremento de la cancha. */
-  offGrid: boolean;
+  dur: number;
+  precio: number;
 }
 
-/** Turno vendido. */
-export interface SlotOcupado {
-  libre: false;
-  key: string;
-  /** Identificador que se le canta al socio por teléfono: TRN-4821. */
+/** Reserva confirmada del día, con el snapshot de precio del servidor. */
+export interface ReservaDia {
   id: string;
   t: number;
   dur: number;
-  ci: number;
   persona: string;
-  tel: string;
-  pago: Pago;
+  tel: string | null;
   precio: number;
-  saldo: number;
-  ausente: boolean;
 }
 
-export type Slot = SlotLibre | SlotOcupado;
-
-export interface ColumnaAgenda {
-  ci: number;
+/** Una cancha en la agenda del día, tal como la calcula el backend. */
+export interface CanchaAgenda {
+  courtId: string;
   nombre: string;
   detalle: string;
-  items: Slot[];
+  techada: boolean;
+  /** Franjas abiertas del día según horario y excepciones. */
+  ventanas: Tramo[];
+  turnos: TurnoDisponible[];
+  reservas: ReservaDia[];
 }
 
-export interface Agenda {
-  columnas: ColumnaAgenda[];
-  /** Turnos vendidos ese día. */
-  turnos: number;
-  /** Porcentaje de ocupación sobre las horas de grilla. */
-  ocupacion: number;
-  porCobrar: number;
+export interface AgendaDia {
+  moneda: string;
+  canchas: CanchaAgenda[];
 }
 
 export interface Club {

@@ -1,10 +1,15 @@
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using ClubSpot.Api.Auth;
 using ClubSpot.Api.Endpoints;
 using ClubSpot.Api.Errors;
 using ClubSpot.Api.Seed;
 using ClubSpot.Api.Tenancy;
 using ClubSpot.Application.Modularity;
+using ClubSpot.Domain.Bookings;
+using ClubSpot.Domain.Core;
+using ClubSpot.Domain.Core.People;
 using ClubSpot.Infrastructure.DependencyInjection;
 using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.SharedKernel.Modularity;
@@ -26,10 +31,11 @@ builder.Services.AddClubSpotTenancy();
 builder.Services.AddClubSpotPersistence(connectionString);
 builder.Services.AddClubSpotAuth();
 builder.Services.AddClubSpotPeople();
+builder.Services.AddClubSpotBookings();
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddClubSpotModularity();
 builder.Services.AddSingleton(new ModuleCatalog([
-    new CoreModule(), new MembersModule(), new FinanceModule(), new BookingsModule(), new PadelModule(), new FootballModule()
+    new CoreModule(), new MembersModule(), new FinanceModule(), new BookingsModule()
 ]));
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.AddSingleton<JwtIssuer>();
@@ -48,8 +54,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddClubSpotAuthorization();
+// One converter per enum on purpose: the open generic would also camelCase enum dictionary keys,
+// changing the day names of a schedule's weekly ranges.
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<PersonOrigin>(JsonNamingPolicy.CamelCase));
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<Sport>(JsonNamingPolicy.CamelCase));
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<BookingStatus>(JsonNamingPolicy.CamelCase));
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<Role>(JsonNamingPolicy.CamelCase));
+});
 builder.Services.AddCors(options => options.AddPolicy("backoffice", policy =>
-    policy.WithOrigins("http://localhost:5184").AllowAnyHeader().AllowAnyMethod()));
+    policy.WithOrigins("http://localhost:5184", "http://localhost:5183").AllowAnyHeader().AllowAnyMethod()));
 builder.Services.AddExceptionHandler<ModuleDisabledExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<DevSeeder>();
@@ -59,10 +74,8 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     await using var scope = app.Services.CreateAsyncScope();
-    var db = scope.ServiceProvider.GetRequiredService<CoreDbContext>();
+    var db = scope.ServiceProvider.GetRequiredService<ClubSpotDbContext>();
     await db.Database.MigrateAsync();
-    var bookingsDb = scope.ServiceProvider.GetRequiredService<BookingsDbContext>();
-    await bookingsDb.Database.MigrateAsync();
     var seeder = scope.ServiceProvider.GetRequiredService<DevSeeder>();
     await seeder.SeedAsync();
 }
@@ -77,6 +90,9 @@ app.MapAuth();
 app.MapContext();
 app.MapSchedules();
 app.MapCourts();
+app.MapAvailabilityOverrides();
+app.MapBookings();
+app.MapPortal();
 app.MapPeople();
 
 app.Run();

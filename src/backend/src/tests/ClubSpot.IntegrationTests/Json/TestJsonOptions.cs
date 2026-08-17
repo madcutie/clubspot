@@ -15,6 +15,7 @@ public static class TestJsonOptions
         {
             new JsonStringEnumConverter<PersonOrigin>(JsonNamingPolicy.CamelCase),
             new JsonStringEnumConverter<Sport>(JsonNamingPolicy.CamelCase),
+            new JsonStringEnumConverter<BookingStatus>(JsonNamingPolicy.CamelCase),
             new JsonStringEnumConverter<Role>(JsonNamingPolicy.CamelCase)
         }
     };

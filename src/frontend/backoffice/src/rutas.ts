@@ -116,20 +116,20 @@ export function useParamsPersonas(): ParamsPersonas {
 }
 
 export interface ParamsSeleccion {
-  sel: number;
-  setSel: (i: number) => void;
+  sel: string | null;
+  setSel: (id: string) => void;
 }
 
-/** Elemento elegido en la lista izquierda de Canchas u Horarios. */
+/** Elemento elegido en la lista izquierda de Canchas u Horarios, por id. */
 export function useParamsSeleccion(): ParamsSeleccion {
   const [sp, setSp] = useSearchParams();
   return {
-    sel: entero(sp.get('sel'), 0, 9999, 0),
-    setSel: (i) =>
+    sel: sp.get('sel'),
+    setSel: (id) =>
       setSp(
         (prev) => {
           const next = new URLSearchParams(prev);
-          next.set('sel', String(i));
+          next.set('sel', id);
           return next;
         },
         { replace: true },
@@ -137,12 +137,13 @@ export function useParamsSeleccion(): ParamsSeleccion {
   };
 }
 
-export type VistaHorario = 'lista' | 'cal';
+export type VistaHorario = 'lista' | 'cal' | 'excepciones';
 
 export function useParamsVista(): { vista: VistaHorario; setVista: (v: VistaHorario) => void } {
   const [sp, setSp] = useSearchParams();
+  const crudo = sp.get('vista');
   return {
-    vista: sp.get('vista') === 'cal' ? 'cal' : 'lista',
+    vista: crudo === 'cal' || crudo === 'excepciones' ? crudo : 'lista',
     setVista: (v) =>
       setSp(
         (prev) => {

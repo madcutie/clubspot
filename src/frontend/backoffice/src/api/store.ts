@@ -1,22 +1,10 @@
 /**
- * Estado del backend simulado.
- *
- * Vive en memoria y se pierde al recargar, a propósito: es un prototipo para
- * mostrar y discutir, no una base de datos. Cuando exista la API real este
- * archivo desaparece entero.
+ * Estado del backend simulado de personas. Provisional: vive en memoria y se
+ * pierde al recargar; desaparece cuando la pantalla de Personas se conecte a
+ * la API real.
  */
 
-import type {
-  Cancha,
-  Club,
-  Deporte,
-  FechaEspecial,
-  Horario,
-  Nota,
-  Persona,
-  Tramo,
-  TurnoHistorico,
-} from '../domain/types';
+import type { Club, Deporte, Nota, Persona, TurnoHistorico } from '../domain/types';
 import { MESES } from '../domain/fechas';
 
 export const CLUB: Club = {
@@ -103,154 +91,10 @@ function personasIniciales(): Persona[] {
   }));
 }
 
-// ── Canchas ──────────────────────────────────────────────────────────────────
-
-/** Recargo o descuento de la cancha sobre el precio base del deporte. */
-interface CanchaBase {
-  nombre: string;
-  detalle: string;
-  techada: boolean;
-  extra: number;
-}
-
-export const PADEL: CanchaBase[] = [
-  { nombre: 'Cancha 1', detalle: 'Blindex techada', techada: true, extra: 0 },
-  { nombre: 'Cancha 2', detalle: 'Blindex techada', techada: true, extra: 0 },
-  { nombre: 'Cancha 3', detalle: 'Muro descubierta', techada: false, extra: -1000 },
-  { nombre: 'Cancha 4', detalle: 'Panorámica techada', techada: true, extra: 2000 },
-];
-
-export const FUTBOL: CanchaBase[] = [
-  { nombre: 'Cancha 1', detalle: 'Sintético techado', techada: true, extra: 3000 },
-  { nombre: 'Cancha 2', detalle: 'Sintético aire libre', techada: false, extra: 0 },
-  { nombre: 'Cancha 3', detalle: 'Sintético aire libre', techada: false, extra: 0 },
-];
-
-function canchasIniciales(): Cancha[] {
-  const armar = (
-    deporte: Deporte,
-    ci: number,
-    base: CanchaBase,
-    horarioId: string,
-    duraciones: number[],
-    dia: number,
-    noche: number,
-  ): Cancha => ({
-    deporte,
-    ci,
-    nombre: base.nombre,
-    detalle: base.detalle,
-    techada: base.techada,
-    activa: true,
-    horarioId,
-    duraciones,
-    incremento: 60,
-    aviso: 0,
-    precioDia: dia + base.extra,
-    precioNoche: noche + base.extra,
-    noche: 19 * 60,
-  });
-
-  const out: Cancha[] = [];
-  PADEL.forEach((base, i) => {
-    const horario = i === 2 ? 's3' : i === 3 ? 's2' : 's1';
-    out.push(armar('padel', i, base, horario, [60, 90, 120], 12000, 15000));
-  });
-  FUTBOL.forEach((base, i) => {
-    out.push(armar('futbol', i, base, i === 0 ? 's1' : 's2', [60, 120], 34000, 40000));
-  });
-  return out;
-}
-
-// ── Horarios ─────────────────────────────────────────────────────────────────
-
-function horariosIniciales(): Horario[] {
-  /** Mismo juego de tramos de lunes a viernes. */
-  const laborables = (tramos: Tramo[]): Record<number, Tramo[]> => ({
-    1: tramos.map((t) => [...t] as Tramo),
-    2: tramos.map((t) => [...t] as Tramo),
-    3: tramos.map((t) => [...t] as Tramo),
-    4: tramos.map((t) => [...t] as Tramo),
-    5: tramos.map((t) => [...t] as Tramo),
-  });
-
-  return [
-    {
-      id: 's1',
-      nombre: 'Temporada alta',
-      tz: 'Argentina (GMT−3)',
-      semanal: {
-        ...laborables([
-          [480, 720],
-          [780, 1020],
-          [1080, 1440],
-        ]),
-        6: [
-          [540, 840],
-          [960, 1440],
-        ],
-        0: [[540, 780]],
-      },
-      fechas: [
-        { fecha: '2026-08-16', tramos: [] },
-        { fecha: '2026-08-29', tramos: [[540, 1200]] },
-      ] as FechaEspecial[],
-    },
-    {
-      id: 's2',
-      nombre: 'Verano · turno tarde',
-      tz: 'Argentina (GMT−3)',
-      semanal: { ...laborables([[960, 1440]]), 6: [[600, 1440]], 0: [[600, 840]] },
-      fechas: [],
-    },
-    {
-      id: 's3',
-      nombre: 'Canchas descubiertas',
-      tz: 'Argentina (GMT−3)',
-      semanal: {
-        ...laborables([
-          [480, 720],
-          [780, 1020],
-        ]),
-        6: [[540, 840]],
-        0: [],
-      },
-      fechas: [{ fecha: '2026-09-08', tramos: [] }],
-    },
-  ];
-}
-
-// ── Reservas creadas o tocadas durante la sesión ─────────────────────────────
-
-/** Turno vendido desde la consola. Pisa a lo que hubiera generado la grilla. */
-export interface ReservaCreada {
-  deporte: Deporte;
-  dateIdx: number;
-  ci: number;
-  t: number;
-  dur: number;
-  persona: string;
-  tel: string;
-  pago: 'total' | 'sena' | 'nada';
-  precio: number;
-}
-
 interface Estado {
   personas: Persona[];
-  canchas: Cancha[];
-  horarios: Horario[];
-  creadas: ReservaCreada[];
-  /** Claves de turnos cancelados: el hueco vuelve a estar libre. */
-  canceladas: string[];
-  /** Claves de turnos marcados como ausencia. */
-  ausentes: string[];
 }
 
 export const estado: Estado = {
   personas: personasIniciales(),
-  canchas: canchasIniciales(),
-  horarios: horariosIniciales(),
-  creadas: [],
-  canceladas: [],
-  ausentes: [],
 };

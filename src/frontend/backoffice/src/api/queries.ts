@@ -1,28 +1,32 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Cancha, Deporte, Horario } from '../domain/types';
+import { useTostada } from '../ui/Tostadas';
 import {
-  agregarNota,
-  alternarAusencia,
-  alternarBloqueo,
-  bloquearPersonas,
-  cancelarTurno,
-  cobrarTurno,
-  crearPersona,
+  borrarExcepcion,
+  cancelarReserva,
+  crearExcepcion,
   crearReserva,
   fetchAgenda,
   fetchCanchas,
-  fetchClub,
-  fetchFicha,
+  fetchExcepciones,
   fetchHorarios,
-  fetchPersonas,
-  fetchPresupuesto,
   guardarCanchas,
   guardarHorarios,
+  type NuevaExcepcion,
+  type NuevaReserva,
+} from './apiHttp';
+import { ApiError } from './http';
+import {
+  agregarNota,
+  alternarBloqueo,
+  bloquearPersonas,
+  crearPersona,
+  fetchClub,
+  fetchFicha,
+  fetchPersonas,
   registrarPago,
   type ConsultaPersonas,
   type NuevaPersona,
-  type NuevaReserva,
-  type RefTurno,
 } from './mockApi';
 
 export const qk = {
@@ -31,29 +35,25 @@ export const qk = {
   personasPagina: (q: ConsultaPersonas) => ['personas', q.filtro, q.q, q.pagina] as const,
   ficha: (id: number | null) => ['ficha', id] as const,
   agenda: () => ['agenda'] as const,
-  agendaDia: (deporte: Deporte, dateIdx: number) => ['agenda', deporte, dateIdx] as const,
+  agendaDia: (deporte: Deporte, fecha: string) => ['agenda', deporte, fecha] as const,
   canchas: () => ['canchas'] as const,
   horarios: () => ['horarios'] as const,
-  presupuesto: (deporte: Deporte, ci: number, t: number, dur: number) =>
-    ['presupuesto', deporte, ci, t, dur] as const,
+  excepciones: (desde: string, hasta: string) => ['excepciones', desde, hasta] as const,
 };
 
 /**
- * Un turno vendido lo pinta la agenda, pero también mueve el contador de la
- * ficha y el del padrón. Cada vez que cambia algo se invalida todo lo que lo
- * mira, en vez de parchear cachés a mano.
+ * Cada vez que cambia algo se invalida todo lo que lo mira, en vez de parchear
+ * cachés a mano.
  */
 function useInvalidar() {
   const qc = useQueryClient();
   return {
     personas: () => qc.invalidateQueries({ queryKey: qk.personas() }),
     fichas: () => qc.invalidateQueries({ queryKey: ['ficha'] }),
-    agenda: () => {
-      qc.invalidateQueries({ queryKey: qk.agenda() });
-      qc.invalidateQueries({ queryKey: ['presupuesto'] });
-    },
+    agenda: () => qc.invalidateQueries({ queryKey: qk.agenda() }),
     canchas: () => qc.invalidateQueries({ queryKey: qk.canchas() }),
     horarios: () => qc.invalidateQueries({ queryKey: qk.horarios() }),
+    excepciones: () => qc.invalidateQueries({ queryKey: ['excepciones'] }),
   };
 }
 
@@ -87,10 +87,7 @@ export function useCrearPersona() {
   const inv = useInvalidar();
   return useMutation({
     mutationFn: (input: NuevaPersona) => crearPersona(input),
-    onSuccess: () => {
-      inv.personas();
-      inv.agenda();
-    },
+    onSuccess: () => inv.personas(),
   });
 }
 
@@ -137,59 +134,38 @@ export function useRegistrarPago() {
 
 // ── Agenda ───────────────────────────────────────────────────────────────────
 
-export function useAgenda(deporte: Deporte, dateIdx: number) {
+export function useAgenda(deporte: Deporte, fecha: string) {
   return useQuery({
-    queryKey: qk.agendaDia(deporte, dateIdx),
-    queryFn: () => fetchAgenda(deporte, dateIdx),
-    placeholderData: (prev) => prev,
-  });
-}
-
-/** Precio y seña de un turno que se está por vender. */
-export function usePresupuesto(deporte: Deporte, ci: number, t: number | null, dur: number) {
-  return useQuery({
-    queryKey: qk.presupuesto(deporte, ci, t ?? -1, dur),
-    queryFn: () => fetchPresupuesto(deporte, ci, t as number, dur),
-    enabled: t != null,
+    queryKey: qk.agendaDia(deporte, fecha),
+    queryFn: () => fetchAgenda(deporte, fecha),
     placeholderData: (prev) => prev,
   });
 }
 
 export function useCrearReserva() {
   const inv = useInvalidar();
+  const avisar = useTostada();
   return useMutation({
     mutationFn: (input: NuevaReserva) => crearReserva(input),
-    onSuccess: () => {
-      inv.agenda();
-      inv.personas();
+    onSuccess: () => inv.agenda(),
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) {
+        avisar('Ese turno acaba de ocuparse');
+        inv.agenda();
+      } else {
+        avisar('No se pudo crear la reserva. Probá de nuevo.');
+      }
     },
   });
 }
 
-export function useCobrarTurno() {
+export function useCancelarReserva() {
   const inv = useInvalidar();
+  const avisar = useTostada();
   return useMutation({
-    mutationFn: (v: {
-      ref: RefTurno;
-      datos: { dur: number; persona: string; tel: string; precio: number };
-    }) => cobrarTurno(v.ref, v.datos),
+    mutationFn: (id: string) => cancelarReserva(id),
     onSuccess: () => inv.agenda(),
-  });
-}
-
-export function useCancelarTurno() {
-  const inv = useInvalidar();
-  return useMutation({
-    mutationFn: (ref: RefTurno) => cancelarTurno(ref),
-    onSuccess: () => inv.agenda(),
-  });
-}
-
-export function useAlternarAusencia() {
-  const inv = useInvalidar();
-  return useMutation({
-    mutationFn: (key: string) => alternarAusencia(key),
-    onSuccess: () => inv.agenda(),
+    onError: () => avisar('No se pudo cancelar la reserva. Probá de nuevo.'),
   });
 }
 
@@ -203,25 +179,69 @@ export function useHorarios() {
   return useQuery({ queryKey: qk.horarios(), queryFn: fetchHorarios });
 }
 
+function mensajeDeGuardado(error: unknown): string {
+  return error instanceof ApiError && error.status === 409
+    ? 'No se pudo guardar: la configuración cambió en el servidor. Recargá para ver lo último'
+    : 'No se pudo guardar. Probá de nuevo.';
+}
+
 export function useGuardarCanchas() {
   const inv = useInvalidar();
+  const avisar = useTostada();
   return useMutation({
     mutationFn: (canchas: Cancha[]) => guardarCanchas(canchas),
     onSuccess: () => {
       inv.canchas();
       inv.agenda();
     },
+    onError: (error) => avisar(mensajeDeGuardado(error)),
   });
 }
 
 export function useGuardarHorarios() {
   const inv = useInvalidar();
+  const avisar = useTostada();
   return useMutation({
     mutationFn: (horarios: Horario[]) => guardarHorarios(horarios),
     onSuccess: () => {
       inv.horarios();
       inv.agenda();
     },
+    onError: (error) => avisar(mensajeDeGuardado(error)),
   });
 }
 
+// ── Excepciones ──────────────────────────────────────────────────────────────
+
+export function useExcepciones(desde: string, hasta: string) {
+  return useQuery({
+    queryKey: qk.excepciones(desde, hasta),
+    queryFn: () => fetchExcepciones(desde, hasta),
+  });
+}
+
+export function useCrearExcepcion() {
+  const inv = useInvalidar();
+  const avisar = useTostada();
+  return useMutation({
+    mutationFn: (input: NuevaExcepcion) => crearExcepcion(input),
+    onSuccess: () => {
+      inv.excepciones();
+      inv.agenda();
+    },
+    onError: (error) => avisar(mensajeDeGuardado(error)),
+  });
+}
+
+export function useBorrarExcepcion() {
+  const inv = useInvalidar();
+  const avisar = useTostada();
+  return useMutation({
+    mutationFn: (id: string) => borrarExcepcion(id),
+    onSuccess: () => {
+      inv.excepciones();
+      inv.agenda();
+    },
+    onError: () => avisar('No se pudo borrar la excepción. Probá de nuevo.'),
+  });
+}

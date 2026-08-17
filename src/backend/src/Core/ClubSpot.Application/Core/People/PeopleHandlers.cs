@@ -1,3 +1,4 @@
+using ClubSpot.Application.Core;
 using ClubSpot.Domain.Core.People;
 using ClubSpot.SharedKernel.Primitives;
 using ClubSpot.SharedKernel.Tenancy;
@@ -5,12 +6,13 @@ using ClubSpot.SharedKernel.Time;
 
 namespace ClubSpot.Application.Core.People;
 
-public sealed class CreatePersonHandler(IPersonRepository repository, ITenantContext tenantContext, IClock clock)
+public sealed class CreatePersonHandler(IPersonRepository repository, ITenantContext tenantContext, IClubSettings clubSettings, IClock clock)
 {
-    public async Task<Person> HandleAsync(string name, string phone, string email, Sport sport, Guid? createdBy, CancellationToken cancellationToken)
+    public async Task<Person> HandleAsync(string name, string phone, string email, Guid? createdBy, CancellationToken cancellationToken)
     {
+        var club = await clubSettings.GetAsync(cancellationToken);
         var person = new Person(Guid.NewGuid(), tenantContext.Current, name, phone, email, PersonOrigin.Counter,
-            sport, Money.Zero(), createdBy, clock);
+            Money.Zero(club.Currency), createdBy, clock);
         repository.Add(person);
         await repository.SaveChangesAsync(cancellationToken);
         return person;

@@ -18,7 +18,7 @@ public sealed class PeopleEndpointsTests(PostgresFixture postgres)
 
         var create = await client.PostAsJsonAsync("/api/people", new
         {
-            name = "Julián Gómez", phone = "362 415-8890", email = "julian@example.test", preferredSport = "Padel"
+            name = "Julián Gómez", phone = "362 415-8890", email = "julian@example.test"
         });
         var person = await create.Content.ReadFromJsonAsync<PersonResponse>();
         var search = await client.GetFromJsonAsync<PeoplePageResponse>("/api/people?q=4158890&filter=all&page=0");

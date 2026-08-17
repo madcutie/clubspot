@@ -1,14 +1,6 @@
 import { useState } from 'react';
 import { useCanchas, useGuardarHorarios, useHorarios } from '../../api/queries';
-import {
-  DIAS,
-  MESES,
-  duracionLarga,
-  fechaDe,
-  fechaLarga,
-  hhmm,
-  isoDe,
-} from '../../domain/fechas';
+import { DIAS, MESES, duracionLarga, fechaDe, hhmm } from '../../domain/fechas';
 import {
   arranques,
   resumenSemanal,
@@ -17,19 +9,18 @@ import {
   turnosPorSemana,
 } from '../../domain/horarios';
 import type { Cancha, Horario, Tramo } from '../../domain/types';
-import { useParamsSeleccion, useParamsVista } from '../../rutas';
+import { useParamsSeleccion, useParamsVista, type VistaHorario } from '../../rutas';
 import { Cargando } from '../../ui/Cargando';
-import { c, campo, chipOpcion, fantasma, mono, sans } from '../../ui/theme';
+import { c, fantasma, mono, sans } from '../../ui/theme';
 import { useTostada } from '../../ui/Tostadas';
+import { ExcepcionesPanel } from './ExcepcionesPanel';
+import { SelectHora } from './SelectHora';
 
-/** Opciones de hora de los desplegables: de 06:00 a 24:00, cada media hora. */
-const HORAS = Array.from({ length: (24 - 6) * 2 + 1 }, (_, i) => 6 * 60 + i * 30);
-
-/** Id que no choque con los existentes. Lo real lo asignará la base. */
-function idLibre(horarios: Horario[]): string {
-  let n = horarios.length + 1;
-  while (horarios.some((h) => h.id === 'h' + n)) n++;
-  return 'h' + n;
+/** Id provisional del borrador: el adaptador lo convierte en alta al guardar. */
+function idTemporal(horarios: Horario[]): string {
+  let n = 1;
+  while (horarios.some((h) => h.id === 'nuevo-' + n)) n++;
+  return 'nuevo-' + n;
 }
 
 /**
@@ -48,22 +39,34 @@ export function HorariosScreen() {
   const { vista, setVista } = useParamsVista();
 
   const [borrador, setBorrador] = useState<Horario[] | null>(null);
-  const [nfFecha, setNfFecha] = useState('');
-  const [nfTipo, setNfTipo] = useState<'cerrado' | 'especial'>('cerrado');
-  const [nfDesde, setNfDesde] = useState(600);
-  const [nfHasta, setNfHasta] = useState(780);
 
   const horarios = borrador ?? guardados;
   if (!horarios || !canchas) return isLoading ? <Cargando que="los horarios" /> : null;
 
-  const i = Math.min(sel, horarios.length - 1);
-  const horario = horarios[i];
+  if (vista === 'excepciones') {
+    return (
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div
+          style={{ flex: 'none', padding: '20px 26px 14px', borderBottom: `1px solid ${c.linea}` }}
+        >
+          <div style={{ font: `500 21px ${sans}`, letterSpacing: '-.03em' }}>Excepciones</div>
+          <div style={{ font: `400 12px ${sans}`, color: c.textoGris, marginTop: 5 }}>
+            Fechas concretas que pisan el patrón semanal, para todo el club o para una cancha.
+          </div>
+          <SegmentoVista vista={vista} setVista={setVista} />
+        </div>
+        <ExcepcionesPanel />
+      </div>
+    );
+  }
+
+  const horario = horarios.find((h) => h.id === sel) ?? horarios[0];
   const canchasDelHorario = canchas.filter((x) => x.horarioId === horario.id);
   const sucio = borrador != null;
 
   const escribir = (siguiente: Horario[]) => setBorrador(siguiente);
   const parchear = (patch: Partial<Horario>) =>
-    escribir(horarios.map((s, k) => (k === i ? { ...s, ...patch } : s)));
+    escribir(horarios.map((s) => (s.id === horario.id ? { ...s, ...patch } : s)));
   const setSemanal = (dow: number, tramos: Tramo[]) =>
     parchear({ semanal: { ...horario.semanal, [dow]: tramos } });
 
@@ -86,14 +89,14 @@ export function HorariosScreen() {
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {horarios.map((s, k) => {
-              const on = i === k;
+            {horarios.map((s) => {
+              const on = s.id === horario.id;
               const n = canchas.filter((x) => x.horarioId === s.id).length;
               return (
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => setSel(k)}
+                  onClick={() => setSel(s.id)}
                   style={{
                     display: 'block',
                     width: '100%',
@@ -146,14 +149,12 @@ export function HorariosScreen() {
             type="button"
             onClick={() => {
               const nuevo: Horario = {
-                id: idLibre(horarios),
+                id: idTemporal(horarios),
                 nombre: 'Horario nuevo',
-                tz: horario.tz,
                 semanal: { 1: [[480, 1200]], 2: [[480, 1200]], 3: [[480, 1200]], 4: [[480, 1200]], 5: [[480, 1200]] },
-                fechas: [],
               };
               escribir([...horarios, nuevo]);
-              setSel(horarios.length);
+              setSel(nuevo.id);
               avisar('Horario creado');
             }}
             style={{
@@ -214,7 +215,7 @@ export function HorariosScreen() {
               >
                 <span style={{ font: `400 11.5px ${sans}`, color: c.textoGris }}>Aplicado a</span>
                 {canchasDelHorario.map((x) => (
-                  <span key={x.deporte + x.ci} style={chipCancha}>
+                  <span key={x.id} style={chipCancha}>
                     {x.nombre} · {x.deporte === 'padel' ? 'pádel' : 'fútbol'}
                   </span>
                 ))}
@@ -230,16 +231,14 @@ export function HorariosScreen() {
                 type="button"
                 className="h-ghost"
                 onClick={() => {
-                  escribir([
-                    ...horarios,
-                    {
-                      ...horario,
-                      id: idLibre(horarios),
-                      nombre: horario.nombre + ' (copia)',
-                      fechas: horario.fechas.map((f) => ({ ...f })),
-                    },
-                  ]);
-                  setSel(horarios.length);
+                  const copia: Horario = {
+                    ...horario,
+                    id: idTemporal(horarios),
+                    nombre: horario.nombre + ' (copia)',
+                    version: undefined,
+                  };
+                  escribir([...horarios, copia]);
+                  setSel(copia.id);
                   avisar('Horario duplicado');
                 }}
                 style={fantasma()}
@@ -255,8 +254,9 @@ export function HorariosScreen() {
                       `Primero pasá sus ${canchasDelHorario.length} canchas a otro horario`,
                     );
                   }
-                  escribir(horarios.filter((_, k) => k !== i));
-                  setSel(0);
+                  const resto = horarios.filter((h) => h.id !== horario.id);
+                  escribir(resto);
+                  setSel(resto[0].id);
                   avisar('Horario eliminado');
                 }}
                 style={{
@@ -270,64 +270,14 @@ export function HorariosScreen() {
             </div>
           </div>
 
-          <div
-            style={{
-              display: 'flex',
-              gap: 4,
-              marginTop: 16,
-              padding: 3,
-              borderRadius: 9,
-              background: c.segmento,
-              width: 'fit-content',
-            }}
-          >
-            {(
-              [
-                { id: 'lista', label: 'Lista' },
-                { id: 'cal', label: 'Calendario' },
-              ] as const
-            ).map((v) => {
-              const on = vista === v.id;
-              return (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => setVista(v.id)}
-                  style={{
-                    minHeight: 30,
-                    padding: '0 14px',
-                    borderRadius: 7,
-                    cursor: 'pointer',
-                    border: 'none',
-                    background: on ? c.blanco : 'transparent',
-                    color: on ? c.tinta : c.textoTenue2,
-                    font: `500 12.5px ${sans}`,
-                    boxShadow: on ? '0 1px 2px rgba(20,20,18,.10)' : 'none',
-                  }}
-                >
-                  {v.label}
-                </button>
-              );
-            })}
-          </div>
+          <SegmentoVista vista={vista} setVista={setVista} />
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '20px 26px 26px' }}>
           {vista === 'lista' ? (
             <>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'space-between',
-                  gap: 14,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div style={{ font: `500 14px ${sans}`, letterSpacing: '-.01em' }}>
-                  Horas semanales
-                </div>
-                <span style={{ font: `400 11.5px ${mono}`, color: c.textoGris2 }}>{horario.tz}</span>
+              <div style={{ font: `500 14px ${sans}`, letterSpacing: '-.01em' }}>
+                Horas semanales
               </div>
               <div style={{ font: `400 12px ${sans}`, color: c.textoGris, marginTop: 4 }}>
                 Se repiten todas las semanas. Cada día puede tener varios bloques, por ejemplo de 8 a
@@ -364,188 +314,6 @@ export function HorariosScreen() {
                     }}
                   />
                 ))}
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'space-between',
-                  gap: 14,
-                  margin: '26px 0 4px',
-                }}
-              >
-                <div style={{ font: `500 14px ${sans}`, letterSpacing: '-.01em' }}>
-                  Horas para fechas específicas
-                </div>
-                <span style={{ font: `400 11.5px ${mono}`, color: c.textoGris2 }}>
-                  {horario.fechas.length} {horario.fechas.length === 1 ? 'fecha' : 'fechas'}
-                </span>
-              </div>
-              <div style={{ font: `400 12px ${sans}`, color: c.textoGris, marginBottom: 14 }}>
-                Pisan las horas semanales solo ese día. Sirven para un torneo, un feriado o para
-                abrir en un horario distinto.
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                {horario.fechas.map((x, xi) => {
-                  const cerrado = !x.tramos || x.tramos.length === 0;
-                  return (
-                    <div
-                      key={x.fecha}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12,
-                        padding: '12px 14px',
-                        border: `1px solid ${c.borde}`,
-                        borderRadius: 11,
-                        background: c.blanco,
-                      }}
-                    >
-                      <span
-                        style={{
-                          flex: 'none',
-                          font: `400 12.5px ${mono}`,
-                          color: c.tinta,
-                          minWidth: 96,
-                        }}
-                      >
-                        {fechaLarga(x.fecha)}
-                      </span>
-                      <span
-                        style={{
-                          flex: 'none',
-                          font: `500 11.5px ${sans}`,
-                          padding: '3px 9px',
-                          borderRadius: 999,
-                          background: cerrado ? c.naranjaFondo : c.ambarFondo,
-                          border: `1px solid ${cerrado ? c.naranjaBorde : c.ambarBorde}`,
-                          color: cerrado ? c.naranja : c.ambarTexto,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {cerrado ? 'no disponible' : 'horario propio'}
-                      </span>
-                      <span
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          font: `400 12.5px ${mono}`,
-                          color: c.textoTenue2,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {cerrado
-                          ? 'no se toman turnos'
-                          : x.tramos.map((t) => `${hhmm(t[0])}–${hhmm(t[1])}`).join(', ')}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label="Quitar fecha"
-                        className="h-quitar"
-                        onClick={() => {
-                          parchear({ fechas: horario.fechas.filter((_, k) => k !== xi) });
-                          avisar('Fecha eliminada');
-                        }}
-                        style={botonQuitar}
-                      >
-                        −
-                      </button>
-                    </div>
-                  );
-                })}
-                {horario.fechas.length === 0 && (
-                  <div style={{ font: `400 12.5px ${sans}`, color: c.textoApagado }}>
-                    Ninguna fecha con horario propio.
-                  </div>
-                )}
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  gap: 8,
-                  marginTop: 12,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div style={{ flex: 'none' }}>
-                  <Rotulo>FECHA</Rotulo>
-                  <input
-                    type="date"
-                    value={nfFecha}
-                    onChange={(e) => setNfFecha(e.target.value)}
-                    style={{ ...campo(), width: 'auto' }}
-                  />
-                </div>
-                <div style={{ flex: 'none' }}>
-                  <Rotulo>QUÉ PASA ESE DÍA</Rotulo>
-                  <div style={{ display: 'flex', gap: 7 }}>
-                    {(
-                      [
-                        { id: 'cerrado', label: 'No disponible' },
-                        { id: 'especial', label: 'Horario propio' },
-                      ] as const
-                    ).map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setNfTipo(t.id)}
-                        style={chipOpcion(nfTipo === t.id)}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {nfTipo === 'especial' && (
-                  <div style={{ flex: 'none' }}>
-                    <Rotulo>HORARIO</Rotulo>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <SelectHora valor={nfDesde} onCambiar={setNfDesde} />
-                      <span style={{ font: `400 12px ${mono}`, color: c.textoGris2 }}>a</span>
-                      <SelectHora valor={nfHasta} onCambiar={setNfHasta} />
-                    </div>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  className={nfFecha ? 'h-primario' : undefined}
-                  onClick={() => {
-                    if (!nfFecha) return;
-                    if (nfTipo === 'especial' && nfHasta <= nfDesde) {
-                      return avisar('El cierre tiene que ser posterior');
-                    }
-                    const nueva = {
-                      fecha: nfFecha,
-                      tramos: nfTipo === 'cerrado' ? [] : ([[nfDesde, nfHasta]] as Tramo[]),
-                    };
-                    parchear({
-                      fechas: horario.fechas
-                        .filter((x) => x.fecha !== nfFecha)
-                        .concat([nueva])
-                        .sort((a, b) => (a.fecha < b.fecha ? -1 : 1)),
-                    });
-                    setNfFecha('');
-                    avisar('Fecha agregada al horario');
-                  }}
-                  style={{
-                    minHeight: 36,
-                    padding: '0 14px',
-                    borderRadius: 9,
-                    border: 'none',
-                    background: nfFecha ? c.verde : c.linea,
-                    color: nfFecha ? c.blanco : c.textoApagado,
-                    font: `600 12.5px ${sans}`,
-                    cursor: nfFecha ? 'pointer' : 'default',
-                  }}
-                >
-                  + Horas
-                </button>
               </div>
             </>
           ) : (
@@ -786,20 +554,18 @@ function FilaDia({
   );
 }
 
-/** Las próximas dos semanas con este horario, ya con las fechas propias aplicadas. */
+/** Las próximas dos semanas con este horario. */
 function VistaCalendario({ horario }: { horario: Horario }) {
   return (
     <>
       <div style={{ font: `500 14px ${sans}`, letterSpacing: '-.01em' }}>Próximas dos semanas</div>
       <div style={{ font: `400 12px ${sans}`, color: c.textoGris, margin: '4px 0 14px' }}>
-        Lo que va a estar abierto día por día con este horario, ya con las fechas específicas
-        aplicadas.
+        Lo que va a estar abierto día por día con este horario.
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {Array.from({ length: 14 }, (_, k) => {
           const d = fechaDe(k);
-          const propia = horario.fechas.find((x) => x.fecha === isoDe(k));
-          const tramos = propia ? propia.tramos || [] : tramosSemana(horario, d.getDay());
+          const tramos = tramosSemana(horario, d.getDay());
           const cerrado = tramos.length === 0;
           return (
             <div
@@ -808,8 +574,8 @@ function VistaCalendario({ horario }: { horario: Horario }) {
                 display: 'block',
                 padding: '11px 14px',
                 borderRadius: 11,
-                border: `1px solid ${propia ? c.ambarBorde : c.borde}`,
-                background: propia ? c.ambarFondo : cerrado ? c.panel : c.blanco,
+                border: `1px solid ${c.borde}`,
+                background: cerrado ? c.panel : c.blanco,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
@@ -825,10 +591,10 @@ function VistaCalendario({ horario }: { horario: Horario }) {
                   style={{
                     flex: 'none',
                     font: `400 11px ${mono}`,
-                    color: propia ? c.ambarTexto : c.textoApagado,
+                    color: c.textoApagado,
                   }}
                 >
-                  {propia ? 'fecha propia' : cerrado ? '—' : 'semanal'}
+                  {cerrado ? '—' : 'semanal'}
                 </span>
               </div>
               <div
@@ -849,50 +615,54 @@ function VistaCalendario({ horario }: { horario: Horario }) {
   );
 }
 
-function SelectHora({
-  valor,
-  onCambiar,
-  error,
+function SegmentoVista({
+  vista,
+  setVista,
 }: {
-  valor: number;
-  onCambiar: (v: number) => void;
-  error?: boolean;
+  vista: VistaHorario;
+  setVista: (v: VistaHorario) => void;
 }) {
-  return (
-    <select
-      value={valor}
-      onChange={(e) => onCambiar(parseInt(e.target.value, 10))}
-      style={{
-        minHeight: 32,
-        padding: '0 8px',
-        borderRadius: 8,
-        border: `1px solid ${error ? c.naranjaBorde : c.bordeFirme}`,
-        background: c.blanco,
-        color: c.tinta,
-        font: `400 12.5px ${mono}`,
-        cursor: 'pointer',
-      }}
-    >
-      {HORAS.map((h) => (
-        <option key={h} value={h}>
-          {hhmm(h)}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function Rotulo({ children }: { children: string }) {
   return (
     <div
       style={{
-        font: `400 10.5px ${mono}`,
-        color: c.textoGris2,
-        letterSpacing: '.08em',
-        marginBottom: 7,
+        display: 'flex',
+        gap: 4,
+        marginTop: 16,
+        padding: 3,
+        borderRadius: 9,
+        background: c.segmento,
+        width: 'fit-content',
       }}
     >
-      {children}
+      {(
+        [
+          { id: 'lista', label: 'Lista' },
+          { id: 'cal', label: 'Calendario' },
+          { id: 'excepciones', label: 'Excepciones' },
+        ] as const
+      ).map((v) => {
+        const on = vista === v.id;
+        return (
+          <button
+            key={v.id}
+            type="button"
+            onClick={() => setVista(v.id)}
+            style={{
+              minHeight: 30,
+              padding: '0 14px',
+              borderRadius: 7,
+              cursor: 'pointer',
+              border: 'none',
+              background: on ? c.blanco : 'transparent',
+              color: on ? c.tinta : c.textoTenue2,
+              font: `500 12.5px ${sans}`,
+              boxShadow: on ? '0 1px 2px rgba(20,20,18,.10)' : 'none',
+            }}
+          >
+            {v.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

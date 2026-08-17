@@ -8,7 +8,7 @@ internal sealed class NoteConfiguration : IEntityTypeConfiguration<Note>
 {
     public void Configure(EntityTypeBuilder<Note> builder)
     {
-        builder.ToTable("personNote");
+        builder.ToTable("personNotes");
         builder.HasKey(note => note.Id);
         builder.Property(note => note.Id).HasColumnName("id").ValueGeneratedNever();
         builder.Property(note => note.TenantId).HasColumnName("tenantId").IsRequired();

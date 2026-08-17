@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { Persona, SlotOcupado } from '../domain/types';
-import { pesos } from '../domain/dinero';
+import type { Persona } from '../domain/types';
 import { c, mono } from './theme';
 
 /**
@@ -21,51 +20,6 @@ export function estadoPersona(p: Persona): Estado {
   if (p.deuda > 0) return { label: 'Con deuda', fg: c.ambarChip, dot: c.ambar };
   if (p.turnos === 0) return { label: 'Sin turnos', fg: c.textoGris, dot: c.textoMuyApagado };
   return { label: 'Activa', fg: c.verde, dot: c.verdePunto };
-}
-
-export interface EstadoPago extends Estado {
-  /** Borde de la tarjeta del turno en la grilla. */
-  bd: string;
-  /** Fondo de la tarjeta del turno en la grilla. */
-  bg: string;
-}
-
-/** Estado de cobro de un turno vendido. */
-export function estadoPago(t: SlotOcupado): EstadoPago {
-  if (t.ausente) {
-    return {
-      label: 'ausente',
-      fg: c.textoGris,
-      dot: c.textoMuyApagado,
-      bd: c.bordeFirme,
-      bg: 'transparent',
-    };
-  }
-  if (t.pago === 'total') {
-    return {
-      label: 'pagado',
-      fg: c.verdeTexto,
-      dot: c.verdePunto,
-      bd: c.verdeBorde,
-      bg: c.verdeFondoSuave,
-    };
-  }
-  if (t.pago === 'sena') {
-    return {
-      label: 'seña · debe ' + pesos(t.saldo),
-      fg: c.ambarTexto,
-      dot: c.ambar,
-      bd: c.ambarBorde,
-      bg: c.ambarFondo,
-    };
-  }
-  return {
-    label: 'sin pagar ' + pesos(t.saldo),
-    fg: c.naranja,
-    dot: c.naranjaPunto,
-    bd: c.naranjaBorde,
-    bg: c.naranjaFondo,
-  };
 }
 
 /** Color del chip de un turno del historial de la ficha. */

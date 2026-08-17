@@ -1,13 +1,11 @@
-import { CLUB, sportLabel } from '../domain/catalog';
-import { dayLabel, hhmm } from '../domain/dates';
+import { sportLabel } from '../domain/sport';
+import { hhmm } from '../domain/dates';
 import { durLabel, fmt } from '../domain/pricing';
 import { useAvailability } from '../api/queries';
 import { Body, Footer, Header, Screen } from '../ui/Screen';
 import { C, F, chip, ctaOff, ctaOn, stepNum, stepTitle } from '../ui/theme';
 import type { BookingApi } from '../state/useBooking';
-import type { CourtFilter, Duration } from '../domain/types';
-
-const DURATIONS: Duration[] = [60, 90, 120];
+import type { CourtFilter } from '../domain/types';
 
 export function AvailabilityScreen({ api }: { api: BookingApi }) {
   const { st, set } = api;
@@ -21,6 +19,7 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
     hour: st.hour,
   });
 
+  const durations = q.data?.durations.length ? q.data.durations : [60, 90, 120];
   const hours = q.data?.hours ?? [];
   const anyFree = q.data?.anyFree ?? false;
   const courts = q.data?.courts ?? [];
@@ -30,12 +29,13 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
 
   const picked = courts.find((c) => c.i === st.courtIdx && c.free) ?? null;
   const sel =
-    picked && st.hour != null
+    picked && picked.price != null && st.hour != null
       ? {
           key: `${st.sport}-${st.dateIdx}-${st.hour}-${picked.i}-${st.dur}`,
           court: `${picked.n} · ${picked.d}`,
           dur: st.dur,
-          label: `${hhmm(st.hour * 60)} – ${hhmm(st.hour * 60 + st.dur)}`,
+          label: `${hhmm(st.hour)} – ${hhmm(st.hour + st.dur)}`,
+          diaLabel: q.data?.dayLong ?? '',
           price: picked.price,
         }
       : null;
@@ -66,7 +66,7 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
           <div style={{ font: `700 17px ${F.display}`, letterSpacing: '-.01em' }}>Horarios disponibles</div>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-          {[sportLabel(st.sport), dayLabel(st.dateIdx, false)].map((l) => (
+          {[sportLabel(st.sport), q.data?.dayShort ?? '…'].map((l) => (
             <button
               key={l}
               type="button"
@@ -91,7 +91,7 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
           <span style={stepTitle}>Duración</span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {DURATIONS.map((d) => (
+          {durations.map((d) => (
             <button
               key={d}
               type="button"
@@ -123,7 +123,7 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
           {q.isPending
             ? 'Buscando horarios…'
             : anyFree
-              ? `Los horarios tachados ya están completos para ${durLabel(st.dur)}.`
+              ? `Arranques con al menos una cancha libre para ${durLabel(st.dur)}.`
               : 'Sin horarios libres ese día.'}
         </div>
         {anyFree && (
@@ -131,9 +131,9 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
             {hours.map((o) => {
               const on = o.free > 0;
               const act = st.hour === o.h;
-              // Un bloque de 1 h 30 / 2 h se come las horas siguientes: las
-              // marcamos para que se vea hasta dónde llega el turno.
-              const covered = st.hour != null && o.h > st.hour && o.h < st.hour + st.dur / 60;
+              // Un bloque largo se come los arranques siguientes: los marcamos
+              // para que se vea hasta dónde llega el turno.
+              const covered = st.hour != null && o.h > st.hour && o.h < st.hour + st.dur;
               return (
                 <button
                   key={o.h}
@@ -177,8 +177,8 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
               <span style={stepTitle}>Cancha</span>
             </div>
             <div style={{ font: `500 12px ${F.body}`, color: C.dim, marginBottom: 10 }}>
-              {nFree} {nFree === 1 ? 'cancha libre' : 'canchas libres'} de {hhmm(st.hour! * 60)} a{' '}
-              {hhmm(st.hour! * 60 + st.dur)}
+              {nFree} {nFree === 1 ? 'cancha libre' : 'canchas libres'} de {hhmm(st.hour!)} a{' '}
+              {hhmm(st.hour! + st.dur)}
             </div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
               {types.map((t) => (
@@ -234,15 +234,9 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
                         alignItems: 'flex-end', gap: 5,
                       }}
                     >
-                      <div
-                        style={{
-                          font: `700 15px ${F.body}`,
-                          textDecoration: c.free ? 'none' : 'line-through',
-                          color: c.free ? C.ink : C.muted,
-                        }}
-                      >
-                        {fmt(c.price)}
-                      </div>
+                      {c.free && c.price != null && (
+                        <div style={{ font: `700 15px ${F.body}`, color: C.ink }}>{fmt(c.price)}</div>
+                      )}
                       <div
                         style={{
                           font: `700 10px ${F.body}`, letterSpacing: '.08em', textTransform: 'uppercase',
@@ -251,7 +245,7 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
                           color: c.free ? (last ? C.accent : C.text) : C.muted,
                         }}
                       >
-                        {c.free ? (last ? 'Última libre' : 'Libre') : 'Ocupada'}
+                        {c.free ? (last ? 'Última libre' : 'Libre') : 'No disponible'}
                       </div>
                     </div>
                   </button>
@@ -281,9 +275,8 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
               No queda nada libre ese día
             </div>
             <div style={{ font: `500 14px/1.5 ${F.body}`, color: C.soft }}>
-              {q.data?.reason === 'torneo'
-                ? `El ${dayLabel(st.dateIdx, true)} el club tiene torneo interno: todas las canchas están tomadas de ${CLUB.apertura} a ${CLUB.cierre}.`
-                : `No hay bloques de ${durLabel(st.dur)} libres con ese filtro. Probá otra duración o tipo de cancha.`}
+              No hay bloques de {durLabel(st.dur)} libres con ese filtro. Probá otra duración o tipo
+              de cancha.
             </div>
 
             {suggestions.length > 0 && (
@@ -332,7 +325,7 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
         <button
           type="button"
           disabled={!sel}
-          onClick={() => sel && set({ screen: 'confirm', sel, tries: 0 })}
+          onClick={() => sel && set({ screen: 'confirm', sel })}
           style={sel ? ctaOn : ctaOff}
         >
           {sel ? 'Continuar' : hasHour ? 'Elegí una cancha' : 'Elegí un horario'}

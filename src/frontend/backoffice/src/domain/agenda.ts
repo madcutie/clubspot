@@ -1,44 +1,86 @@
 /**
- * Lecturas sobre una agenda ya armada. La grilla llega del backend con los
- * turnos vendidos y los huecos; acá sólo se responde "¿entra un turno de tanto
- * acá?", que es lo que necesita el operador para vender.
+ * La grilla del día se arma acá a partir de lo que manda el backend por
+ * cancha: ventanas efectivas, arranques vendibles con precio y reservas
+ * confirmadas. La pantalla sólo dibuja las celdas resultantes.
  */
 
-import type { ColumnaAgenda } from './types';
+import type { CanchaAgenda, ReservaDia } from './types';
 
-/** Minutos tomados por cancha: turno vendido o franja cerrada. */
-export type Ocupacion = Set<number>[];
+/** Primera y última hora que muestra la grilla. */
+export const GRILLA_DESDE = 8 * 60;
+export const GRILLA_HASTA = 24 * 60;
 
-export function ocupacion(columnas: ColumnaAgenda[]): Ocupacion {
-  return columnas.map((col) => {
-    const tomados = new Set<number>();
-    col.items.forEach((it) => {
-      if (!it.libre) {
-        for (let m = it.t; m < it.t + it.dur; m += 30) tomados.add(m);
-      } else if (it.cerrado) {
-        for (let k = 0; k < (it.span || 1); k++) tomados.add(it.t + k * 30);
-      }
-    });
-    return tomados;
+export interface CeldaLibre {
+  libre: true;
+  t: number;
+  /** Cantidad de filas de 30 min que ocupa. */
+  span: number;
+  /** La ventana del día no cubre esta franja. */
+  cerrado: boolean;
+  /** Hay al menos un turno vendible que arranca acá. */
+  vendible: boolean;
+}
+
+export interface CeldaReserva {
+  libre: false;
+  reserva: ReservaDia;
+}
+
+export type Celda = CeldaLibre | CeldaReserva;
+
+/** Celdas de la columna de una cancha, de media hora en media hora. */
+export function celdasDe(cancha: CanchaAgenda): Celda[] {
+  const abiertas = new Set<number>();
+  cancha.ventanas.forEach(([apertura, cierre]) => {
+    for (let m = Math.max(apertura, GRILLA_DESDE); m < Math.min(cierre, GRILLA_HASTA); m += 30) {
+      abiertas.add(m);
+    }
   });
+
+  const reservaEn = new Map<number, ReservaDia>();
+  cancha.reservas.forEach((r) => reservaEn.set(r.t, r));
+
+  const arranques = new Set(cancha.turnos.map((s) => s.t));
+
+  const out: Celda[] = [];
+  let t = GRILLA_DESDE;
+  while (t < GRILLA_HASTA) {
+    const reserva = reservaEn.get(t);
+    if (reserva) {
+      out.push({ libre: false, reserva });
+      t += Math.max(30, reserva.dur);
+      continue;
+    }
+
+    const cerrado = !abiertas.has(t);
+    const vendible = !cerrado && arranques.has(t);
+    let span = 1;
+    while (t + span * 30 < GRILLA_HASTA) {
+      const m = t + span * 30;
+      if (reservaEn.has(m) || arranques.has(m)) break;
+      if (!abiertas.has(m) !== cerrado) break;
+      span++;
+    }
+    out.push({ libre: true, t, span, cerrado, vendible });
+    t += span * 30;
+  }
+  return out;
 }
 
-/** ¿Está libre la cancha `ci` desde `t` por `dur` minutos? */
-export function libreEn(
-  ocup: Ocupacion,
-  ci: number,
-  t: number | null,
-  dur: number,
-): boolean {
-  if (t == null || t + dur > 24 * 60) return false;
-  const tomados = ocup[ci];
-  if (!tomados) return false;
-  for (let m = t; m < t + dur; m += 30) if (tomados.has(m)) return false;
-  return true;
-}
-
-/** Primera cancha libre a esa hora, o -1. Sirve para ofrecer un cambio de cancha. */
-export function primeraLibre(ocup: Ocupacion, t: number, dur: number): number {
-  for (let ci = 0; ci < ocup.length; ci++) if (libreEn(ocup, ci, t, dur)) return ci;
-  return -1;
+/** Turnos del día y ocupación: filas reservadas sobre filas abiertas. */
+export function resumenAgenda(canchas: CanchaAgenda[]): { turnos: number; ocupacion: number } {
+  let abiertas = 0;
+  let reservadas = 0;
+  let turnos = 0;
+  canchas.forEach((cancha) => {
+    cancha.ventanas.forEach(([apertura, cierre]) => {
+      abiertas +=
+        Math.max(0, Math.min(cierre, GRILLA_HASTA) - Math.max(apertura, GRILLA_DESDE)) / 30;
+    });
+    cancha.reservas.forEach((r) => {
+      reservadas += r.dur / 30;
+      turnos += 1;
+    });
+  });
+  return { turnos, ocupacion: abiertas > 0 ? Math.round((100 * reservadas) / abiertas) : 0 };
 }

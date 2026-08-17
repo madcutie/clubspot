@@ -1,8 +1,7 @@
 using ClubSpot.Api.Auth;
+using ClubSpot.Application.Core;
 using ClubSpot.Application.Core.Users;
-using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.SharedKernel.Tenancy;
-using Microsoft.EntityFrameworkCore;
 
 namespace ClubSpot.Api.Endpoints;
 
@@ -16,17 +15,17 @@ public static class AuthEndpoints
 
     private static async Task<IResult> SignInAsync(
         SignInRequest request,
-        CoreDbContext db,
+        IClubDirectory clubDirectory,
         ITenantScopeFactory tenantScopeFactory,
         IUserRepository users,
         IPasswordHasher passwordHasher,
         JwtIssuer jwtIssuer,
         CancellationToken cancellationToken)
     {
-        var club = await db.Clubs.SingleOrDefaultAsync(club => club.Slug == request.Club.Trim(), cancellationToken);
-        if (club is null) return Results.Unauthorized();
+        var clubId = await clubDirectory.FindClubIdBySlugAsync(request.Club, cancellationToken);
+        if (clubId is null) return Results.Unauthorized();
 
-        using var tenantScope = tenantScopeFactory.BeginScope(club.Id);
+        using var tenantScope = tenantScopeFactory.BeginScope(clubId.Value);
         var user = await users.FindByEmailAsync(request.Email, cancellationToken);
         if (user is null || !user.IsActive || !passwordHasher.Verify(user.PasswordHash, request.Password))
             return Results.Unauthorized();

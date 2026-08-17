@@ -9,7 +9,7 @@ internal sealed class ClubModuleConfiguration : IEntityTypeConfiguration<ClubMod
 {
     public void Configure(EntityTypeBuilder<ClubModule> builder)
     {
-        builder.ToTable("clubModule");
+        builder.ToTable("clubModules");
         builder.HasKey(module => new { module.TenantId, module.ModuleId });
         builder.Property(module => module.TenantId).HasColumnName("clubId");
         builder.Property(module => module.ModuleId)

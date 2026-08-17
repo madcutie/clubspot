@@ -7,7 +7,8 @@ using Microsoft.Extensions.Caching.Memory;
 namespace ClubSpot.Infrastructure.Modularity;
 
 internal sealed class TenantModulesProvider(
-    CoreDbContext db,
+    ClubSpotDbContext db,
+    ModuleCatalog moduleCatalog,
     ITenantContext tenantContext,
     IMemoryCache cache) : ITenantModules
 {
@@ -21,7 +22,8 @@ internal sealed class TenantModulesProvider(
         return cache.GetOrCreate($"club-modules:{tenant.Value}", entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30);
-            return db.ClubModules.AsNoTracking().Select(module => module.ModuleId).ToHashSet();
+            var contracted = db.ClubModules.AsNoTracking().Select(module => module.ModuleId).ToList();
+            return moduleCatalog.Resolve(contracted);
         })!;
     }
 }

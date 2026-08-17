@@ -47,13 +47,12 @@ export function CanchasScreen() {
   const canchas = borrador ?? guardadas;
   if (!canchas || !horarios) return isLoading ? <Cargando que="las canchas" /> : null;
 
-  const i = Math.min(sel, canchas.length - 1);
-  const cancha = canchas[i];
+  const cancha = canchas.find((x) => x.id === sel) ?? canchas[0];
   const horario: Horario = horarios.find((h) => h.id === cancha.horarioId) ?? horarios[0];
   const sucio = borrador != null;
 
   const parchear = (patch: Partial<Cancha>) =>
-    setBorrador(canchas.map((x, k) => (k === i ? { ...x, ...patch } : x)));
+    setBorrador(canchas.map((x) => (x.id === cancha.id ? { ...x, ...patch } : x)));
 
   const previa = arranquesFecha(cancha, horario, diaPrevia, AHORA);
 
@@ -89,16 +88,15 @@ export function CanchasScreen() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 6 }}>
                 {canchas
-                  .map((x, k) => ({ x, k }))
-                  .filter((o) => o.x.deporte === g.deporte)
-                  .map((o) => {
-                    const on = i === o.k;
-                    const suyo = horarios.find((h) => h.id === o.x.horarioId) ?? horarios[0];
+                  .filter((x) => x.deporte === g.deporte)
+                  .map((x) => {
+                    const on = x.id === cancha.id;
+                    const suyo = horarios.find((h) => h.id === x.horarioId) ?? horarios[0];
                     return (
                       <button
-                        key={o.k}
+                        key={x.id}
                         type="button"
-                        onClick={() => setSel(o.k)}
+                        onClick={() => setSel(x.id)}
                         style={{
                           display: 'block',
                           width: '100%',
@@ -117,13 +115,13 @@ export function CanchasScreen() {
                               height: 6,
                               borderRadius: '50%',
                               flex: 'none',
-                              background: o.x.activa ? c.verdePunto : c.puntoApagado,
+                              background: x.activa ? c.verdePunto : c.puntoApagado,
                             }}
                           />
                           <span style={{ font: `500 13px ${sans}`, color: c.tinta }}>
-                            {o.x.nombre}
+                            {x.nombre}
                           </span>
-                          {!o.x.activa && (
+                          {!x.activa && (
                             <span style={{ font: `400 10px ${mono}`, color: c.textoApagado }}>
                               off
                             </span>
@@ -232,17 +230,14 @@ export function CanchasScreen() {
             <button
               type="button"
               className="h-ghost"
-              onClick={() => {
-                const k = horarios.findIndex((h) => h.id === cancha.horarioId);
-                navegar(`/horarios?sel=${k < 0 ? 0 : k}&vista=lista`);
-              }}
+              onClick={() => navegar(`/horarios?sel=${cancha.horarioId}&vista=lista`)}
               style={fantasma()}
             >
               Editar horario
             </button>
           </div>
           <div style={{ font: `400 11.5px ${mono}`, color: c.textoGris2, marginTop: 10 }}>
-            {resumenSemanal(horario)} · {horario.fechas.length} fechas propias
+            {resumenSemanal(horario)}
           </div>
 
           <Titulo margen>Reglas del turno</Titulo>

@@ -6,27 +6,31 @@ const ML = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ];
 
-/** Fecha base de la grilla: hoy a las 00:00. Se calcula una vez por sesión. */
-const HOY = (() => {
-  const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
-})();
+/** "2026-08-17" → Date local (sin zona). */
+export function parseDate(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
 
-/** Fecha del día `i` de la grilla (0 = hoy). */
-export function dateOf(i: number): Date {
-  return new Date(HOY.getFullYear(), HOY.getMonth(), HOY.getDate() + i);
+/** Date → "2026-08-17". */
+export function isoDate(d: Date): string {
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+export function addDays(d: Date, n: number): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 }
 
 /** "sábado 15 de agosto" (long) · "SÁB 15 AGO" (short). */
-export function dayLabel(i: number, long: boolean): string {
-  const d = dateOf(i);
+export function dayLabelOf(d: Date, long: boolean): string {
   if (long) return `${DL[d.getDay()]} ${d.getDate()} de ${ML[d.getMonth()]}`;
   return `${D3[d.getDay()]} ${d.getDate()} ${M3[d.getMonth()]}`;
 }
 
-/** Encabezado del chip de día: HOY / MAÑ / DOM… */
-export function dayChip(i: number): { top: string; num: string; mon: string } {
-  const d = dateOf(i);
+/** Encabezado del chip de día: HOY / MAÑ / DOM… (`i` es el índice en la grilla). */
+export function dayChipOf(d: Date, i: number): { top: string; num: string; mon: string } {
   return {
     top: i === 0 ? 'HOY' : i === 1 ? 'MAÑ' : D3[d.getDay()],
     num: String(d.getDate()),

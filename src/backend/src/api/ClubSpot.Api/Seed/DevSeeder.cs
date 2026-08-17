@@ -1,15 +1,16 @@
 using ClubSpot.Application.Core.Users;
+using ClubSpot.Domain.Bookings;
 using ClubSpot.Domain.Core;
 using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.SharedKernel.Modularity;
+using ClubSpot.SharedKernel.Primitives;
 using ClubSpot.SharedKernel.Tenancy;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClubSpot.Api.Seed;
 
 public sealed class DevSeeder(
-    CoreDbContext db,
-    ModuleCatalog moduleCatalog,
+    ClubSpotDbContext db,
     IPasswordHasher passwordHasher,
     ITenantScopeFactory tenantScopeFactory)
 {
@@ -33,10 +34,10 @@ public sealed class DevSeeder(
         }
 
         using var tenantScope = tenantScopeFactory.BeginScope(club.Id);
-        var enabledModules = await db.ClubModules.Select(module => module.ModuleId).ToHashSetAsync(cancellationToken);
-        var requiredModules = moduleCatalog.Resolve([ModuleId.Members, ModuleId.Padel, ModuleId.Football]);
+        var contractedModules = await db.ClubModules.Select(module => module.ModuleId).ToHashSetAsync(cancellationToken);
+        ModuleId[] requiredModules = [ModuleId.Members, ModuleId.Bookings];
         db.ClubModules.AddRange(requiredModules
-            .Except(enabledModules)
+            .Except(contractedModules)
             .Select(module => new ClubModule(club.Id, module, DateTimeOffset.UtcNow)));
 
         if (!await db.Users.AnyAsync(user => user.Email == "admin@chacoforever.test", cancellationToken))
@@ -49,6 +50,23 @@ public sealed class DevSeeder(
                 passwordHasher.Hash("clubspot-dev"),
                 [Role.Administrator],
                 DateTimeOffset.UtcNow));
+        }
+
+        if (!await db.Schedules.AnyAsync(cancellationToken))
+        {
+            var baseSchedule = new Schedule(
+                Guid.NewGuid(),
+                club.Id,
+                "Base",
+                Enum.GetValues<DayOfWeek>().ToDictionary(day => day, _ => new List<TimeRange> { new(480, 1380) }));
+            db.Schedules.Add(baseSchedule);
+            db.Courts.AddRange(
+                new Court(Guid.NewGuid(), club.Id, Sport.Padel, 1, "Cancha 1", "Blindex · techada", isCovered: true, isActive: true,
+                    baseSchedule.Id, [60, 90, 120], 30, 0, Money.Of(14000m, club.Currency), Money.Of(18000m, club.Currency), 1140),
+                new Court(Guid.NewGuid(), club.Id, Sport.Padel, 2, "Cancha 2", "Descubierta", isCovered: false, isActive: true,
+                    baseSchedule.Id, [60, 90, 120], 30, 0, Money.Of(12000m, club.Currency), Money.Of(16000m, club.Currency), 1140),
+                new Court(Guid.NewGuid(), club.Id, Sport.Football, 1, "Fútbol A", "Fútbol 5 · césped sintético", isCovered: false, isActive: true,
+                    baseSchedule.Id, [60], 60, 0, Money.Of(30000m, club.Currency), Money.Of(36000m, club.Currency), 1140));
         }
 
         if (db.ChangeTracker.HasChanges()) await db.SaveChangesAsync(cancellationToken);

@@ -5,6 +5,7 @@ namespace ClubSpot.Domain.Core;
 
 public sealed class ClubModule : ITenantOwned
 {
+    // Rows are what the club purchased; enablement is the resolved closure (ADR-0009).
     public TenantId TenantId { get; private set; }
     public ModuleId ModuleId { get; private set; }
     public DateTimeOffset ContractedAt { get; private set; }

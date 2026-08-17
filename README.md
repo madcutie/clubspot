@@ -67,24 +67,22 @@ core (siempre activo)
  ├─ finance ───► core
  ├─ members ───► core, finance
  └─ bookings ──► core, finance
-      ├─ padel ────► bookings
-      └─ football ─► bookings
 ```
 
-Contratar `padel` habilita `bookings`, `finance` y `core` automáticamente. Un módulo apagado
-responde 404, no 403, y apagarlo no borra datos.
+`bookings` cubre reservas de cualquier deporte: el deporte es configuración de la cancha, no
+un módulo (ADR-0008). Contratar `members` habilita `finance` y `core` automáticamente. Un
+módulo apagado responde 404, no 403, y apagarlo no borra datos.
 
 ## Documentación
 
 | Documento | Qué es |
 |---|---|
-| [`docs/referencia-ourclub/alcance-socios-mvp.html`](docs/referencia-ourclub/alcance-socios-mvp.html) | Alcance del MVP: qué entra, qué no, y las preguntas abiertas |
-| [`docs/referencia-ourclub/diseno-detallado-socios.html`](docs/referencia-ourclub/diseno-detallado-socios.html) | Modelo de dominio, máquinas de estado, los 11 jobs, concurrencia y migración |
-| [`docs/referencia-ourclub/`](docs/referencia-ourclub/README.md) | Relevamiento del sistema que usa hoy el club |
 | [`docs/adr/`](docs/adr/README.md) | Decisiones de arquitectura escritas en piedra (ADRs) |
+| [`docs/plan-backend-backoffice.md`](docs/plan-backend-backoffice.md) | Plan del backend del backoffice, con su [bitácora](docs/plan-backend-backoffice.bitacora.md) de avance |
 | [`AGENTS.md`](AGENTS.md) | Contexto, convenciones y **el desglose de lo que falta desarrollar** |
 
-Los HTML se abren con doble clic; no dependen de internet.
+El relevamiento de OurClub y los documentos de alcance y diseño se eliminaron el 16/08/2026
+(ver `AGENTS.md` §2); siguen en el historial de git.
 
 ## Estado
 

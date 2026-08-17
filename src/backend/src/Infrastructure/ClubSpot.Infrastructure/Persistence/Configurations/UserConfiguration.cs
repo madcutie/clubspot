@@ -8,7 +8,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.ToTable("user");
+        builder.ToTable("users");
         builder.HasKey(u => u.Id);
         builder.Property(u => u.Id).HasColumnName("id").ValueGeneratedNever();
         builder.Property(u => u.TenantId).HasColumnName("tenantId").IsRequired();
@@ -17,11 +17,11 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.PasswordHash).HasColumnName("passwordHash").HasMaxLength(500).IsRequired();
         builder.Property(u => u.IsActive).HasColumnName("isActive").IsRequired();
         builder.Property(u => u.CreatedAt).HasColumnName("createdAt").IsRequired();
-        builder.HasIndex(u => new { u.TenantId, u.Email }).IsUnique().HasDatabaseName("uxUserTenantEmail");
+        builder.HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
 
         builder.OwnsMany(u => u.UserRoles, roles =>
         {
-            roles.ToTable("userRole");
+            roles.ToTable("userRoles");
             roles.WithOwner().HasForeignKey("userId");
             roles.Property<Guid>("userId").HasColumnName("userId");
             roles.Property(r => r.Role).HasColumnName("role").HasConversion<string>().HasMaxLength(40);

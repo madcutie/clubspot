@@ -18,15 +18,17 @@ public sealed class Person : ITenantOwned
     public string PhoneDigits { get; private set; }
     public string Email { get; private set; }
     public PersonOrigin Origin { get; private set; }
-    public Sport PreferredSport { get; private set; }
     public bool IsBlocked { get; private set; }
+    // Provisional and known to break ADR-0012: money belongs to the finance module, not to a core
+    // identity. Debt is a plain balance here and RegisterPayment wipes it with no counter-entry.
+    // Moves out when the finance side is defined; nothing new hangs off it meanwhile.
     public Money Debt { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public Guid? CreatedBy { get; private set; }
     public IReadOnlyCollection<Note> Notes => _notes;
 
     public Person(Guid id, TenantId tenantId, string name, string phone, string email, PersonOrigin origin,
-        Sport preferredSport, Money debt, Guid? createdBy, IClock clock)
+        Money debt, Guid? createdBy, IClock clock)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name cannot be empty.", nameof(name));
         if (debt.IsNegative) throw new ArgumentOutOfRangeException(nameof(debt), "Debt cannot be negative.");
@@ -39,7 +41,6 @@ public sealed class Person : ITenantOwned
         PhoneDigits = Digits(Phone);
         Email = email.Trim().ToLowerInvariant();
         Origin = origin;
-        PreferredSport = preferredSport;
         Debt = debt;
         CreatedBy = createdBy;
         CreatedAt = clock.UtcNow;

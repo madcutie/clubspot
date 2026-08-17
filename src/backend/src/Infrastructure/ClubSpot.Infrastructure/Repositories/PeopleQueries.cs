@@ -3,11 +3,12 @@ using ClubSpot.Domain.Core;
 using ClubSpot.Domain.Core.People;
 using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.SharedKernel.Primitives;
+using ClubSpot.SharedKernel.Tenancy;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClubSpot.Infrastructure.Repositories;
 
-internal sealed class PeopleQueries(CoreDbContext db) : IPeopleQueries
+internal sealed class PeopleQueries(ClubSpotDbContext db, ITenantContext tenantContext) : IPeopleQueries
 {
     private const int PageSize = 14;
 
@@ -40,11 +41,14 @@ internal sealed class PeopleQueries(CoreDbContext db) : IPeopleQueries
         var total = await people.CountAsync(cancellationToken);
         var pages = Math.Max(1, (int)Math.Ceiling(total / (double)PageSize));
         var page = Math.Clamp(search.Page, 0, pages - 1);
+        // Bookings counters are stubbed until bookings exist: zero bookings, no last date, and the 'without bookings' filter matches everyone.
         var items = await people.OrderBy(person => person.Name).Skip(page * PageSize).Take(PageSize)
             .Select(person => new PersonListItem(person.Id, person.Name, person.Phone, person.Email, person.Origin,
-                person.PreferredSport, 0, null, person.Debt, person.IsBlocked, person.CreatedAt)).ToListAsync(cancellationToken);
+                0, null, person.Debt, person.IsBlocked, person.CreatedAt)).ToListAsync(cancellationToken);
         var withoutBookings = all;
-        return new PeoplePage(items, total, page, pages, census, attention, Money.Of(totalDebt),
+        var currency = await db.Clubs.AsNoTracking().Where(club => club.Id == tenantContext.Current)
+            .Select(club => club.Currency).SingleAsync(cancellationToken);
+        return new PeoplePage(items, total, page, pages, census, attention, Money.Of(totalDebt, currency),
             new Dictionary<PeopleFilter, int> { [PeopleFilter.All] = all, [PeopleFilter.WithoutBookings] = withoutBookings, [PeopleFilter.Counter] = counter, [PeopleFilter.Debt] = debt });
     }
 
@@ -61,7 +65,7 @@ internal sealed class PeopleQueries(CoreDbContext db) : IPeopleQueries
     }
 
     private static PersonListItem ToItem(Person person) => new(person.Id, person.Name, person.Phone, person.Email,
-        person.Origin, person.PreferredSport, 0, null, person.Debt, person.IsBlocked, person.CreatedAt);
+        person.Origin, 0, null, person.Debt, person.IsBlocked, person.CreatedAt);
 
     private static string Normalize(string value) => string.Concat(value.Normalize(System.Text.NormalizationForm.FormD)
         .Where(character => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(character) != System.Globalization.UnicodeCategory.NonSpacingMark)).ToLowerInvariant();

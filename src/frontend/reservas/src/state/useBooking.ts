@@ -1,18 +1,9 @@
 import { useCallback, useState } from 'react';
-import { senaOf } from '../domain/pricing';
-import type {
-  CourtFilter,
-  Duration,
-  PayMethod,
-  PayMode,
-  Screen,
-  Selection,
-  Sport,
-} from '../domain/types';
+import type { CourtFilter, Duration, PayMode, Screen, Selection, Sport } from '../domain/types';
 
 /**
- * Estado de UI del flujo de reserva. Los datos (disponibilidad, reservas) viven
- * en React Query; acá solo queda lo que el usuario eligió.
+ * Estado de UI del flujo de reserva. Los datos (catálogo, disponibilidad)
+ * viven en React Query; acá solo queda lo que el usuario eligió.
  */
 export interface BookingState {
   screen: Screen;
@@ -20,6 +11,7 @@ export interface BookingState {
   dateIdx: number;
   dur: Duration;
   ctype: CourtFilter;
+  /** Minuto de inicio elegido, o null. */
   hour: number | null;
   courtIdx: number | null;
   /** Turno confirmado al pasar a "Confirmar reserva". */
@@ -28,11 +20,6 @@ export interface BookingState {
   tel: string;
   email: string;
   pago: PayMode;
-  method: PayMethod;
-  /** Intentos de pago ya hechos para este turno. */
-  tries: number;
-  tab: 'prox' | 'ant';
-  code: string | null;
 }
 
 const INITIAL: BookingState = {
@@ -48,10 +35,6 @@ const INITIAL: BookingState = {
   tel: '',
   email: '',
   pago: 'total',
-  method: 'mp',
-  tries: 0,
-  tab: 'prox',
-  code: null,
 };
 
 export function useBooking() {
@@ -61,25 +44,14 @@ export function useBooking() {
     setSt((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  /** Vuelve al home descartando la selección y el intento de pago en curso. */
+  /** Vuelve al home descartando la selección en curso. */
   const restart = useCallback(() => {
-    setSt((prev) => ({
-      ...prev,
-      screen: 'home',
-      hour: null,
-      courtIdx: null,
-      sel: null,
-      tries: 0,
-      code: null,
-    }));
+    setSt((prev) => ({ ...prev, screen: 'home', hour: null, courtIdx: null, sel: null }));
   }, []);
 
   const total = st.sel ? st.sel.price : 0;
-  const sena = senaOf(total);
-  const saldo = total - sena;
-  const payAmount = st.pago === 'total' ? total : sena;
 
-  return { st, set, restart, total, sena, saldo, payAmount };
+  return { st, set, restart, total };
 }
 
 export type BookingApi = ReturnType<typeof useBooking>;

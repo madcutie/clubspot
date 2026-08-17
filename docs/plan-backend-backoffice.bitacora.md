@@ -19,14 +19,241 @@ actualización en el plan).
 | A2 | Persistencia (EF Core + PostgreSQL, `CoreDbContext`, tabla `club`) + tenancy (`AsyncLocal`, filtro global, guardia en `SaveChanges`) + infra Testcontainers | ✅ 15/08/2026 — PostgreSQL local, build y 17 tests verdes |
 | A3 | Auth: tablas `user`/`user_role`, hash, `POST /api/auth/session` → JWT, roles y políticas | ✅ 15/08/2026 — build y 20 tests verdes |
 | A4 | Módulos por club (`club_module`), `GET /api/context`, gating 404, ProblemDetails, CORS, seed | ✅ 15/08/2026 — migración, HTTP real y 22 tests verdes |
-| B | Schedules, Courts y People: agregados, GET/PUT masivos con xmin, búsqueda y ficha, endpoints y tests | 🚧 16/08/2026 — People completo; Schedules/Courts persistidos y verificados, falta concurrencia/contrato final |
-| C | Agenda y Bookings (exclusion constraint, servicios de dominio, 6 endpoints) + conexión del frontend (`http.ts` reemplaza `mockApi.ts`, se borra `store.ts`, login mínimo) | ⬜ |
+| B | Schedules, Courts y People: agregados, GET/PUT masivos con xmin, búsqueda y ficha, endpoints y tests | 🚧 16/08/2026 — People completo; Schedules/Courts persistidos con concurrencia `xmin`, falta contrato final |
+| R | **Remediación de modelado** (ADR-0008/0009/0010): sin módulos por deporte, sin `PreferredSport`, `Money` en tarifas, capas de bookings, `club_module` contratado, tablas en plural, un solo `DbContext` — ver [`plan-remediacion-modelado.md`](plan-remediacion-modelado.md) | ✅ 16/08/2026 — build sin warnings, 22 unitarios + 13 de integración verdes |
+| C | Agenda y Bookings (exclusion constraint, servicios de dominio, 6 endpoints) + conexión del frontend (`http.ts` reemplaza `mockApi.ts`, se borra `store.ts`, login mínimo) | ⬜ **bloqueada hasta cerrar R** |
 
 Leyenda: ⬜ pendiente · 🚧 en curso · ✅ terminada (build + tests verdes).
 
 ---
 
 ## Entradas
+
+### 16/08/2026 — ADR-0013: el modelo de disponibilidad, con Calendly como referencia.
+
+**Disparador:** el usuario preguntó si el modelo de horarios era escalable, señalando que
+`courts` tiene un solo FK a `schedules` y que `specialDates` es jsonb. Planteó los casos
+reales: "del 19 al 25 de junio la cancha 1 libre de 12 a 17", "del 17 al 24 la cancha 2 normal",
+"de golpe digo: mañana está cerrada la cancha 3 por reparaciones" — y la analogía con Calendly,
+donde el usuario final elige entre los huecos que quedan.
+
+**Dos definiciones del usuario que simplificaron el modelo más que cualquier análisis:**
+
+1. **"Siempre dibujo hacia adelante; lo que pasó, ya pasó."** Eliminó de un plumazo el
+   versionado del patrón por vigencias, que era la parte más cara de la propuesta inicial.
+2. **Los feriados se cargan a mano.** No son un concepto: son una excepción como cualquier
+   otra. El usuario tuvo que repetirlo porque el asistente los siguió nombrando como categoría
+   aparte después de haberlos colapsado.
+
+**Correcciones del usuario a las propuestas intermedias:**
+
+- Se había afirmado que no se podía cerrar una sola cancha ni programar cambios "sin reescribir
+  el pasado". Era impreciso: cerrar una sola **se puede** duplicando el horario (con el costo de
+  que se desincronice), y el pasado **no se reescribe** — se redibuja, porque la agenda se
+  calcula en lectura. Lo único realmente imposible era programar un cambio a futuro.
+- Las capturas de Calendly mostraron que las *date-specific hours* se aplican a un **conjunto de
+  fechas** seleccionadas en un calendario, no a un rango. Se corrigió el modelo: cabecera de
+  excepción + tabla de fechas.
+
+**Qué quedó decidido** ([ADR-0013](adr/0013-disponibilidad-patron-semanal-mas-excepciones.md),
+reflejado en `AGENTS.md` §9.5): patrón semanal reusable (sigue jsonb, que para eso está bien) +
+`availabilityOverrides` con conjunto de fechas y alcance cancha o club · cerrar es una excepción
+sin ventanas · la excepción reemplaza al patrón · **gana la más específica**, y a igual alcance
+la más reciente · `courts.scheduleId` **se queda**: el problema no era el FK sino que la
+excepción no tenía dónde apuntar · `schedules.timeZone` se va, la zona es del club.
+
+**Abierto y anotado en el ADR:** el hold con TTL (ADR-0002 lo difirió asumiendo que no había
+portal; con usuario final eligiendo huecos, esa premisa se cae) y la pantalla de excepciones
+(fechas sueltas vs rangos), que no bloquea porque el modelo aguanta las dos.
+
+**Dónde quedó / próximo paso:** ADR escrito, **sin tocar código todavía**. Lo que sigue es el
+plan de implementación: sacar `specialDates` y `timeZone` de `schedules`, crear las dos tablas
+nuevas y el cálculo de disponibilidad.
+
+### 16/08/2026 — ADR-0012: cómo se componen los módulos y de quién es la persona.
+
+**Disparador:** el usuario señaló las columnas `debtAmount`/`debtCurrency` en la tabla `people`
+como mal diseño, y pidió que la regla de composición quedara escrita antes de seguir, para no
+arrastrar el malentendido.
+
+**Qué se entendió, en las palabras del usuario:** un cliente puede tener club + reservas —la
+misma persona es socia, hace karate y el sábado alquila una cancha con amigos, que va por otro
+lado—; otro puede tener **sólo reservas** de fútbol 5; otro puede tener club + reservas +
+finanzas. Y la parte financiera puede estar o no.
+
+**Corrección del usuario a la primera versión de la regla:** decir que el cliente de sólo
+reservas era "invendible" era falso y además escondía lo importante. Lo que hay es
+**capacidades de distinto tamaño**: un cliente puede pagar por cobrar el turno sin tener la
+capacidad de hacer liquidaciones. O sea que `finance` como bloque único está mal cortado.
+
+**Qué quedó decidido** ([ADR-0012](adr/0012-composicion-de-modulos-por-tenant.md), reflejado
+en `AGENTS.md` §4, §5 y §6):
+
+- El módulo es **la unidad más chica que se vende por separado**; el corte lo define lo que se
+  vende, no el código.
+- Dependencia dura es sólo "sin el otro el concepto no existe"; aprovechar ≠ depender.
+- **La persona es una sola y es de `core`.** Ser socio, anotarse en una actividad, alquilar o
+  deber plata son **vínculos** que guarda cada módulo contra `personId`. ⇒ **ningún módulo
+  agrega columnas a `people`**.
+- Ningún módulo asume el vínculo de otro; la integración es por contrato y opcional.
+
+**Qué NO se hizo, por decisión explícita del usuario:** no se parte `finance` ni se define
+todavía el concepto de **capacidades** ("más adelante vamos a definir capacidades; si el
+cliente tiene capacidades financieras se habilitan o no ciertas features"). Por ahora se avanza
+sobre reservas y la parte financiera va de la mano. Las flechas `members → finance` y
+`bookings → finance` quedan marcadas como provisionales en `AGENTS.md` §4, sin tocar el
+catálogo: cortar sin saber qué se vende sería adivinar.
+
+**Deuda técnica reconocida:** `people.debtAmount`/`debtCurrency` viola la regla y queda como
+stub marcado en `Person.cs`, apuntando al ADR. Es lo primero que el trabajo de finanzas tiene
+que absorber. Nada nuevo se cuelga de ahí mientras tanto.
+
+**Aclaración del usuario (16/08/2026, cierra una de las preguntas abiertas):** las
+**actividades** —deportes dictados por profesores, con alumnos— **son parte del módulo de
+club, no un módulo aparte**. Corrige la suposición contraria que había quedado anotada en el
+ADR. Los alumnos "parten de personas", que además pueden pertenecer a grupos familiares: o
+sea, profesor y alumno son **vínculos** sobre la misma `Person`, lo que confirma la regla 3 de
+ADR-0012. Registrado en el ADR y en `AGENTS.md` §9.3. **No se implementa nada de esto ahora**:
+el foco está en reservas de canchas.
+
+**Dónde quedó / próximo paso:** reglas escritas, sin cambios de código más allá del comentario
+del stub. Continuar con reservas.
+
+### 16/08/2026 — Nombres físicos por convención (ADR-0011) y base de desarrollo recreada.
+
+**Decisión del usuario:** los nombres que EF generaba solo se corrigen **en el código**, no a
+mano en la base; la base de desarrollo es descartable, se tira y se recrea.
+
+**Qué se hizo:**
+
+- `ClubSpotDbContext` asigna los nombres de claves primarias, índices y foráneas en una pasada
+  final sobre el modelo terminado: `pk<Tabla>`, `ix`/`ux<Tabla><Columnas>`, `fk<Tabla><Columnas>`.
+  Se eliminaron los `HasDatabaseName` de las configuraciones para no tener dos fuentes de
+  verdad. Registrado como [ADR-0011](adr/0011-convenciones-fisicas-de-postgresql.md), que
+  además consolida en un solo lugar las convenciones que estaban sueltas (esquema, camelCase,
+  plural, columnas en singular).
+- Regenerada la migración única y recreada la base con `docker compose down -v`. **Verificado
+  contra PostgreSQL real:** las 8 tablas en plural, y los 26 índices y constraints en camelCase
+  (`pkPeople`, `ixPeopleTenantIdSearchName`, `uxCourtsTenantIdSportSortOrder`,
+  `fkCourtsScheduleId`, `ckClubsDepositPercent`). El único nombre fuera de la convención es
+  `PK___EFMigrationsHistory`, que crea EF para su propia tabla.
+- La API aplicó migración y seed sobre la base limpia: 1 club, 1 usuario, **2 módulos
+  contratados** (`bookings`, `members`) y el resto por cierre en lectura, como manda ADR-0009.
+- `dotnet build` sin advertencias y `dotnet test` completo verde: 22 unitarios + 13 de
+  integración.
+
+**Reglas del día que quedaron escritas** (pedido del usuario de que no se pierdan): ADR-0008
+(deporte como configuración), ADR-0009 (`club_module` contratado), ADR-0010 (un `DbContext`),
+ADR-0011 (convenciones físicas); y en `AGENTS.md` §4 y §6: la Api no usa EF, `Money` también
+para tarifas, la moneda la define el club, ids en `Guid` crudo, un concepto un tipo, enums
+camelCase con converter por enum, y lo provisional se marca.
+
+**Dónde quedó / próximo paso:** cerrado. Retomar B (contrato de configuración) y después C.
+
+### 16/08/2026 — R cerrada: los 8 paquetes aplicados y verificados.
+
+**Qué se hizo:** se ejecutaron los 8 paquetes de
+[`plan-remediacion-modelado.md`](plan-remediacion-modelado.md) con agentes Sonnet
+supervisados, más dos revisiones independientes (checklist y diff contra la spec).
+
+- Deporte y módulos (ADR-0008), bookings por Application con agregados endurecidos, `Money` en
+  las tarifas con la moneda del club, `club_module` contratado (ADR-0009), contexto completo
+  con enums camelCase en el wire, tablas en plural, y un solo `ClubSpotDbContext` con una sola
+  migración (ADR-0010).
+- **Verificación:** `dotnet build` sin errores ni advertencias; `dotnet test` completo en
+  verde — 22 unitarios y 13 de integración contra PostgreSQL real. Checklist de la spec
+  completo: cero apariciones de `PreferredSport`, módulos por deporte, `DefaultCurrency`,
+  contextos viejos, historiales por módulo y nombres de tabla en singular. La migración única
+  crea las ocho tablas en plural y los endpoints de la Api ya no usan EF.
+
+**Dos correcciones aplicadas sobre lo que dejaron los agentes:**
+
+1. El converter global de enums camelCase también cambiaba las **claves del diccionario** de
+   `weeklyRanges` (`"Monday"` → `"monday"`), cosa que la spec prohibía. Reemplazado por un
+   converter por enum concreto, con nota en el código explicando por qué.
+2. El helper nuevo de tests se iba a versionar bajo `src/backend/src/Tests/` (mayúscula)
+   mientras el resto del proyecto está en el índice como `src/backend/src/tests/`. En un
+   checkout case-sensitive habría partido el proyecto en dos carpetas. Registrado en minúscula.
+
+**Dónde quedó / próximo paso:** R queda ✅. Sigue el cierre de nombres físicos (entrada de
+arriba) y después B (contrato de configuración) y C.
+
+### 16/08/2026 — Se elimina `docs/referencia-ourclub/`.
+
+**Decisión del usuario:** el relevamiento de OurClub y los documentos de alcance y diseño
+detallado se eliminan del repo porque venían confundiendo más de lo que aportaban: describían
+**cómo lo hace un sistema ajeno** y estaban desfasados respecto del alcance vigente.
+
+Los 29 archivos siguen en el historial de git (commit `9e2f079`). Se actualizaron `AGENTS.md`
+§2 (la fuente de verdad pasa a ser: ADRs, plan y prototipo del backoffice) y `README.md`. Las
+referencias que quedan en documentos históricos —ADR-0002, entradas viejas de esta bitácora y
+el cuerpo del plan— **no se editan**: registran lo que era cierto cuando se escribieron.
+
+### 16/08/2026 — Revisión de modelado: ADR-0008 y 0009, y arranque de la remediación (R).
+
+**Contexto:** una revisión completa del modelado del backend encontró que el deporte estaba
+representado tres veces sin conexión (dos enums `Sport` idénticos, módulos `padel`/`football`
+sin comportamiento ni mapeo), tarifas de `Court` en `decimal` pelado contra la regla de
+`Money`, la moneda con dos dueños (`Money.DefaultCurrency = "ARS"` vs `Club.Currency`),
+`club_module` sin semántica definida (`Resolve` sólo en el seeder), Courts/Schedules usando EF
+directo desde la Api mientras People pasa por Application, y stubs sin marcar.
+
+**Decisiones del usuario:**
+
+1. **No hay módulos por deporte** ([ADR-0008]): `bookings` se contrata una vez y cubre
+   cualquier deporte; el deporte es configuración de la cancha. Cómo se configuran las canchas
+   y a qué deporte pertenecen queda como diseño pendiente explícito. `Person` no tiene deporte
+   preferido. No se renombra `Football` a `Football5`: es formato/presentación.
+2. **Frenar el desarrollo nuevo** (fase C) hasta que estas reglas estén alineadas en el
+   código.
+3. Arreglar las inconsistencias restantes: plata, semántica de `club_module` ([ADR-0009],
+   propuesta aceptada: la tabla guarda lo contratado, la habilitación se resuelve en lectura),
+   capas según ADR-0005, stubs señalizados.
+4. **Los nombres de tabla van en plural** (pedido durante la ejecución de la remediación):
+   `clubs`, `users`, `userRoles`, `clubModules`, `people`, `personNotes`, `schedules`,
+   `courts`. Se decidió sobre la marcha que índices y constraints sigan al nombre de la tabla,
+   también en plural; las columnas quedan en singular. Convención fijada en `AGENTS.md` §6 y
+   ejecutada como paquete 7 de la remediación.
+
+**Qué se hizo:**
+
+- Escritos [ADR-0008] y [ADR-0009]; actualizado el índice de ADRs.
+- Actualizados `AGENTS.md` (grafo §4, reglas de frontera, §5 con ADR-0009, moneda en §6,
+  estado §8, §9.6 reescrita, pendiente de frontend en §10) y `README.md` (grafo).
+- Nota de actualización 16/08/2026 agregada al plan (sin módulos por deporte, sin
+  `PersonaId`/`ReservaId` tipados — se estandariza `Guid`, tarifas `Money`, `club_module`).
+- Escrito [`plan-remediacion-modelado.md`](plan-remediacion-modelado.md): 6 paquetes
+  ejecutables con criterios de aceptación y checklist final, para ejecutar con un modelo más
+  económico bajo supervisión.
+
+**Dónde quedó / próximo paso:** ejecutar los paquetes 1–6 de la remediación y verificar
+(build sin warnings + tests completos con Docker). Al cerrar R: recrear la base local
+(`docker compose down -v && docker compose up -d postgres`), marcar R ✅ y recién entonces
+retomar B/C.
+
+[ADR-0008]: adr/0008-deporte-como-configuracion-no-modulo.md
+[ADR-0009]: adr/0009-club-module-guarda-lo-contratado.md
+
+### 16/08/2026 — Persistencia: esquema PostgreSQL único.
+
+**Decisión del usuario:** las tablas físicas no se separan por módulo. ClubSpot usa sólo el
+esquema estándar PostgreSQL `public`; `dbo` corresponde a SQL Server, no a PostgreSQL.
+
+**Qué se hizo:**
+
+- Registrado ADR-0007: la separación modular permanece en código, contratos y catálogo, no en
+  esquemas de la base.
+- `CoreDbContext` y `BookingsDbContext` ahora crean tablas en `public`. Conservan historiales
+  EF separados, `__EFMigrationsHistoryCore` y `__EFMigrationsHistoryBookings`, para que los dos
+  contextos puedan migrar de forma independiente sin colisionar.
+- Regeneradas las migraciones iniciales de desarrollo. El token de concurrencia `xmin` sigue
+  siendo una columna de sistema PostgreSQL, no una columna creada por la migración.
+- Eliminado el volumen local autorizado y reconstruida la base. La API aplicó migraciones y
+  seed; la inspección con PostgreSQL confirma que las 10 tablas actuales están en `public`.
+- `dotnet test` pasó: 20 unitarios y 13 de integración.
+
+**Dónde quedó / próximo paso:** DBeaver debe refrescar `clubspot > Schemas > public`. B sigue
+en curso, pendiente de contrato y validaciones HTTP de configuración.
 
 ### 16/08/2026 — B: Schedules y Courts, primer bloque verificable.
 
@@ -46,6 +273,23 @@ Leyenda: ⬜ pendiente · 🚧 en curso · ✅ terminada (build + tests verdes).
 **Dónde quedó / próximo paso:** B sigue en curso. Falta incorporar `xmin`/409 de concurrencia y
 terminar el contrato de configuración, antes de conectar estas pantallas en la fase C.
 
+### 16/08/2026 — B: concurrencia optimista de Horarios y Canchas.
+
+**Qué se hizo:**
+
+- `Schedule` y `Court` usan la columna de sistema PostgreSQL `xmin` como token de concurrencia
+  de EF Core. No se agrega una columna física: la migración sólo actualiza el modelo que EF usa
+  para conocer el token.
+- Los `GET` exponen `version`; los `PUT` requieren esa versión para modificar un registro
+  existente. Una versión ausente o incongruente se rechaza; si PostgreSQL detecta que la fila
+  cambió tras la lectura, la API responde 409.
+- Pruebas de integración HTTP cubren ambos casos: una primera escritura con la versión leída
+  pasa y una segunda escritura con esa versión ya vencida devuelve 409.
+- `dotnet test` pasó: 20 unitarios y 13 de integración.
+
+**Dónde quedó / próximo paso:** falta terminar el contrato de configuración y sus validaciones
+HTTP antes de cerrar B. La concurrencia optimista de los editores ya está resuelta.
+
 ### 16/08/2026 — Convención física PostgreSQL: camelCase y reset de desarrollo.
 
 **Decisión del usuario:** toda la base PostgreSQL usa camelCase en sus identificadores físicos,
@@ -55,7 +299,7 @@ de implementación.
 
 **Qué se hizo:**
 
-- Corregidos mappings de `core` y `bookings`, incluido `authorUserId` y los nombres generados
+- Corregidos mappings de los módulos `core` y `bookings`, incluido `authorUserId` y los nombres generados
   explícitamente para índices y constraints.
 - Eliminadas las migraciones de desarrollo no versionadas y regeneradas dos iniciales completas:
   `InitialCore` y `InitialBookings`.

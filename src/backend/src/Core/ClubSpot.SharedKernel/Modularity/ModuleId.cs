@@ -27,6 +27,4 @@ public readonly record struct ModuleId
     public static readonly ModuleId Members = From("members");
     public static readonly ModuleId Finance = From("finance");
     public static readonly ModuleId Bookings = From("bookings");
-    public static readonly ModuleId Padel = From("padel");
-    public static readonly ModuleId Football = From("football");
 }

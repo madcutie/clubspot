@@ -37,19 +37,3 @@ public sealed class BookingsModule : ClubModuleBase
         "Espacios, grilla horaria, tarifas, turnos y reservas con pago.";
     public override IReadOnlyCollection<ModuleId> DependsOn => [ModuleId.Core, ModuleId.Finance];
 }
-
-public sealed class PadelModule : ClubModuleBase
-{
-    public override ModuleId Id => ModuleId.Padel;
-    public override string DisplayName => "Pádel";
-    public override string Description => "Canchas de pádel: turnos, tarifas y reglas propias del deporte.";
-    public override IReadOnlyCollection<ModuleId> DependsOn => [ModuleId.Bookings];
-}
-
-public sealed class FootballModule : ClubModuleBase
-{
-    public override ModuleId Id => ModuleId.Football;
-    public override string DisplayName => "Fútbol";
-    public override string Description => "Canchas de fútbol: turnos, tarifas y reglas propias del deporte.";
-    public override IReadOnlyCollection<ModuleId> DependsOn => [ModuleId.Bookings];
-}

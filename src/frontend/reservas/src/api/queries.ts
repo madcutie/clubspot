@@ -1,29 +1,36 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CLUB } from '../domain/catalog';
+import { useQuery } from '@tanstack/react-query';
 import type { Sport } from '../domain/types';
 import {
-  cancelBooking,
+  DIAS_VISIBLES,
   fetchAvailability,
-  fetchBookings,
+  fetchClub,
+  fetchCourtCounts,
   fetchDays,
   fetchSportCounts,
-  payReservation,
   type AvailabilityQuery,
-  type PayInput,
-} from './mockApi';
+} from './portalApi';
 
 export const qk = {
+  club: () => ['club'] as const,
+  courtCounts: () => ['courtCounts'] as const,
   days: (sport: Sport) => ['days', sport] as const,
   sportCounts: (dateIdx: number) => ['sportCounts', dateIdx] as const,
   availability: (q: AvailabilityQuery) =>
     ['availability', q.sport, q.dateIdx, q.dur, q.ctype, q.hour] as const,
-  bookings: () => ['bookings'] as const,
 };
+
+export function useClub() {
+  return useQuery({ queryKey: qk.club(), queryFn: fetchClub });
+}
+
+export function useCourtCounts() {
+  return useQuery({ queryKey: qk.courtCounts(), queryFn: fetchCourtCounts });
+}
 
 export function useDays(sport: Sport) {
   return useQuery({
     queryKey: qk.days(sport),
-    queryFn: () => fetchDays(sport, CLUB.diasVisibles),
+    queryFn: () => fetchDays(sport, DIAS_VISIBLES),
   });
 }
 
@@ -41,29 +48,5 @@ export function useAvailability(q: AvailabilityQuery) {
     // Al cambiar duración/filtro mantenemos la grilla anterior visible en vez
     // de vaciar la pantalla mientras llega la nueva.
     placeholderData: (prev) => prev,
-  });
-}
-
-export function useBookings() {
-  return useQuery({ queryKey: qk.bookings(), queryFn: fetchBookings });
-}
-
-export function usePayReservation() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: PayInput) => payReservation(input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: qk.bookings() });
-    },
-  });
-}
-
-export function useCancelBooking() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => cancelBooking(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: qk.bookings() });
-    },
   });
 }

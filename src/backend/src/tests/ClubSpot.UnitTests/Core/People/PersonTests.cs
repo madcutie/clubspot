@@ -10,7 +10,7 @@ public sealed class PersonTests
     [Fact]
     public void Registering_a_payment_clears_the_debt()
     {
-        var person = CreatePerson(Money.Of(12_500));
+        var person = CreatePerson(Money.Of(12_500, "ARS"));
 
         var paid = person.RegisterPayment();
 
@@ -22,7 +22,7 @@ public sealed class PersonTests
     public void Adding_a_note_preserves_its_author_and_timestamp()
     {
         var clock = new TestClock(DateTimeOffset.Parse("2026-08-15T12:00:00Z"));
-        var person = CreatePerson(Money.Zero(), clock);
+        var person = CreatePerson(Money.Zero("ARS"), clock);
         var author = Guid.NewGuid();
 
         var note = person.AddNote("Call before the next booking.", author, clock);
@@ -36,14 +36,14 @@ public sealed class PersonTests
     public void Person_normalizes_searchable_name_and_phone_digits()
     {
         var person = new Person(Guid.NewGuid(), TenantId.From(Guid.NewGuid()), "  Julián Gómez  ", "362 415-8890", "", PersonOrigin.Counter,
-            Sport.Padel, Money.Zero(), null, new TestClock(DateTimeOffset.UtcNow));
+            Money.Zero("ARS"), null, new TestClock(DateTimeOffset.UtcNow));
 
         Assert.Equal("julian gomez", person.SearchName);
         Assert.Equal("3624158890", person.PhoneDigits);
     }
 
     private static Person CreatePerson(Money debt, IClock? clock = null) => new(Guid.NewGuid(), TenantId.From(Guid.NewGuid()), "Person",
-        "362 400-0000", "person@clubspot.test", PersonOrigin.Counter, Sport.Padel, debt, null,
+        "362 400-0000", "person@clubspot.test", PersonOrigin.Counter, debt, null,
         clock ?? new TestClock(DateTimeOffset.UtcNow));
 
     private sealed class TestClock(DateTimeOffset utcNow) : IClock

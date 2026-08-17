@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAgenda, useCanchas, useClub, useHorarios, usePersonas } from './api/queries';
+import { resumenAgenda } from './domain/agenda';
+import { isoDe } from './domain/fechas';
 import { useParamsAgenda } from './rutas';
 import { Navegacion, type ItemNav } from './ui/Navegacion';
 import { c, sans } from './ui/theme';
@@ -19,13 +21,17 @@ export default function App() {
 
   // Los contadores de la barra lateral: los turnos son los del día que se está
   // mirando, el resto es el tamaño de cada catálogo.
-  const { data: agenda } = useAgenda(deporte, dia);
+  const { data: agenda } = useAgenda(deporte, isoDe(dia));
   const { data: canchas } = useCanchas();
   const { data: horarios } = useHorarios();
   const { data: padron } = usePersonas({ q: '', filtro: 'todas', pagina: 0 });
 
   const operacion: ItemNav[] = [
-    { a: '/reservas', label: 'Reservas', tag: agenda ? String(agenda.turnos) : '' },
+    {
+      a: '/reservas',
+      label: 'Reservas',
+      tag: agenda ? String(resumenAgenda(agenda.canchas).turnos) : '',
+    },
     { a: '/canchas', label: 'Canchas', tag: canchas ? String(canchas.length) : '' },
     { a: '/horarios', label: 'Horarios', tag: horarios ? String(horarios.length) : '' },
   ];

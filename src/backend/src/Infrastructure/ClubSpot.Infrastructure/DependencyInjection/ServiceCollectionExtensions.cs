@@ -1,3 +1,5 @@
+using ClubSpot.Application.Bookings;
+using ClubSpot.Application.Core;
 using ClubSpot.Application.Core.Users;
 using ClubSpot.Application.Core.People;
 using ClubSpot.Infrastructure.Auth;
@@ -24,12 +26,9 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddClubSpotPersistence(
         this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<CoreDbContext>(options =>
-            options.UseNpgsql(connectionString, npgsql =>
-                npgsql.MigrationsHistoryTable(CoreDbContext.MigrationsHistoryTable, CoreDbContext.Schema)));
-        services.AddDbContext<BookingsDbContext>(options =>
-            options.UseNpgsql(connectionString, npgsql =>
-                npgsql.MigrationsHistoryTable(BookingsDbContext.MigrationsHistoryTable, BookingsDbContext.Schema)));
+        services.AddDbContext<ClubSpotDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddScoped<IClubSettings, ClubSettings>();
+        services.AddScoped<IClubDirectory, ClubDirectory>();
         return services;
     }
 
@@ -48,6 +47,23 @@ public static class ServiceCollectionExtensions
         services.AddScoped<BlockPeopleHandler>();
         services.AddScoped<AddNoteHandler>();
         services.AddScoped<RegisterPersonPaymentHandler>();
+        return services;
+    }
+
+    public static IServiceCollection AddClubSpotBookings(this IServiceCollection services)
+    {
+        services.AddScoped<ISchedulesStore, SchedulesStore>();
+        services.AddScoped<ICourtsStore, CourtsStore>();
+        services.AddScoped<IAvailabilityOverridesStore, AvailabilityOverridesStore>();
+        services.AddScoped<IAvailabilityQueries, AvailabilityQueries>();
+        services.AddScoped<IBookingsStore, BookingsStore>();
+        services.AddScoped<GetSchedulesHandler>();
+        services.AddScoped<ReplaceSchedulesHandler>();
+        services.AddScoped<GetCourtsHandler>();
+        services.AddScoped<ReplaceCourtsHandler>();
+        services.AddScoped<GetAgendaHandler>();
+        services.AddScoped<GetPortalCatalogHandler>();
+        services.AddScoped<GetPortalAvailabilityHandler>();
         return services;
     }
 

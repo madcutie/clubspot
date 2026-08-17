@@ -8,14 +8,14 @@ internal sealed class ClubConfiguration : IEntityTypeConfiguration<Club>
 {
     public void Configure(EntityTypeBuilder<Club> builder)
     {
-        builder.ToTable("club", table =>
-            table.HasCheckConstraint("ckClubDepositPercent", "\"depositPercent\" BETWEEN 0 AND 100"));
+        builder.ToTable("clubs", table =>
+            table.HasCheckConstraint("ckClubsDepositPercent", "\"depositPercent\" BETWEEN 0 AND 100"));
 
         builder.HasKey(c => c.Id);
         builder.Property(c => c.Id).HasColumnName("id").ValueGeneratedNever();
 
         builder.Property(c => c.Slug).HasColumnName("slug").HasMaxLength(60).IsRequired();
-        builder.HasIndex(c => c.Slug).IsUnique().HasDatabaseName("uxClubSlug");
+        builder.HasIndex(c => c.Slug).IsUnique();
 
         builder.Property(c => c.Name).HasColumnName("name").HasMaxLength(120).IsRequired();
         builder.Property(c => c.Venue).HasColumnName("venue").HasMaxLength(120);

@@ -4,11 +4,9 @@ namespace ClubSpot.SharedKernel.Primitives;
 
 public readonly record struct Money(decimal Amount, string Currency)
 {
-    public const string DefaultCurrency = "ARS";
+    public static Money Zero(string currency) => new(0m, currency);
 
-    public static Money Zero(string currency = DefaultCurrency) => new(0m, currency);
-
-    public static Money Of(decimal amount, string currency = DefaultCurrency)
+    public static Money Of(decimal amount, string currency)
     {
         if (string.IsNullOrWhiteSpace(currency) || currency.Length != 3)
             throw new ArgumentException("Currency must be a 3-letter ISO code.", nameof(currency));

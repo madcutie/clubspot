@@ -48,6 +48,25 @@ Fecha del plan: 14/08/2026. Actualizado el 15/08/2026 (idioma y fases — ver re
 > los agregados y servicios de dominio en `Domain/<módulo>/`. Los proyectos `Modules.*` y
 > `Jobs` ya no existen.
 
+> **Actualización 16/08/2026 — revisión de modelado
+> ([ADR-0008](adr/0008-deporte-como-configuracion-no-modulo.md) y
+> [ADR-0009](adr/0009-club-module-guarda-lo-contratado.md); remediación en
+> [`plan-remediacion-modelado.md`](plan-remediacion-modelado.md)):**
+>
+> - **No hay módulos por deporte.** Donde este plan diga módulos `padel`/`futbol`, leer: sólo
+>   existe `bookings`, que cubre cualquier deporte. El gating de agenda por deporte apagado
+>   (§5, `fetchAgenda`) queda sin efecto: se gatea por `bookings` a secas.
+> - **`Persona` no tiene deporte preferido.** El campo `Deporte` de la tabla de §4 se elimina
+>   del agregado, del contrato y de la pantalla (ajuste de frontend pendiente al conectar).
+>   Queda un solo enum `Sport`, en `Domain/Bookings`.
+> - **Tarifas en `Money`.** Donde §4 dice `precio_dia Money` es normativo: nada de `decimal`
+>   suelto. La moneda la define `Club.Currency`; `Money` pierde su moneda por defecto.
+> - **`club_module` guarda sólo lo contratado**; la habilitación es el cierre resuelto en
+>   lectura (ADR-0009).
+> - **Sin ids tipados nuevos.** Donde el plan dice `PersonaId`/`ReservaId`, leer `Guid`: se
+>   estandariza en `Guid` crudo (los únicos ids tipados son `TenantId` y `ModuleId`), y la
+>   consistencia pesa más que la ceremonia.
+
 ## 1. Contexto
 
 El backoffice (`src/frontend/backoffice/`) corre entero contra un mock en memoria. Este plan

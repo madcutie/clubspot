@@ -1,12 +1,20 @@
-import { CLUB, sportLabel } from '../domain/catalog';
-import { dayLabel } from '../domain/dates';
-import { durLabel, fmt } from '../domain/pricing';
+import { sportLabel } from '../domain/sport';
+import { durLabel, fmt, senaOf } from '../domain/pricing';
+import { useClub } from '../api/queries';
 import { BackTitle, Body, Footer, Header, Screen } from '../ui/Screen';
-import { C, F, card, ctaOn, divider, input, label, optCard, radio, rowLabel, rowValue } from '../ui/theme';
+import { C, F, card, ctaOff, divider, input, label, optCard, radio, rowLabel, rowValue } from '../ui/theme';
 import type { BookingApi } from '../state/useBooking';
 
+// Provisional: política de cancelación pendiente de definición; la reemplaza la regla real.
+const CANCEL_HORAS = 12;
+
 export function ConfirmScreen({ api }: { api: BookingApi }) {
-  const { st, set, total, sena, saldo } = api;
+  const { st, set, total } = api;
+
+  const club = useClub();
+  const senaPct = club.data?.senaPct ?? 0;
+  const sena = senaOf(total, senaPct);
+  const saldo = total - sena;
 
   return (
     <Screen>
@@ -26,7 +34,7 @@ export function ConfirmScreen({ api }: { api: BookingApi }) {
           </div>
           <div style={divider} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-            <Row k="Día" v={dayLabel(st.dateIdx, true)} />
+            <Row k="Día" v={st.sel?.diaLabel ?? ''} />
             <Row k="Hora" v={st.sel?.label ?? ''} />
             <Row k="Cancha" v={st.sel?.court ?? ''} />
           </div>
@@ -73,7 +81,7 @@ export function ConfirmScreen({ api }: { api: BookingApi }) {
               <div style={{ flex: 1, textAlign: 'left' }}>
                 <div style={{ font: `700 15.5px ${F.body}` }}>Pago total online</div>
                 <div style={{ font: `500 13px/1.45 ${F.body}`, color: C.soft, marginTop: 3 }}>
-                  Abonás el 100% ahora y la cancha queda confirmada.
+                  Abonás el 100% y la cancha queda confirmada.
                 </div>
               </div>
               <div style={{ font: `700 16px ${F.display}` }}>{fmt(total)}</div>
@@ -86,7 +94,7 @@ export function ConfirmScreen({ api }: { api: BookingApi }) {
               <div style={{ flex: 1, textAlign: 'left' }}>
                 <div style={{ font: `700 15.5px ${F.body}` }}>Seña online + resto en el club</div>
                 <div style={{ font: `500 13px/1.45 ${F.body}`, color: C.soft, marginTop: 3 }}>
-                  Pagás el {CLUB.senaPct}% ahora para confirmar el turno.
+                  Pagás el {senaPct}% para confirmar el turno.
                 </div>
               </div>
               <div style={{ font: `700 16px ${F.display}` }}>{fmt(sena)}</div>
@@ -104,14 +112,26 @@ export function ConfirmScreen({ api }: { api: BookingApi }) {
         </div>
 
         <div style={{ font: `500 12px/1.5 ${F.body}`, color: C.dim, marginTop: 16 }}>
-          Cancelación sin cargo hasta {CLUB.cancelHoras} h antes del turno. Después de ese plazo la
+          Cancelación sin cargo hasta {CANCEL_HORAS} h antes del turno. Después de ese plazo la
           seña no se devuelve.
         </div>
       </Body>
 
       <Footer>
-        <button type="button" onClick={() => set({ screen: 'pay' })} style={ctaOn}>
-          {st.pago === 'total' ? `Pagar ${fmt(total)}` : `Pagar seña ${fmt(sena)}`}
+        {/* Provisional: la reserva online queda gateada hasta que existan hold+TTL y pagos (F2R decisión 7). */}
+        <div
+          role="status"
+          style={{
+            padding: '12px 14px', borderRadius: 12,
+            background: 'rgba(255,201,74,.10)', border: '1px solid rgba(255,201,74,.28)',
+            font: `500 13px/1.5 ${F.body}`, color: '#E9D7AE', textAlign: 'center',
+          }}
+        >
+          La reserva online todavía no está habilitada. Para asegurar este turno, comunicate con
+          el club.
+        </div>
+        <button type="button" disabled style={ctaOff}>
+          Reservar online — próximamente
         </button>
       </Footer>
     </Screen>

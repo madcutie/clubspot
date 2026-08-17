@@ -25,21 +25,23 @@ Leer antes de proponer cualquier cosa de dominio. Están en `docs/`:
 
 | Documento | Qué contiene |
 |---|---|
-| `docs/referencia-ourclub/alcance-socios-mvp.html` | **Alcance del MVP aprobado.** Qué entra, qué no, y por qué. Incluye la decisión sobre arqueo de caja y las 7 preguntas abiertas |
-| `docs/referencia-ourclub/diseno-detallado-socios.html` | **Diseño detallado.** Modelo de dominio con campos y tipos, 8 máquinas de estado, los 11 jobs, concurrencia, roles, migración del padrón |
-| `docs/referencia-ourclub/` | **Relevamiento de OurClub — el sistema que usa el club hoy, no este producto.** 26 módulos, ~70 pantallas, campos y tipos, políticas de acceso, inconsistencias a no replicar. Es material de consulta, no especificación: leer primero [`docs/referencia-ourclub/AGENTS.md`](docs/referencia-ourclub/AGENTS.md) |
-| [`docs/adr/`](docs/adr/README.md) | **Decisiones de arquitectura escritas en piedra** (ADRs): monolito modular, agenda en lectura, auth propia, idioma, capas. No se rediscuten; si una cambia, se escribe un ADR nuevo |
+| [`docs/adr/`](docs/adr/README.md) | **Decisiones de arquitectura escritas en piedra** (ADRs): monolito modular, agenda en lectura, auth propia, idioma, capas, esquema y persistencia. No se rediscuten; si una cambia, se escribe un ADR nuevo |
+| [`docs/plan-backend-backoffice.md`](docs/plan-backend-backoffice.md) + su [bitácora](docs/plan-backend-backoffice.bitacora.md) | **Plan vigente del backend** y el registro de avance. La bitácora dice qué fase está en curso y dónde quedó |
+| [`docs/plan-disponibilidad-e2e.md`](docs/plan-disponibilidad-e2e.md) + su [bitácora](docs/plan-disponibilidad-e2e.bitacora.md) | **Plan aprobado (16/08/2026)**: disponibilidad de punta a punta —ADR-0013 en el backend, horarios/canchas del backoffice y portal de reservas contra la API real— con catálogo de 16 casos E2E por navegador + SQL. **F1 (backend) cerrada y verificada**; F2–F5 pendientes |
+| `src/frontend/backoffice/` | **El mock manda** (decisión del 14/08/2026): donde el prototipo y cualquier otra fuente difieran, gana el prototipo. Ver sección 10 |
 
-Ante una duda de dominio: **primero buscar en esos documentos**, no improvisar. Si la respuesta
-no está, es una pregunta para el usuario, no una decisión a tomar sola.
+> **16/08/2026 — se eliminó `docs/referencia-ourclub/`** (relevamiento de OurClub, alcance del
+> MVP y diseño detallado), por decisión del usuario: ese material venía confundiendo más de lo
+> que aportaba. Estaba desfasado —el relevamiento se hizo cuando el alcance todavía incluía
+> boletería— y describía **cómo lo hace un sistema ajeno**, no qué construir acá. Sigue en el
+> historial de git (commit `9e2f079`) si alguna vez hace falta consultarlo.
+>
+> Lo que ese material fundaba y todavía se da por válido está resumido en este archivo: los
+> dolores a resolver (§1), los 11 jobs (§7), los roles y las partes a desarrollar (§9). Las
+> preguntas abiertas de §3 siguen abiertas.
 
-Los dos primeros mandan sobre el tercero: el alcance define qué entra, el diseño cómo se
-resuelve, y el relevamiento sólo muestra **cómo lo hace el sistema ajeno**. Nada se implementa
-por estar relevado. Ojo con el desfasaje: el relevamiento se hizo cuando el alcance todavía
-incluía boletería.
-
-⚠️ `docs/referencia-ourclub/00-datos-de-prueba.md` tiene datos personales reales. Material
-interno: no publicar, no copiar a ejemplos, no usar en tests.
+Ante una duda de dominio: **primero buscar en los ADRs, el plan y el prototipo**, no improvisar.
+Si la respuesta no está, es una pregunta para el usuario, no una decisión a tomar sola.
 
 ## 3. Reglas de trabajo
 
@@ -60,6 +62,12 @@ interno: no publicar, no copiar a ejemplos, no usar en tests.
 
 - ✅ **Frontend del backoffice** — el diseño llegó (14/08/2026) y el cascarón está implementado
   en `src/frontend/backoffice/`. Ya no está bloqueado. Ver sección 10.
+- **Configuración de canchas y deportes** (ADR-0008): cómo se administran las canchas y a qué
+  deporte pertenecen — diseño pendiente con el usuario; mientras tanto, enum fijo.
+- **Granularidad de finanzas y capacidades** (ADR-0012): cobrar un turno y hacer liquidaciones
+  son capacidades distintas que se venden por separado, así que `finance` como bloque único
+  está mal cortado. Cómo se parte, y cómo las capacidades contratadas habilitan o no ciertas
+  features, **se define más adelante**. No partirlo por anticipado.
 - Las 7 preguntas abiertas del documento de alcance (facturación electrónica, cobrador
   domiciliario, débito automático, estrategia de migración, tolerancia de deuda para reservar,
   alquiler a no socios, acumulación de becas).
@@ -99,7 +107,7 @@ src/
    ├─ backoffice/                    consola del club (React+Vite) — ver sección 10
    └─ reservas/                      prototipo React+Vite del portal de reservas (ya existía)
 
-docs/                                alcance, diseño detallado, relevamiento y ADRs
+docs/                                ADRs, plan del backend y su bitácora
 ```
 
 Referencias entre capas: `Api → Application + Infrastructure` · `Infrastructure → Application`
@@ -114,17 +122,19 @@ core (núcleo, no se puede apagar)
  ├─ finance ───────────► core
  ├─ members ───────────► core, finance
  └─ bookings ──────────► core, finance
-      ├─ padel ────────► bookings
-      └─ football ─────► bookings
 ```
 
-**Por qué existe `bookings` si el usuario pidió "pádel" y "fútbol" como módulos separados:**
-el motor —espacio, grilla, turno, reserva, cobro— es el mismo, y duplicarlo sería duplicar la
-parte más delicada del sistema. `padel` y `football` existen como módulos contratables y
-contienen lo que sí difiere entre deportes.
+**No hay módulos por deporte** (ADR-0008, 16/08/2026): `bookings` se contrata una vez y cubre
+reservas de cualquier deporte. El deporte es **configuración de la cancha** (`Court.Sport`),
+no una unidad comercial; cómo se configuran las canchas y a qué deporte pertenecen es una
+decisión de diseño pendiente con el usuario. Los módulos `padel` y `football` que existieron
+hasta el 16/08/2026 fueron eliminados.
 
-**Por qué `members` y `bookings` dependen de `finance`:** ambos generan cargos y cobran. Sin
-módulo de dinero no hay nada que hacer con una cuota ni con un turno vendido.
+⚠️ **Las flechas hacia `finance` son provisionales** (ADR-0012): hoy no expresan una
+dependencia real —hay clientes que alquilan canchas sin nada de plata, y otros que cobran el
+turno pero no hacen liquidaciones— sino que la parte financiera se está desarrollando junto
+con reservas. Se corrigen cuando se defina la granularidad de finanzas y el concepto de
+**capacidades**, que es una decisión pendiente del usuario.
 
 ### Reglas de frontera entre módulos
 
@@ -132,7 +142,9 @@ Los módulos ya no son proyectos, así que la frontera **no la impone el compila
 convención de carpetas, cuidada en revisión (ADR-0005).
 
 - Una carpeta de módulo (`Domain/Bookings/`, `Application/Bookings/`) **no usa tipos** de la
-  carpeta de otro módulo, salvo lo propio de `padel`/`football` sobre `bookings`.
+  carpeta de otro módulo.
+- La Api **no usa EF ni los DbContexts directamente**: todo caso de uso entra por un handler
+  o un puerto de Application (ADR-0005). Los endpoints sólo traducen HTTP ↔ Application.
 - Lo que dos módulos necesitan compartir va como **contrato** (interfaz), implementado por el
   módulo dueño y cableado por DI. Ejemplo: la habilitación del socio la define `members` y la
   consume `bookings` sin conocerlo.
@@ -141,15 +153,35 @@ convención de carpetas, cuidada en revisión (ADR-0005).
 
 ## 5. Configurabilidad por módulos
 
-Es requisito del producto, no una feature futura.
+Es requisito del producto, no una feature futura. Las reglas de composición están en
+[ADR-0012](docs/adr/0012-composicion-de-modulos-por-tenant.md); en resumen:
+
+- **El módulo es la unidad más chica que se vende por separado.** Si un cliente puede pagar
+  por A sin B, A y B son módulos distintos. El corte lo define **lo que se vende**, no cómo
+  está organizado el código. Test: *¿existe un cliente que quiera esto sin aquello?*
+- **Dependencia dura es sólo "sin el otro el concepto no existe".** Que un módulo aproveche a
+  otro cuando está presente **no** lo vuelve dependencia.
+- **La persona es una sola y es de `core`**, que guarda quién es. Ser socio, anotarse en una
+  actividad, alquilar una cancha o deber plata son **vínculos**: cada módulo los guarda en sus
+  propias tablas contra `personId`. ⇒ **Ningún módulo agrega columnas a `people`.**
+- **Ningún módulo asume el vínculo de otro**: se le vende un turno a quien no es socio, y hay
+  socios que nunca reservaron.
+- **La integración entre módulos es por contrato y opcional**: si el módulo dueño no está
+  contratado, la funcionalidad **no se ofrece** en vez de fallar.
+
+Ejemplos que el producto tiene que soportar: un cliente con club + reservas (la misma persona
+es socia, hace karate y el sábado alquila una cancha) · otro con **sólo reservas** de fútbol 5,
+con cobro o sin cobro y sin liquidaciones · otro con club + reservas + finanzas.
 
 - Cada módulo se declara a sí mismo implementando `IClubModule` (id estable, nombre comercial,
   dependencias, si es núcleo).
 - `ModuleCatalog` valida el grafo al arrancar: dependencias inexistentes o ciclos hacen fallar
   el arranque, no producen comportamiento raro en runtime.
-- `ModuleCatalog.Resolve` expande al cierre transitivo: contratar `padel` trae `bookings`,
-  `finance` y `core` solos.
-- `ITenantModules` dice qué tiene contratado el club en curso.
+- `ModuleCatalog.Resolve` expande al cierre transitivo: contratar `members` trae `finance` y
+  `core` solos.
+- La tabla `club_module` persiste **sólo lo contratado comercialmente**; la habilitación es el
+  cierre resuelto en lectura (ADR-0009). Nadie lee esa tabla directo: el único camino es
+  `ITenantModules`, que ya devuelve el cierre.
 - **Módulo apagado ⇒ 404, no 403.** Quien no contrató un módulo no tiene por qué enterarse de
   que existe.
 - **Apagar un módulo no borra datos.** Corta el acceso; los datos quedan.
@@ -164,18 +196,39 @@ Es requisito del producto, no una feature futura.
   documentación del repo (ADRs, plan, bitácora, este archivo), los textos de la UI y los
   nombres comerciales (`DisplayName = "Socios"`). Los errores de la API viajan con código de
    regla; el texto en español que ve el operador lo pone el frontend.
-- **Persistencia:** los nombres físicos de PostgreSQL —tablas, columnas, índices, constraints y
-  la tabla de historial de EF— van en **camelCase**. No se adopta `snake_case` por convención
-  implícita.
+- **Persistencia** (ADR-0011, detalle completo ahí): un único `ClubSpotDbContext` y una sola
+  cadena de migraciones con la tabla estándar `__EFMigrationsHistory` (ADR-0010) · todo nombre
+  físico en **camelCase** · **tablas en plural** (`clubs`, `people` — plural inglés real,
+  incluidos los irregulares) y **columnas en singular** · los nombres de claves, índices y
+  foráneas los pone **una convención en el contexto** (`pkPeople`, `ixPeopleTenantIdSearchName`,
+  `uxUsersTenantIdEmail`, `fkCourtsScheduleId`): **no se escribe `HasDatabaseName` ni
+  `HasConstraintName` en las configuraciones**, sólo los check constraints se nombran a mano.
 - **Comentarios: casi cero** (ADR-0006). Se comenta únicamente lo muy importante que el código
   no puede decir solo —una invariante no obvia, una lista blanca, un orden obligatorio, un
   "a propósito" que sin nota parecería un error—, en una o dos líneas y en inglés. Prohibidos
   los doc-comments decorativos y los resúmenes de lo que ya dice la firma.
-- **Nunca un `decimal` suelto para plata**: se usa `Money`, que lleva la moneda.
+- **Nunca un `decimal` suelto para plata**: se usa `Money`, que lleva la moneda. Esto incluye
+  tarifas y precios de canchas, no sólo deudas y pagos.
+- **Una tabla pertenece a un módulo.** Antes de agregar una columna, preguntarse de quién es el
+  dato: si un vínculo entre una persona y algo de otro módulo, va en las tablas de ese módulo
+  contra `personId` (ADR-0012). `people.debtAmount` es la violación que queda en pie, marcada
+  como provisional hasta que se defina la parte financiera.
+- **La moneda la define `Club.Currency`**: `Money` no tiene moneda por defecto ni existe una
+  constante "ARS" en el código. Todo importe nace con la moneda del club en curso.
 - **Nunca `DateTime.Now`**: se inyecta `IClock`. Todo lo que el negocio llama "día" se resuelve
   con `ClubCalendar` en la zona del club, no en UTC.
 - **Nunca un `TenantId` implícito en background**: `ITenantContext.Current` lanza si no hay
   tenant, a propósito.
+- **Ids: `Guid` crudo.** Los únicos ids tipados son `TenantId` y `ModuleId`, que llevan reglas
+  propias. No se crean `PersonId`/`BookingId`: la consistencia pesa más que la ceremonia.
+- **Un concepto, un tipo.** Nada de enums o records duplicados entre capas "por comodidad":
+  el `Sport` duplicado entre SharedKernel y Domain fue la raíz de la revisión del 16/08.
+- **Los enums viajan en camelCase** (`"counter"`, `"padel"`), registrando **un converter por
+  enum concreto** en `Program.cs`. El converter abierto también renombraría las **claves de
+  diccionario** con clave enum, como los días de la semana de un horario.
+- **Lo provisional se marca.** Un stub que devuelve un valor fijo o incumple una regla del
+  dominio lleva un comentario de una línea que diga que es provisional y qué lo reemplaza; si
+  no, el que venga después lo lee como un error y lo "arregla".
 - Movimientos de dinero **append-only**: no se editan, se anulan con contra-asiento.
 - Las invariantes del dominio se imponen en el agregado y en la base. El sistema de referencia
   las "valida" con carteles en pantalla y por eso tiene datos rotos: grupos familiares de un
@@ -183,16 +236,27 @@ Es requisito del producto, no una feature futura.
 
 ### Comandos
 
+```powershell
+.\scripts\dev-up.ps1                # levanta todo: PostgreSQL, API y los dos frontends
+.\scripts\db-sql.ps1 '<consulta>'   # consulta la base (psql dentro del contenedor)
+.\scripts\db-reset.ps1              # borra la base; la API la recrea al arrancar
+```
+
 ```bash
 cd src/backend && dotnet build      # compilar la solución
-cd src/backend && dotnet test       # correr los tests
+cd src/backend && dotnet test       # correr los tests (los de integración necesitan Docker)
 cd src/frontend/backoffice && npm i && npm run dev   # consola del club — :5184
 cd src/frontend/reservas && npm i && npm run dev     # portal de reservas — :5183
 ```
 
+La API corre en `:5037` y **PostgreSQL en el `5433`** (el 5432 lo ocupa otro proyecto;
+override con `CLUBSPOT_PG_PORT`). En Development la API migra y siembra la base sola al
+arrancar. `dotnet ef` necesita `dotnet tool restore` una vez por clon.
+
 ## 7. Los procesos de background
 
-El diseño identifica **11 jobs para el MVP** (detalle completo en `docs/referencia-ourclub/diseno-detallado-socios.html`):
+El diseño identificó **11 jobs para el MVP**. Esta tabla es ahora la única referencia que
+queda de ellos en el repo (§2):
 
 | | Job | Cadencia |
 |---|---|---|
@@ -217,19 +281,27 @@ y recalcular saldos (se actualizan en la misma transacción del movimiento).
 
 ## 8. Estado actual
 
+> ✅ **16/08/2026 — remediación de modelado cerrada.** El trabajo de
+> [`docs/plan-remediacion-modelado.md`](docs/plan-remediacion-modelado.md) (ADR-0008 a 0011)
+> se ejecutó y verificó contra la base recreada; el detalle está en la bitácora del plan del
+> backend. Lo siguiente es el plan de disponibilidad de punta a punta
+> ([`docs/plan-disponibilidad-e2e.md`](docs/plan-disponibilidad-e2e.md)), que implementa
+> ADR-0013 — esperando aprobación del usuario.
+
 | | Qué |
 |---|---|
 | ✅ | Solución por capas (7 proyectos: SharedKernel, Domain, Application, Infrastructure, Api y 2 de tests) |
-| ✅ | `SharedKernel`: `TenantId`, `ITenantContext`, `IClock` + `ClubCalendar`, `Money`, `Periodo` |
-| ✅ | Modularidad: `ModuleId`, `IClubModule`, `ModuleCatalog` (valida grafo y cierre transitivo), `ITenantModules` |
-| ✅ | Manifiestos de módulo de `core` y `members` |
+| ✅ | `SharedKernel`: `TenantId`, `ITenantContext`, `IClock` + `ClubCalendar`, `Money`, `Period` |
+| ✅ | Modularidad: `ModuleId`, `IClubModule`, `ModuleCatalog` (valida grafo y cierre transitivo), `ITenantModules`; manifiestos de los 4 módulos (`core`, `members`, `finance`, `bookings`) |
+| ✅ | Plataforma (fase A): EF Core + PostgreSQL en esquema `public`, tenancy con filtro global, auth propia con JWT y roles, módulos por club con gating 404, seed de desarrollo |
+| 🚧 | Fase B: People completo (agregado, búsqueda, endpoints); Schedules y Courts persistidos con concurrencia optimista `xmin` — falta contrato final de configuración |
 | ✅ | Documentos en `docs/` y prototipo de reservas en `src/frontend/reservas/` |
 | ✅ | Cascarón del backoffice en `src/frontend/backoffice/` — 4 pantallas contra un mock (sección 10) |
-| ⬜ | Todo lo demás — ver abajo |
+| ⬜ | Todo lo demás — ver abajo y la bitácora del plan |
 
-**No hay todavía**: persistencia, autenticación, endpoints, jobs, ni un solo agregado de
-dominio implementado. Los dos frontends corren contra mocks en memoria: no hay una sola
-llamada HTTP real todavía.
+**No hay todavía**: agenda ni reservas (fase C), jobs, outbox, auditoría ni observabilidad.
+Los dos frontends corren contra mocks en memoria: no hay una sola llamada HTTP real desde el
+frontend todavía.
 
 ---
 
@@ -248,8 +320,8 @@ Leyenda: ✅ hecho · 🚧 bloqueado · ⬜ pendiente
 
 | | Parte | Notas |
 |---|---|---|
-| ⬜ | **Persistencia** | EF Core + PostgreSQL. Un esquema por módulo. Filtro global por tenant, con lista blanca auditada de los lugares que lo ignoran |
-| ⬜ | **Migraciones** | Una por módulo, para que el grafo de módulos se refleje en la base |
+| ⬜ | **Persistencia** | EF Core + PostgreSQL. Un único esquema `public` y un único `ClubSpotDbContext` (ADR-0007, ADR-0010); los módulos se separan en código, no en la base. Filtro global por tenant, con lista blanca auditada de los lugares que lo ignoran |
+| ⬜ | **Migraciones** | Una sola cadena, con la tabla de historial estándar `__EFMigrationsHistory` (ADR-0010). Un cambio que toca dos módulos entra en una sola migración |
 | ⬜ | **Tenancy** | Resolución por token/host en HTTP + **ámbito explícito en background**. Test que verifique que un job sin tenant lanza en vez de procesar |
 | ⬜ | **Autenticación y roles** | Usuarios, JWT, y los 7 roles operativos de la sección 6 del diseño. Incluye **separación de funciones**: quien calcula la liquidación no puede aprobarla |
 | ⬜ | **Configuración de módulos por club** | Persistir qué contrató cada tenant · endpoint de capacidades para el frontend · filtro que devuelve **404** en módulo apagado · gating del despachador de jobs |
@@ -282,6 +354,7 @@ Leyenda: ✅ hecho · 🚧 bloqueado · ⬜ pendiente
 | ⬜ | **Habilitación**: proyección materializada + recálculo por evento + contrato que consumen reservas y, a futuro, el control de acceso |
 | ⬜ | Alta express de mostrador ("socio al minuto") |
 | ⬜ | **Alta online**: pago → alta, sin que pueda quedar plata cobrada sin socio creado |
+| ⬜ | **Actividades**: deportes dictados por profesores, con alumnos. Confirmado por el usuario el 16/08/2026 que **son parte del módulo de club, no un módulo aparte**. Profesor y alumno son **vínculos** sobre `Person` (ADR-0012), no entidades nuevas ni columnas de `people`; el alumno puede además pertenecer a un grupo familiar |
 
 ### 9.4 Módulo `finance`
 
@@ -301,7 +374,7 @@ Leyenda: ✅ hecho · 🚧 bloqueado · ⬜ pendiente
 
 | | Parte |
 |---|---|
-| ⬜ | **Espacio**, grilla horaria y bloqueos |
+| ⬜ | **Disponibilidad** ([ADR-0013](docs/adr/0013-disponibilidad-patron-semanal-mas-excepciones.md)): patrón semanal reusable + **excepciones** con conjunto de fechas y alcance (cancha o club), que lo pisan. Cerrar es una excepción sin ventanas — no hay entidad "bloqueo" ni tipo "feriado"; gana la más específica. Sólo se dibuja hacia adelante, así que el patrón no se versiona |
 | ⬜ | **Tarifas** por tipo de espacio × franja horaria × socio/no socio |
 | ⬜ | **Materialización de turnos** (J5) — la fila del turno es el punto de serialización |
 | ⬜ | **Reserva**: hold con TTL → pago → confirmada, con el `UPDATE` condicional atómico |
@@ -310,12 +383,14 @@ Leyenda: ✅ hecho · 🚧 bloqueado · ⬜ pendiente
 | ⬜ | API de agenda día/semana — la UI espera diseño |
 | ⬜ | Elegibilidad vía el contrato de habilitación |
 
-### 9.6 Módulos `padel` y `football`
+### 9.6 Deporte y configuración de canchas (ADR-0008)
+
+Ya no existen módulos por deporte. Lo pendiente acá es **diseño con el usuario**, no código:
 
 | | Parte |
 |---|---|
-| ⬜ | Tipos de espacio y duración de turno propios de cada deporte |
-| ⬜ | **Definir con el usuario qué difiere realmente** entre ambos más allá de la configuración. Candidatos a discutir: partido abierto para completar jugadores, alquiler de paletas, seña, F5/F7/F11 |
+| ⬜ | **Definir cómo se configuran las canchas y a qué deporte pertenecen**: ¿enum fijo o catálogo administrable? ¿Formatos F5/F7/F11 como atributo de la cancha? ¿Tipos de espacio? Nada se infiere desde la base |
+| ⬜ | Si un deporte llega a tener reglas comerciales propias (partido abierto, alquiler de paletas, seña distinta), evaluar recién entonces si lo amerita — hoy la respuesta es configuración, no módulo |
 
 ### 9.7 Frontend
 
@@ -347,7 +422,7 @@ Cada fase deja algo utilizable. Del documento de diseño:
 | 2 | `finance`: conceptos, liquidación, cuenta corriente | existe la deuda |
 | 3 | Cobro de mostrador, recibos, cierre de caja | el club cobra |
 | 4 | Portal del socio + pago online | el socio se autogestiona |
-| 5 | `bookings` + `padel` + `football` | las canchas se venden |
+| 5 | `bookings` | las canchas se venden |
 | 6 | Habilitación como servicio consumible desde afuera | queda listo para integrar con lo que venga |
 
 La habilitación se **define** en la fase 1 aunque se **integre** en la 6: es la bisagra del
@@ -402,6 +477,7 @@ src/
 | | Parte |
 |---|---|
 | ⬜ | Conectar contra la API real y borrar `api/store.ts` |
+| ⬜ | **Quitar el deporte de la base de personas** (columna de la tabla, alta y ficha): `Person` ya no tiene deporte preferido (ADR-0008). Se hace al conectar las pantallas |
 | ⬜ | **Gating por módulo contratado**: hoy los cuatro módulos se montan siempre; falta el endpoint de capacidades y que una ruta de módulo apagado dé 404 |
 | ⬜ | Autenticación, roles y las acciones que hoy son sólo un aviso: bloquear horario, reprogramar, WhatsApp, exportar, elegir archivo de importación |
 | ⬜ | Accesibilidad: foco visible, navegación por teclado en la grilla, atajo ⌘K que hoy es sólo el cartel |

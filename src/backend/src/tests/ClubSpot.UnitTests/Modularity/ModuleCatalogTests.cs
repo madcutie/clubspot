@@ -10,9 +10,7 @@ public class ModuleCatalogTests
         new CoreModule(),
         new MembersModule(),
         new FinanceModule(),
-        new BookingsModule(),
-        new PadelModule(),
-        new FootballModule()
+        new BookingsModule()
     ]);
 
     [Fact]
@@ -20,7 +18,7 @@ public class ModuleCatalogTests
     {
         var catalog = Catalog();
 
-        Assert.Equal(6, catalog.All.Count);
+        Assert.Equal(4, catalog.All.Count);
     }
 
     [Fact]
@@ -32,17 +30,29 @@ public class ModuleCatalogTests
     }
 
     [Fact]
-    public void Contracting_padel_pulls_in_everything_it_needs()
+    public void Contracting_members_pulls_in_everything_it_needs()
     {
-        var enabled = Catalog().Resolve([ModuleId.Padel]);
+        var enabled = Catalog().Resolve([ModuleId.Members]);
 
         Assert.Equal(
-            [ModuleId.Core, ModuleId.Finance, ModuleId.Bookings, ModuleId.Padel],
+            [ModuleId.Core, ModuleId.Finance, ModuleId.Members],
+            enabled.OrderBy(m => m.Value).ToHashSet(),
+            HashSet<ModuleId>.CreateSetComparer());
+
+        Assert.DoesNotContain(ModuleId.Bookings, enabled);
+    }
+
+    [Fact]
+    public void Contracting_bookings_pulls_in_everything_it_needs()
+    {
+        var enabled = Catalog().Resolve([ModuleId.Bookings]);
+
+        Assert.Equal(
+            [ModuleId.Core, ModuleId.Finance, ModuleId.Bookings],
             enabled.OrderBy(m => m.Value).ToHashSet(),
             HashSet<ModuleId>.CreateSetComparer());
 
         Assert.DoesNotContain(ModuleId.Members, enabled);
-        Assert.DoesNotContain(ModuleId.Football, enabled);
     }
 
     [Fact]
@@ -62,15 +72,15 @@ public class ModuleCatalogTests
     }
 
     [Fact]
-    public void Disabling_bookings_is_rejected_while_sports_are_contracted()
+    public void Disabling_finance_is_rejected_while_its_dependents_are_contracted()
     {
         var catalog = Catalog();
-        var enabled = catalog.Resolve([ModuleId.Padel, ModuleId.Football]);
+        var enabled = catalog.Resolve([ModuleId.Members, ModuleId.Bookings]);
 
-        var dependents = catalog.DependentsOf(ModuleId.Bookings, enabled);
+        var dependents = catalog.DependentsOf(ModuleId.Finance, enabled);
 
         Assert.Equal(
-            [ModuleId.Padel, ModuleId.Football],
+            [ModuleId.Members, ModuleId.Bookings],
             dependents.OrderBy(m => m.Value).ToHashSet(),
             HashSet<ModuleId>.CreateSetComparer());
     }

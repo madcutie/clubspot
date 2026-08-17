@@ -4,23 +4,12 @@ export type Sport = 'padel' | 'futbol';
 export type CourtFilter = 'todas' | CourtType;
 export type CourtType = 'techada' | 'descubierta';
 
-export type Duration = 60 | 90 | 120;
+/** Duración del turno en minutos; las opciones reales vienen del catálogo. */
+export type Duration = number;
 
 export type PayMode = 'total' | 'sena';
-export type PayMethod = 'mp' | 'tarjeta' | 'transfer';
-export type PayStatus = 'idle' | 'processing' | 'rejected' | 'approved';
 
-export type Screen = 'home' | 'avail' | 'confirm' | 'pay' | 'done' | 'mine';
-
-export interface Court {
-  /** Nombre visible, ej. "Cancha 1". */
-  n: string;
-  /** Descripción corta, ej. "Blindex techada · con luces". */
-  d: string;
-  t: CourtType;
-  /** Diferencia sobre el precio base del deporte, por hora. */
-  extra: number;
-}
+export type Screen = 'home' | 'avail' | 'confirm' | 'mine';
 
 /** Turno elegido y ya validado contra la disponibilidad. */
 export interface Selection {
@@ -29,15 +18,7 @@ export interface Selection {
   dur: Duration;
   /** "19:00 – 20:30" */
   label: string;
+  /** "sábado 15 de agosto" */
+  diaLabel: string;
   price: number;
-}
-
-export interface Booking {
-  id: string;
-  sport: string;
-  when: string;
-  court: string;
-  pay: PayMode;
-  saldo: number;
-  past: boolean;
 }

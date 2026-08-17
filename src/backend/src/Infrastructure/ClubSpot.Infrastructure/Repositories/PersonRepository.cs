@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClubSpot.Infrastructure.Repositories;
 
-internal sealed class PersonRepository(CoreDbContext db) : IPersonRepository
+internal sealed class PersonRepository(ClubSpotDbContext db) : IPersonRepository
 {
     public Task<Person?> FindAsync(Guid id, CancellationToken cancellationToken) =>
         db.People.Include(person => person.Notes).SingleOrDefaultAsync(person => person.Id == id, cancellationToken);

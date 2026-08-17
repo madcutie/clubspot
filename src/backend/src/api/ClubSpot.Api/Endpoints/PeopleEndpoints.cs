@@ -2,8 +2,8 @@ using System.Security.Claims;
 using ClubSpot.Api.Auth;
 using ClubSpot.Api.Modularity;
 using ClubSpot.Application.Core.People;
+using ClubSpot.Domain.Core.People;
 using ClubSpot.SharedKernel.Modularity;
-using ClubSpot.SharedKernel.Primitives;
 
 namespace ClubSpot.Api.Endpoints;
 
@@ -38,8 +38,7 @@ public static class PeopleEndpoints
 
     private static async Task<IResult> CreateAsync(CreatePersonRequest request, HttpContext context, CreatePersonHandler handler, CancellationToken cancellationToken)
     {
-        if (!Enum.TryParse<Sport>(request.PreferredSport, true, out var sport)) return Results.BadRequest();
-        var person = await handler.HandleAsync(request.Name, request.Phone, request.Email, sport, UserId(context.User), cancellationToken);
+        var person = await handler.HandleAsync(request.Name, request.Phone, request.Email, UserId(context.User), cancellationToken);
         return Results.Created($"/api/people/{person.Id}", PersonResponse.From(person));
     }
 
@@ -90,18 +89,18 @@ public static class PeopleEndpoints
         _ => throw new ArgumentOutOfRangeException(nameof(filter))
     };
 
-    private sealed record CreatePersonRequest(string Name, string Phone, string Email, string PreferredSport);
+    private sealed record CreatePersonRequest(string Name, string Phone, string Email);
     private sealed record BlockPeopleRequest(IReadOnlyCollection<Guid> Ids, bool Blocked);
     private sealed record SetBlockRequest(bool Blocked);
     private sealed record AddNoteRequest(string Text);
-    private sealed record PersonResponse(Guid Id, string Name, string Phone, string Email, string Origin, string PreferredSport,
+    private sealed record PersonResponse(Guid Id, string Name, string Phone, string Email, PersonOrigin Origin,
         int Bookings, DateTimeOffset? LastBookingAt, decimal Debt, bool IsBlocked, DateTimeOffset CreatedAt)
     {
         public static PersonResponse From(PersonListItem person) => new(person.Id, person.Name, person.Phone, person.Email,
-            person.Origin.ToString(), person.PreferredSport.ToString(), person.Bookings, person.LastBookingAt, person.Debt.Amount,
+            person.Origin, person.Bookings, person.LastBookingAt, person.Debt.Amount,
             person.IsBlocked, person.CreatedAt);
         public static PersonResponse From(ClubSpot.Domain.Core.People.Person person) => new(person.Id, person.Name, person.Phone, person.Email,
-            person.Origin.ToString(), person.PreferredSport.ToString(), 0, null, person.Debt.Amount, person.IsBlocked, person.CreatedAt);
+            person.Origin, 0, null, person.Debt.Amount, person.IsBlocked, person.CreatedAt);
     }
     private sealed record PeoplePageResponse(IEnumerable<PersonResponse> Items, int Total, int Page, int Pages, int Census,
         int NeedsAttention, decimal TotalDebt, IReadOnlyDictionary<string, int> Totals);

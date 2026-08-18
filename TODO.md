@@ -9,3 +9,4 @@ necesitamos urls fijas
 todo tiene que ser https de local 
 necesitamos logs de las cosas que van pasando facilmente accesible por llm entonces es facil el throubleshooting.
 necesitamos una base de datos de logs de trafico de usuario y quizas de sistema.
+refactoring de todo, promover el reuso. 

@@ -24,6 +24,7 @@ public static class PortalEndpoints
 
     private static async Task<IResult> CreateBookingAsync(string clubSlug, PortalBookingRequest request,
         IBookingsStore store, IClubSettings clubSettings, IEnumerable<IPaymentGateway> gateways,
+        Microsoft.Extensions.Options.IOptions<ClubSpot.Infrastructure.Payments.PaymentsOptions> paymentsOptions,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.CustomerName) || string.IsNullOrWhiteSpace(request.CustomerPhone))
@@ -55,6 +56,11 @@ public static class PortalEndpoints
             // The client cannot know the booking id before this call; the return URL gets it here.
             var returnUrl = Microsoft.AspNetCore.WebUtilities.QueryHelpers
                 .AddQueryString(request.ReturnUrl!, "retorno", result.Id.ToString());
+            // Providers demand https back urls: route the return through the public tunnel,
+            // which bounces to the local portal (/api/payments/return) and enables auto_return.
+            var publicBaseUrl = paymentsOptions.Value.PublicBaseUrl;
+            if (!string.IsNullOrWhiteSpace(publicBaseUrl) && !returnUrl.StartsWith("https", StringComparison.OrdinalIgnoreCase))
+                returnUrl = $"{publicBaseUrl}/api/payments/return?to={Uri.EscapeDataString(returnUrl)}";
             try
             {
                 var session = await gateway!.CreateCheckoutAsync(new CheckoutRequest(

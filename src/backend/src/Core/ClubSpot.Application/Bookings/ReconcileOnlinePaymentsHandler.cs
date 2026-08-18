@@ -1,3 +1,4 @@
+using ClubSpot.Domain.Bookings;
 using ClubSpot.SharedKernel.Time;
 
 namespace ClubSpot.Application.Bookings;
@@ -23,7 +24,7 @@ public sealed class ReconcileOnlinePaymentsHandler(IBookingsStore store, IPaymen
         {
             foreach (var payment in await gateway.FindPaymentsAsync(bookingId, cancellationToken))
             {
-                var outcome = await store.ApplyPaymentAsync(payment, cancellationToken);
+                var outcome = await store.ApplyPaymentAsync(payment, PaymentSource.Reconciliation, cancellationToken);
                 if (outcome == PaymentApplyOutcome.Confirmed) applied++;
                 else if (outcome == PaymentApplyOutcome.Orphaned) orphaned++;
             }

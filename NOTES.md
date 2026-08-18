@@ -1,5 +1,5 @@
 
-
+### Datos de prueba
 
 Datos de prueba
 tarjeta 4509953566233704 · CVV 123 · 11/30 · DNI 12345678 · titular APRO. Quedo atento a los logs para cuando dispares el pago.
@@ -7,3 +7,8 @@ tarjeta 4509953566233704 · CVV 123 · 11/30 · DNI 12345678 · titular APRO. Qu
 TESTUSER290150638458885799
 98ZWeAWyLd
 Verificacion: 583899
+
+
+### Dudas
+
+ binary_mode=true que es?

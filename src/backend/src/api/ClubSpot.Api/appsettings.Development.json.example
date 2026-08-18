@@ -6,7 +6,8 @@
     "Gateway": "fake",
     "MercadoPago": {
       "AccessToken": "",
-      "WebhookSecret": ""
+      "WebhookSecret": "",
+      "RequireValidSignature": false
     }
   },
   "Jwt": {

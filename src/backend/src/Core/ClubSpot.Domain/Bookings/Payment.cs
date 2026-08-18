@@ -15,10 +15,12 @@ public sealed class Payment : ITenantOwned
     public Money Amount { get; private set; }
     public PaymentKind Kind { get; private set; }
     public PaymentStatus Status { get; private set; }
+    // How the payment reached us: the provider's webhook or the reconciliation job (J2).
+    public PaymentSource Source { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
     public Payment(Guid id, TenantId tenantId, Guid bookingId, string gateway, string externalId,
-        Money amount, PaymentKind kind, PaymentStatus status, DateTimeOffset createdAt)
+        Money amount, PaymentKind kind, PaymentStatus status, PaymentSource source, DateTimeOffset createdAt)
     {
         if (string.IsNullOrWhiteSpace(gateway))
             throw new ArgumentException("Gateway cannot be empty.", nameof(gateway));
@@ -33,6 +35,7 @@ public sealed class Payment : ITenantOwned
         Amount = amount;
         Kind = kind;
         Status = status;
+        Source = source;
         CreatedAt = createdAt;
     }
 
@@ -57,4 +60,10 @@ public enum PaymentStatus
     Approved,
     Rejected,
     ApprovedOrphan
+}
+
+public enum PaymentSource
+{
+    Webhook,
+    Reconciliation
 }

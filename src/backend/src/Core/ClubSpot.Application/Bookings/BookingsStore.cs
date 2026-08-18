@@ -26,7 +26,7 @@ public interface IBookingsStore
 {
     Task<BookingCreateResult> CreateAsync(BookingCreateInput input, CancellationToken cancellationToken);
     Task<BookingCancelOutcome> CancelAsync(Guid id, CancellationToken cancellationToken);
-    Task<PaymentApplyOutcome> ApplyPaymentAsync(PaymentNotification notification, CancellationToken cancellationToken);
+    Task<PaymentApplyOutcome> ApplyPaymentAsync(PaymentNotification notification, PaymentSource source, CancellationToken cancellationToken);
     Task<BookingSnapshot?> GetAsync(Guid id, CancellationToken cancellationToken);
     // Reconciliation candidates: online bookings still unpaid on our side.
     Task<IReadOnlyList<Guid>> GetUnsettledOnlineBookingIdsAsync(DateTimeOffset since, int limit, CancellationToken cancellationToken);

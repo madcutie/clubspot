@@ -199,7 +199,8 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
               ))}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {courts.map((c) => {
+              {/* Lo ocupado no se ofrece (decisión del usuario, 18/08/2026): sólo canchas libres. */}
+              {courts.filter((c) => c.free).map((c) => {
                 const act = st.courtIdx === c.i && c.free;
                 const last = c.free && nFree === 1;
                 return (

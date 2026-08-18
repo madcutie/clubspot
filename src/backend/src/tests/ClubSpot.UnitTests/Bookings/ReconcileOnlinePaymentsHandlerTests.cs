@@ -1,4 +1,5 @@
 using ClubSpot.Application.Bookings;
+using ClubSpot.Domain.Bookings;
 using ClubSpot.SharedKernel.Time;
 
 namespace ClubSpot.UnitTests.Bookings;
@@ -70,8 +71,9 @@ public sealed class ReconcileOnlinePaymentsHandlerTests
             return Task.FromResult(candidates);
         }
 
-        public Task<PaymentApplyOutcome> ApplyPaymentAsync(PaymentNotification notification, CancellationToken cancellationToken)
+        public Task<PaymentApplyOutcome> ApplyPaymentAsync(PaymentNotification notification, PaymentSource source, CancellationToken cancellationToken)
         {
+            Assert.Equal(PaymentSource.Reconciliation, source);
             AppliedNotifications.Add(notification);
             return Task.FromResult(OutcomeToReturn);
         }

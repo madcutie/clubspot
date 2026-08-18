@@ -7,3 +7,5 @@ cuando un pago se computa por webhook tiene que quedar acentado, si se hace por 
 cuando se termina el pago y es satisfactorio hay que hacer redirect
 necesitamos urls fijas
 todo tiene que ser https de local 
+necesitamos logs de las cosas que van pasando facilmente accesible por llm entonces es facil el throubleshooting.
+necesitamos una base de datos de logs de trafico de usuario y quizas de sistema.

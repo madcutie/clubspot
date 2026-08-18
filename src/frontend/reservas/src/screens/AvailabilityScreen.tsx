@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import { sportLabel } from '../domain/sport';
 import { hhmm } from '../domain/dates';
 import { durLabel, fmt } from '../domain/pricing';
@@ -61,10 +62,10 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
             aria-label="Volver"
             style={{
               width: 44, height: 44, marginLeft: -10, border: 'none', background: 'transparent',
-              color: C.ink, font: `400 22px ${F.body}`, cursor: 'pointer',
+              color: C.ink, cursor: 'pointer', display: 'grid', placeItems: 'center',
             }}
           >
-            ←
+            <ArrowLeft size={22} strokeWidth={2} />
           </button>
           <div style={{ font: `700 17px ${F.display}`, letterSpacing: '-.01em' }}>Horarios disponibles</div>
         </div>
@@ -76,7 +77,7 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
               onClick={() => set({ screen: 'home' })}
               style={{
                 minHeight: 44, padding: '0 14px', borderRadius: 12,
-                border: '1px solid rgba(255,255,255,.14)', background: C.surface, color: C.ink,
+                border: '1px solid #2C312C', background: C.surface, color: C.ink,
                 font: `600 13.5px ${F.body}`, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 8,
               }}
@@ -109,8 +110,8 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
           <div
             style={{
               marginTop: 10, padding: '11px 13px', borderRadius: 12,
-              background: 'rgba(255,201,74,.09)', border: '1px solid rgba(255,201,74,.26)',
-              font: `500 12.5px/1.45 ${F.body}`, color: '#E9D7AE',
+              background: 'rgba(205,232,74,.09)', border: '1px solid rgba(205,232,74,.26)',
+              font: `500 12.5px/1.45 ${F.body}`, color: '#DCE6B4',
             }}
           >
             Bloque de {durLabel(st.dur)} seguidas en la misma cancha. Solo se habilitan las canchas
@@ -149,20 +150,22 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
                     cursor: on ? 'pointer' : 'default',
                     font: `600 15px ${F.display}`,
                     border: act
-                      ? `2px solid ${C.accent}`
+                      ? `1px solid ${C.accent}`
                       : covered
-                        ? '1px solid rgba(255,201,74,.42)'
+                        ? '1px solid rgba(205,232,74,.42)'
                         : on
                           ? `1px solid ${C.border}`
-                          : '1px dashed rgba(255,255,255,.12)',
+                          : `1px dashed ${C.border}`,
+                    // La selección se rellena, no solo se bordea.
                     background: act
-                      ? C.accentSoft
+                      ? C.accent
                       : covered
-                        ? 'rgba(255,201,74,.06)'
+                        ? 'rgba(205,232,74,.06)'
                         : on
                           ? C.surface
                           : 'transparent',
-                    color: act ? C.accent : covered ? '#E9D7AE' : on ? C.ink : C.faint,
+                    color: act ? C.onAccent : covered ? '#DCE6B4' : on ? C.ink : C.faint,
+                    fontWeight: act ? 700 : undefined,
                     textDecoration: on || covered ? 'none' : 'line-through',
                   }}
                 >
@@ -211,9 +214,9 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
                       border: act
                         ? `2px solid ${C.accent}`
                         : c.free
-                          ? '1px solid rgba(255,255,255,.10)'
-                          : '1px dashed rgba(255,255,255,.14)',
-                      background: act ? 'rgba(255,201,74,.10)' : c.free ? C.surface : 'transparent',
+                          ? `1px solid ${C.border}`
+                          : `1px dashed ${C.border}`,
+                      background: act ? 'rgba(205,232,74,.08)' : c.free ? C.surface : 'transparent',
                       color: C.ink, opacity: c.free ? 1 : 0.45,
                       cursor: c.free ? 'pointer' : 'default', textAlign: 'left',
                     }}
@@ -244,8 +247,8 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
                         style={{
                           font: `700 10px ${F.body}`, letterSpacing: '.08em', textTransform: 'uppercase',
                           padding: '3px 7px', borderRadius: 6, whiteSpace: 'nowrap',
-                          border: `1px solid ${last ? 'rgba(255,201,74,.55)' : 'rgba(255,255,255,.18)'}`,
-                          color: c.free ? (last ? C.accent : C.text) : C.muted,
+                          border: `1px solid ${last ? 'rgba(217,165,20,.55)' : '#343A34'}`,
+                          color: c.free ? (last ? C.warn : C.text) : C.muted,
                         }}
                       >
                         {c.free ? (last ? 'Última libre' : 'Libre') : 'No disponible'}
@@ -261,13 +264,13 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
         {!q.isPending && !anyFree && (
           <div
             style={{
-              marginTop: 26, borderRadius: 18, border: '1px dashed rgba(255,255,255,.16)',
+              marginTop: 26, borderRadius: 18, border: '1px dashed #343A34',
               background: C.surface, padding: '22px 18px',
             }}
           >
             <div
               style={{
-                width: 40, height: 40, borderRadius: 12, border: '1px solid rgba(255,255,255,.16)',
+                width: 40, height: 40, borderRadius: 12, border: '1px solid #343A34',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 font: `600 18px ${F.display}`, color: C.muted,
               }}
@@ -303,7 +306,7 @@ export function AvailabilityScreen({ api }: { api: BookingApi }) {
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 60,
                         padding: '12px 14px', borderRadius: 14,
-                        border: '1px solid rgba(255,201,74,.35)', background: 'rgba(255,201,74,.08)',
+                        border: '1px solid rgba(205,232,74,.35)', background: 'rgba(205,232,74,.08)',
                         color: C.ink, cursor: 'pointer', textAlign: 'left',
                       }}
                     >

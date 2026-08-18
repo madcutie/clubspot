@@ -136,9 +136,18 @@ de ausentismo sin seña es el mismo que el club ya corre hoy con las reservas te
 | Login / cuentas de cliente | Etapa 3 |
 | Notificaciones (email/WhatsApp de confirmación) | Necesita el outbox (J4), que no existe |
 
-## Decisiones que la etapa 2 va a necesitar del usuario
+## Decisiones del usuario sobre pagos
 
-1. ¿Seña, pago total, o ambos? ¿Qué pasa con la seña si el cliente no viene?
-2. Ventana de cancelación real (el "12 h" del mock era inventado).
-3. Credenciales de Mercado Pago del club y cómo se prueba el webhook en local (túnel o
-   simulación manual).
+1. ✅ **Cancelación** (17/08/2026): **con menos de 24 horas de anticipación se cobra el 50%
+   del turno; con más, sin cargo.** Consecuencias por forma de pago:
+   - Pagó **total online** y cancela tarde → se le devuelve el 50% (reembolso parcial por el
+     gateway).
+   - Pagó **seña (50%)** y cancela tarde → la seña no se devuelve. Con más de 24 h, se
+     devuelve entera.
+   - **Paga en el club** y cancela tarde → debe el 50%; cobrarlo necesita la cuenta corriente
+     del módulo `finance`, que no existe todavía.
+   La regla hoy se **informa** en el portal; la automatización (reembolsos por MP, cargo por
+   deuda) queda para cuando existan cancelación desde el portal (etapa 3, requiere identidad)
+   y los reembolsos. Mientras tanto la aplica el operador a mano.
+2. ✅ Credenciales de sandbox cargadas y primer pago real verificado (17/08); ver bitácora.
+3. ⬜ ¿Seña y total conviven siempre, o el club elige qué ofrecer? (hoy se ofrecen ambos).

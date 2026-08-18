@@ -240,8 +240,8 @@ slug inexistente → 404; módulo `bookings` no contratado → 404.
 
 1. **Prerrequisito manual**: Docker Desktop arrancado (el daemon está apagado en la máquina).
 2. `scripts/db-reset.ps1` → base limpia, migrada y sembrada. **El Postgres de ClubSpot escucha
-   en el 5433** (el 5432 lo ocupa el Postgres de otro proyecto que arranca solo con Docker;
-   override con `CLUBSPOT_PG_PORT`).
+   en el 5432 estándar** (cambiado el 17/08/2026; si otro proyecto lo ocupa, override con
+   `CLUBSPOT_PG_PORT`).
 3. `scripts/dev-up.ps1` → API `:5037`, BO `:5184`, portal `:5183`.
 4. Correr C1→C16 en orden con la extensión de Chrome; después de cada acción del BO, la
    verificación SQL y la verificación visual en el portal (recargar o esperar la

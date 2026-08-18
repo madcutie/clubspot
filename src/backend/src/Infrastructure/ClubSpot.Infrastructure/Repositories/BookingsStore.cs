@@ -161,6 +161,19 @@ internal sealed class BookingsStore(
             booking.Status, booking.PaymentMode, booking.ExpiresAt);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetUnsettledOnlineBookingIdsAsync(
+        DateTimeOffset since, int limit, CancellationToken cancellationToken) =>
+        await db.Bookings.AsNoTracking()
+            .Where(booking => booking.PaymentMode != PaymentMode.Club
+                && (booking.Status == BookingStatus.PendingPayment || booking.Status == BookingStatus.Expired)
+                && booking.CreatedAt >= since
+                && !db.Payments.Any(payment => payment.BookingId == booking.Id
+                    && payment.Status == PaymentStatus.Approved))
+            .OrderBy(booking => booking.CreatedAt)
+            .Take(limit)
+            .Select(booking => booking.Id)
+            .ToListAsync(cancellationToken);
+
     private Task<int> ExpireStaleHoldsAsync(Guid courtId, DateOnly date, CancellationToken cancellationToken)
     {
         var utcNow = clock.UtcNow;

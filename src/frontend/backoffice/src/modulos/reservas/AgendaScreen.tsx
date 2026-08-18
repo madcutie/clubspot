@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAgenda } from '../../api/queries';
 import {
   GRILLA_DESDE,
@@ -129,7 +130,7 @@ export function AgendaScreen() {
             }}
             style={flecha}
           >
-            ←
+            <ChevronLeft size={15} strokeWidth={2} aria-hidden />
           </button>
           {Array.from({ length: 7 }, (_, i) => (
             <button
@@ -153,7 +154,7 @@ export function AgendaScreen() {
             }}
             style={flecha}
           >
-            →
+            <ChevronRight size={15} strokeWidth={2} aria-hidden />
           </button>
         </div>
       </div>
@@ -375,5 +376,6 @@ const flecha = {
   border: `1px solid ${c.borde}`,
   background: 'transparent',
   color: c.textoTenue2,
-  font: `400 13px ${sans}`,
+  display: 'grid',
+  placeItems: 'center',
 } as const;

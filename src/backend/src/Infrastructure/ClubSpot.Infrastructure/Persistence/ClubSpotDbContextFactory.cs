@@ -11,7 +11,7 @@ internal sealed class ClubSpotDbContextFactory : IDesignTimeDbContextFactory<Clu
     {
         var connectionString =
             Environment.GetEnvironmentVariable("CLUBSPOT_CONNECTION")
-            ?? "Host=localhost;Port=5433;Database=clubspot;Username=postgres;Password=clubspot";
+            ?? "Host=localhost;Port=5432;Database=clubspot;Username=postgres;Password=clubspot";
 
         var options = new DbContextOptionsBuilder<ClubSpotDbContext>()
             .UseNpgsql(connectionString)

@@ -6,8 +6,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-clubspot}
     ports:
-      # 5433 on the host: 5432 is taken by another project's postgres that auto-starts with Docker
-      - "${CLUBSPOT_PG_PORT:-5433}:5432"
+      # Standard port. If another project's postgres holds 5432, override with CLUBSPOT_PG_PORT.
+      - "${CLUBSPOT_PG_PORT:-5432}:5432"
     volumes:
       - clubspot-postgres:/var/lib/postgresql/data
     healthcheck:

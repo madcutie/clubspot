@@ -13,4 +13,6 @@ public interface IPaymentGateway
 {
     string Name { get; }
     Task<CheckoutSession> CreateCheckoutAsync(CheckoutRequest request, CancellationToken cancellationToken);
+    // Reconciliation (J2): every payment the provider holds for this booking, webhook or not.
+    Task<IReadOnlyList<PaymentNotification>> FindPaymentsAsync(Guid bookingId, CancellationToken cancellationToken);
 }

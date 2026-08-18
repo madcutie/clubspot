@@ -2,6 +2,26 @@
 
 Registro de avance del [plan](plan-reserva-online.md). Lo más nuevo arriba.
 
+## 17/08/2026 — primer pago real contra el sandbox de Mercado Pago
+
+Se cerró el ciclo con MP de verdad: reserva desde el portal → preferencia real (Checkout Pro,
+`binary_mode`, vencimiento = TTL del hold) → pago aprobado en el checkout real con tarjeta de
+prueba → reserva `confirmed` y fila en `payments` con el id real de la operación.
+
+- Cambios de esta tanda: SDK oficial en el proyecto vendor `ClubSpot.Infrastructure.MercadoPago`
+  (regla de vendors del usuario) · validación de firma `x-signature` (HMAC, 6 tests) ·
+  `auto_return` sólo con retorno https (MP lo exige) · si falla la creación del checkout, el
+  hold se cancela en vez de bloquear el turno todo el TTL · secretos en
+  `appsettings.Development.json`, que dejó de versionarse (ver AGENTS §6).
+- Se conectó el **MCP oficial de MP** a la sesión: webhook configurado y cuenta compradora
+  gestionadas por tooling, y documentación consultada de fuente (confirmado: el tópico
+  `payment` es el vigente para Checkout Pro; "legacy" en el panel refiere a otros productos).
+- ⚠️ **Pendiente**: la entrega espontánea del webhook en sandbox no llegó (cero tráfico en el
+  túnel; historial de MP vacío — el pago con credenciales de prueba corre por la app sombra
+  del vendedor de prueba). El aviso se disparó a mano firmado con la clave real y de ahí el
+  flujo fue el de producción. Refuerza la necesidad de la conciliación (J2), que automatiza
+  exactamente ese rescate. Confirmación definitiva de la entrega: con credenciales productivas.
+
 ## 17/08/2026 — etapa 2 ejecutada y verificada con el gateway fake
 
 Pago online completo funcionando contra el gateway de desarrollo. Mercado Pago quedó escrito

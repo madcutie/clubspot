@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { C, F } from './theme';
 
 /** Layout común: header fijo, cuerpo scrolleable, footer con la acción principal. */
@@ -24,7 +25,7 @@ export function Header({ children, bordered = true }: { children: ReactNode; bor
       style={{
         flex: 'none',
         padding: 'calc(env(safe-area-inset-top) + 18px) 20px 12px',
-        borderBottom: bordered ? '1px solid rgba(255,255,255,.07)' : undefined,
+        borderBottom: bordered ? '1px solid #1D211D' : undefined,
       }}
     >
       <div style={{ maxWidth: 640, margin: '0 auto' }}>{children}</div>
@@ -48,7 +49,7 @@ export function Footer({ children }: { children: ReactNode }) {
       style={{
         flex: 'none',
         padding: '12px 20px calc(env(safe-area-inset-bottom) + 18px)',
-        borderTop: '1px solid rgba(255,255,255,.07)',
+        borderTop: '1px solid #1D211D',
         background: C.screen,
       }}
     >
@@ -73,11 +74,12 @@ export function BackTitle({ title, onBack }: { title: string; onBack: () => void
           border: 'none',
           background: 'transparent',
           color: C.ink,
-          font: `400 22px ${F.body}`,
           cursor: 'pointer',
+          display: 'grid',
+          placeItems: 'center',
         }}
       >
-        ←
+        <ArrowLeft size={22} strokeWidth={2} />
       </button>
       <div style={{ font: `700 17px ${F.display}`, letterSpacing: '-.01em' }}>{title}</div>
     </div>

@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import { sportLabel } from '../domain/sport';
 import { fmt } from '../domain/pricing';
 import { loadMyBookings } from '../state/myBookings';
@@ -19,10 +20,10 @@ export function MyBookingsScreen({ api }: { api: BookingApi }) {
             aria-label="Volver"
             style={{
               width: 44, height: 44, marginLeft: -10, border: 'none', background: 'transparent',
-              color: C.ink, font: `400 22px ${F.body}`, cursor: 'pointer',
+              color: C.ink, cursor: 'pointer', display: 'grid', placeItems: 'center',
             }}
           >
-            ←
+            <ArrowLeft size={22} strokeWidth={2} />
           </button>
           <div style={{ font: `700 17px ${F.display}`, letterSpacing: '-.01em' }}>Mis reservas</div>
         </div>
@@ -48,7 +49,7 @@ export function MyBookingsScreen({ api }: { api: BookingApi }) {
                 <div
                   key={b.id}
                   style={{
-                    borderRadius: 14, border: '1px solid rgba(255,255,255,.10)',
+                    borderRadius: 14, border: '1px solid #2C312C',
                     background: C.surface, padding: '13px 15px',
                     display: 'flex', alignItems: 'center', gap: 12,
                   }}

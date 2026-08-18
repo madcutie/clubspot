@@ -11,6 +11,9 @@
   <Folder Name="/Api/">
     <Project Path="src/Api/ClubSpot.Api/ClubSpot.Api.csproj" />
   </Folder>
+  <Folder Name="/Jobs/">
+    <Project Path="src/Jobs/ClubSpot.JobService/ClubSpot.JobService.csproj" />
+  </Folder>
   <Folder Name="/Tests/">
     <Project Path="src/Tests/ClubSpot.UnitTests/ClubSpot.UnitTests.csproj" />
     <Project Path="src/Tests/ClubSpot.IntegrationTests/ClubSpot.IntegrationTests.csproj" />

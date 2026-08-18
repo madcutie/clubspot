@@ -28,4 +28,6 @@ public interface IBookingsStore
     Task<BookingCancelOutcome> CancelAsync(Guid id, CancellationToken cancellationToken);
     Task<PaymentApplyOutcome> ApplyPaymentAsync(PaymentNotification notification, CancellationToken cancellationToken);
     Task<BookingSnapshot?> GetAsync(Guid id, CancellationToken cancellationToken);
+    // Reconciliation candidates: online bookings still unpaid on our side.
+    Task<IReadOnlyList<Guid>> GetUnsettledOnlineBookingIdsAsync(DateTimeOffset since, int limit, CancellationToken cancellationToken);
 }

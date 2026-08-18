@@ -1,24 +1,27 @@
 import type { CSSProperties } from 'react';
 
 /**
- * Blanco y negro del club, con un solo amarillo para la acción principal y los
- * estados de disponibilidad. Todo estado se distingue además por texto y borde,
+ * Carbón verdoso con un solo lima eléctrico para la acción principal y la
+ * selección, que se rellena en vez de solo bordearse. El ámbar queda como
+ * aviso de escasez. Todo estado se distingue además por texto y borde,
  * no solo por color.
  */
 export const C = {
-  page: '#08090B',
-  screen: '#0D0E11',
-  surface: '#14161A',
-  accent: '#FFC94A',
-  accentSoft: 'rgba(255,201,74,.12)',
-  ink: '#F5F7FA',
-  text: '#C7CDD4',
-  soft: '#9BA1AC',
-  muted: '#8A9199',
-  dim: '#6C737F',
-  faint: '#5F6772',
-  line: 'rgba(255,255,255,.08)',
-  border: 'rgba(255,255,255,.13)',
+  page: '#070808',
+  screen: '#0A0C0B',
+  surface: '#151815',
+  accent: '#CDE84A',
+  accentSoft: 'rgba(205,232,74,.10)',
+  onAccent: '#10130A',
+  warn: '#D9A514',
+  ink: '#F2F5F0',
+  text: '#C6CCC4',
+  soft: '#9AA098',
+  muted: '#8A9188',
+  dim: '#6E756C',
+  faint: '#4E554D',
+  line: '#1D211D',
+  border: '#2C312C',
 } as const;
 
 export const F = {
@@ -44,7 +47,7 @@ export const stepTitle: CSSProperties = {
 export const card: CSSProperties = {
   borderRadius: 18,
   background: C.surface,
-  border: '1px solid rgba(255,255,255,.08)',
+  border: `1px solid ${C.line}`,
   padding: 18,
 };
 
@@ -86,7 +89,7 @@ export function radio(active: boolean): CSSProperties {
     height: 22,
     borderRadius: '50%',
     flex: 'none',
-    border: active ? `7px solid ${C.accent}` : '2px solid rgba(255,255,255,.28)',
+    border: active ? `7px solid ${C.accent}` : '2px solid #3A403A',
     background: 'transparent',
   };
 }
@@ -102,8 +105,8 @@ export function sportCard(active: boolean): CSSProperties {
     borderRadius: 18,
     cursor: 'pointer',
     textAlign: 'left',
-    border: active ? `2px solid ${C.accent}` : '1px solid rgba(255,255,255,.11)',
-    background: active ? 'rgba(255,201,74,.10)' : C.surface,
+    border: active ? `2px solid ${C.accent}` : `1px solid ${C.border}`,
+    background: active ? C.accentSoft : C.surface,
     color: active ? C.accent : C.ink,
   };
 }
@@ -115,8 +118,8 @@ export function optCard(active: boolean): CSSProperties {
     padding: '15px 16px',
     borderRadius: 16,
     cursor: 'pointer',
-    border: active ? `2px solid ${C.accent}` : '1px solid rgba(255,255,255,.11)',
-    background: active ? 'rgba(255,201,74,.08)' : C.surface,
+    border: active ? `2px solid ${C.accent}` : `1px solid ${C.border}`,
+    background: active ? 'rgba(205,232,74,.08)' : C.surface,
     color: C.ink,
   };
 }
@@ -127,15 +130,15 @@ export const ctaOn: CSSProperties = {
   border: 'none',
   borderRadius: 14,
   background: C.accent,
-  color: C.surface,
-  font: `700 16.5px ${F.body}`,
+  color: C.onAccent,
+  font: `800 16.5px ${F.body}`,
   cursor: 'pointer',
 };
 
 export const ctaOff: CSSProperties = {
   width: '100%',
   minHeight: 52,
-  border: '1px solid rgba(255,255,255,.12)',
+  border: `1px solid ${C.border}`,
   borderRadius: 14,
   background: 'transparent',
   color: C.faint,
@@ -147,7 +150,7 @@ export const ctaGhost: CSSProperties = {
   width: '100%',
   minHeight: 50,
   borderRadius: 14,
-  border: '1px solid rgba(255,255,255,.16)',
+  border: '1px solid #343A34',
   background: 'transparent',
   color: C.ink,
   font: `600 15px ${F.body}`,

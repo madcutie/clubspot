@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Check } from 'lucide-react';
 import { useCanchas, useGuardarHorarios, useHorarios } from '../../api/queries';
 import { DIAS, MESES, duracionLarga, fechaDe, hhmm } from '../../domain/fechas';
 import {
@@ -443,7 +444,7 @@ function FilaDia({
               lineHeight: 1,
             }}
           >
-            {abierto ? '✓' : ''}
+            {abierto ? <Check size={11} strokeWidth={3} aria-hidden /> : ''}
           </button>
           <span style={{ font: `500 12.5px ${sans}`, color: abierto ? c.tinta : c.textoApagado }}>
             {label}

@@ -170,7 +170,7 @@ export function ConfirmScreen({ api }: { api: BookingApi }) {
           <div
             style={{
               marginTop: 18, padding: '12px 14px', borderRadius: 12,
-              background: C.surface, border: '1px solid rgba(255,255,255,.10)',
+              background: C.surface, border: '1px solid #2C312C',
               font: `500 13px/1.5 ${F.body}`, color: C.soft,
             }}
           >
@@ -178,6 +178,12 @@ export function ConfirmScreen({ api }: { api: BookingApi }) {
             El turno queda confirmado a tu nombre y abonás {fmt(total)} cuando venís a jugar.
           </div>
         )}
+
+        {/* Regla del club (17/08/2026): sin cargo hasta 24 h antes; después se cobra el 50%. */}
+        <div style={{ font: `500 12px/1.5 ${F.body}`, color: C.dim, marginTop: 16 }}>
+          Cancelación sin cargo hasta 24 h antes del turno. Con menos de 24 h se cobra el 50%
+          del valor{senaPct === 50 ? ' (la seña no se devuelve)' : ''}.
+        </div>
       </Body>
 
       <Footer>
@@ -186,8 +192,8 @@ export function ConfirmScreen({ api }: { api: BookingApi }) {
             role="alert"
             style={{
               padding: '12px 14px', borderRadius: 12,
-              background: 'rgba(255,201,74,.10)', border: '1px solid rgba(255,201,74,.28)',
-              font: `500 13px/1.5 ${F.body}`, color: '#E9D7AE', textAlign: 'center',
+              background: 'rgba(205,232,74,.10)', border: '1px solid rgba(205,232,74,.28)',
+              font: `500 13px/1.5 ${F.body}`, color: '#DCE6B4', textAlign: 'center',
             }}
           >
             Ese turno se acaba de ocupar. Elegí otro horario.
@@ -198,8 +204,8 @@ export function ConfirmScreen({ api }: { api: BookingApi }) {
             role="alert"
             style={{
               padding: '12px 14px', borderRadius: 12,
-              background: 'rgba(255,201,74,.10)', border: '1px solid rgba(255,201,74,.28)',
-              font: `500 13px/1.5 ${F.body}`, color: '#E9D7AE', textAlign: 'center',
+              background: 'rgba(205,232,74,.10)', border: '1px solid rgba(205,232,74,.28)',
+              font: `500 13px/1.5 ${F.body}`, color: '#DCE6B4', textAlign: 'center',
             }}
           >
             {error}
@@ -252,7 +258,7 @@ function PayOption({ active, onClick, title, detail, amount, note }: {
         <div
           style={{
             marginTop: 12, padding: '10px 12px', borderRadius: 11,
-            background: 'rgba(255,201,74,.10)', border: '1px solid rgba(255,201,74,.28)',
+            background: 'rgba(205,232,74,.10)', border: '1px solid rgba(205,232,74,.28)',
             font: `700 13px ${F.body}`, color: C.accent, textAlign: 'left',
           }}
         >

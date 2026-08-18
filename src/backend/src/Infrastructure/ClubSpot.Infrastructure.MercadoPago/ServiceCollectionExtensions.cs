@@ -13,11 +13,9 @@ public static class ServiceCollectionExtensions
             configuration.GetSection(MercadoPagoOptions.SectionName).Bind(options);
             options.PublicBaseUrl = configuration["Payments:PublicBaseUrl"] ?? "";
             if (string.IsNullOrWhiteSpace(options.AccessToken))
-                throw new InvalidOperationException("Payments:MercadoPago:AccessToken is required (user-secrets in dev).");
-            if (string.IsNullOrWhiteSpace(options.WebhookSecret))
-                throw new InvalidOperationException("Payments:MercadoPago:WebhookSecret is required (user-secrets in dev).");
-            if (string.IsNullOrWhiteSpace(options.PublicBaseUrl))
-                throw new InvalidOperationException("Payments:PublicBaseUrl is required for Mercado Pago.");
+                throw new InvalidOperationException("Payments:MercadoPago:AccessToken is required (local appsettings.Development.json).");
+            // PublicBaseUrl is only needed to create checkouts; the gateway validates it there,
+            // so a host that only reconciles (JobService) can run without it.
         });
         services.AddScoped<MercadoPagoGateway>();
         services.AddScoped<IPaymentGateway>(provider => provider.GetRequiredService<MercadoPagoGateway>());

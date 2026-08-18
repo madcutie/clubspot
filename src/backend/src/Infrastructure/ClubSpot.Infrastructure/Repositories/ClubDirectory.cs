@@ -12,4 +12,7 @@ internal sealed class ClubDirectory(ClubSpotDbContext db) : IClubDirectory
             .Where(club => club.Slug == slug.Trim())
             .Select(club => (TenantId?)club.Id)
             .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<TenantId>> GetAllClubIdsAsync(CancellationToken cancellationToken) =>
+        await db.Clubs.AsNoTracking().Select(club => club.Id).ToListAsync(cancellationToken);
 }

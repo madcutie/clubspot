@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { CalendarX, Check, Hourglass } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchBooking, invalidateAvailability, type BookingSnapshot } from '../api/portalApi';
 import { dayLabelOf, hhmm, parseDate } from '../domain/dates';
@@ -71,13 +72,18 @@ export function ReturnScreen({ api }: { api: BookingApi }) {
                 aria-hidden
                 style={{
                   width: 56, height: 56, margin: '0 auto 14px', borderRadius: 18,
-                  border: `2px solid ${confirmada ? C.accent : 'rgba(255,255,255,.25)'}`,
+                  border: `2px solid ${confirmada ? C.accent : '#3A403A'}`,
                   color: confirmada ? C.accent : C.muted,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  font: `700 26px ${F.display}`,
                 }}
               >
-                {confirmada ? '✓' : holdVencido ? '—' : '…'}
+                {confirmada ? (
+                  <Check size={28} strokeWidth={2.5} />
+                ) : holdVencido ? (
+                  <CalendarX size={26} strokeWidth={2} />
+                ) : (
+                  <Hourglass size={26} strokeWidth={2} />
+                )}
               </div>
               <div style={{ font: `800 24px ${F.display}`, letterSpacing: '-.02em' }}>
                 {confirmada

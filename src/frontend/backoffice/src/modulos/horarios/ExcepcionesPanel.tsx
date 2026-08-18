@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { X } from 'lucide-react';
 import {
   useBorrarExcepcion,
   useCanchas,
@@ -216,7 +217,7 @@ export function ExcepcionesPanel() {
                       onClick={() => setFechas(fechas.filter((x) => x !== f))}
                       style={quitarChip}
                     >
-                      ×
+                      <X size={11} strokeWidth={2.5} aria-hidden />
                     </button>
                   </span>
                 ))}
@@ -363,8 +364,8 @@ const quitarChip = {
   color: c.ambarTexto,
   cursor: 'pointer',
   padding: 0,
-  font: `500 12px ${sans}`,
-  lineHeight: 1,
+  display: 'inline-flex',
+  alignItems: 'center',
 } as const;
 
 const botonQuitar = {

@@ -5,4 +5,5 @@ namespace ClubSpot.Application.Core;
 public interface IClubDirectory
 {
     Task<TenantId?> FindClubIdBySlugAsync(string slug, CancellationToken cancellationToken);
+    Task<IReadOnlyList<TenantId>> GetAllClubIdsAsync(CancellationToken cancellationToken);
 }

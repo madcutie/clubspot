@@ -55,7 +55,7 @@ export function HomeScreen({ api }: { api: BookingApi }) {
             minHeight: 44,
             padding: '0 14px',
             borderRadius: 12,
-            border: '1px solid rgba(255,255,255,.14)',
+            border: '1px solid #2C312C',
             background: 'transparent',
             color: C.ink,
             font: `600 13px ${F.body}`,
@@ -144,8 +144,8 @@ export function HomeScreen({ api }: { api: BookingApi }) {
                   border: active
                     ? `2px solid ${C.accent}`
                     : lleno
-                      ? '1px dashed rgba(255,255,255,.14)'
-                      : '1px solid rgba(255,255,255,.11)',
+                      ? '1px dashed #2C312C'
+                      : '1px solid #2C312C',
                   background: active ? C.accentSoft : lleno ? 'transparent' : C.surface,
                   color: active ? C.accent : lleno ? C.faint : C.text,
                 }}
@@ -186,7 +186,7 @@ export function HomeScreen({ api }: { api: BookingApi }) {
           <div
             style={{
               borderRadius: 16,
-              border: '1px solid rgba(255,255,255,.08)',
+              border: '1px solid #1D211D',
               background: C.surface,
               padding: '14px 16px',
               display: 'flex',

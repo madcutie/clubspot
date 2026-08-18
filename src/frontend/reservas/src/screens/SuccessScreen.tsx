@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { sportLabel } from '../domain/sport';
 import { fmt } from '../domain/pricing';
 import { Body, Footer, Header, Screen } from '../ui/Screen';
@@ -23,10 +24,9 @@ export function SuccessScreen({ api }: { api: BookingApi }) {
               width: 56, height: 56, margin: '0 auto 14px', borderRadius: 18,
               border: `2px solid ${C.accent}`, color: C.accent,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              font: `700 26px ${F.display}`,
             }}
           >
-            ✓
+            <Check size={28} strokeWidth={2.5} />
           </div>
           <div style={{ font: `800 24px ${F.display}`, letterSpacing: '-.02em' }}>
             ¡Listo, {done.nombre.split(' ')[0]}!
@@ -51,7 +51,8 @@ export function SuccessScreen({ api }: { api: BookingApi }) {
         </div>
 
         <div style={{ font: `500 12.5px/1.5 ${F.body}`, color: C.dim, marginTop: 16, textAlign: 'center' }}>
-          Si no podés venir, avisale al club para liberar el turno.
+          Si no podés venir, avisale al club: hasta 24 h antes es sin cargo; con menos de 24 h
+          se cobra el 50% del turno.
         </div>
       </Body>
 
@@ -60,7 +61,7 @@ export function SuccessScreen({ api }: { api: BookingApi }) {
           type="button"
           onClick={() => set({ screen: 'mine' })}
           style={{
-            minHeight: 48, borderRadius: 14, border: '1px solid rgba(255,255,255,.16)',
+            minHeight: 48, borderRadius: 14, border: '1px solid #343A34',
             background: 'transparent', color: C.ink, font: `600 15px ${F.body}`, cursor: 'pointer',
           }}
         >

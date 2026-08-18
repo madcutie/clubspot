@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { c, sans } from './theme';
+import { X } from 'lucide-react';
+import { c } from './theme';
 
 /**
  * Panel lateral. Todo lo que se abre desde una fila —la ficha, el turno, un
@@ -56,11 +57,12 @@ export function BotonCerrar({ onClick }: { onClick: () => void }) {
         border: `1px solid ${c.bordeFirme}`,
         background: 'transparent',
         color: c.textoGris,
-        font: `400 14px ${sans}`,
         cursor: 'pointer',
+        display: 'grid',
+        placeItems: 'center',
       }}
     >
-      ×
+      <X size={14} strokeWidth={2} aria-hidden />
     </button>
   );
 }

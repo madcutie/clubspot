@@ -70,6 +70,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAvailabilityOverridesStore, AvailabilityOverridesStore>();
         services.AddScoped<IAvailabilityQueries, AvailabilityQueries>();
         services.AddScoped<IBookingsStore, BookingsStore>();
+        services.AddScoped<ReconcileOnlinePaymentsHandler>();
         services.AddScoped<GetSchedulesHandler>();
         services.AddScoped<ReplaceSchedulesHandler>();
         services.AddScoped<GetCourtsHandler>();

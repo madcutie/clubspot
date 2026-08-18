@@ -46,6 +46,8 @@ docker compose -f (Join-Path $repo 'compose.yaml') up -d postgres | Out-Null
 Write-Host 'Abriendo servicios:' -ForegroundColor Yellow
 Start-Service-Window 'ClubSpot API' (Join-Path $repo 'src\backend') `
     "`$env:ASPNETCORE_ENVIRONMENT='Development'; `$env:ASPNETCORE_URLS='http://localhost:5037'; dotnet run --project src/Api/ClubSpot.Api --no-launch-profile"
+Start-Service-Window 'ClubSpot JobService' (Join-Path $repo 'src\backend') `
+    "`$env:DOTNET_ENVIRONMENT='Development'; dotnet run --project src/Jobs/ClubSpot.JobService"
 Start-Service-Window 'ClubSpot Backoffice' (Join-Path $repo 'src\frontend\backoffice') 'npm run dev'
 Start-Service-Window 'ClubSpot Reservas' (Join-Path $repo 'src\frontend\reservas') 'npm run dev'
 
@@ -53,6 +55,7 @@ Write-Host ''
 Write-Host 'Portal de reservas   http://localhost:5183' -ForegroundColor Green
 Write-Host 'Backoffice           http://localhost:5184' -ForegroundColor Green
 Write-Host 'API                  http://localhost:5037' -ForegroundColor Green
-Write-Host 'PostgreSQL           localhost:5433' -ForegroundColor Green
+Write-Host 'JobService           (sin puerto; concilia pagos cada 5 min)' -ForegroundColor Green
+Write-Host 'PostgreSQL           localhost:5432' -ForegroundColor Green
 Write-Host ''
 Write-Host 'La API tarda unos segundos en migrar y sembrar la primera vez.' -ForegroundColor DarkGray

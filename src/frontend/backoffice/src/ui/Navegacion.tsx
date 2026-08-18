@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { ArrowUpDown, type LucideIcon } from 'lucide-react';
 import type { Club } from '../domain/types';
 import { c, mono, sans } from './theme';
 import { useTostada } from './Tostadas';
@@ -13,6 +14,7 @@ export interface ItemNav {
   a: string;
   label: string;
   tag: string;
+  icono: LucideIcon;
 }
 
 function Item({ item }: { item: ItemNav }) {
@@ -44,6 +46,7 @@ function Item({ item }: { item: ItemNav }) {
               background: isActive ? c.verde : 'transparent',
             }}
           />
+          <item.icono size={14} strokeWidth={1.8} style={{ flex: 'none' }} aria-hidden />
           {item.label}
           <span
             style={{
@@ -150,7 +153,7 @@ export function Navegacion({
             {club?.sede ?? ''}
           </div>
         </div>
-        <span style={{ flex: 'none', font: `400 9px ${sans}`, color: c.textoGris2 }}>⇅</span>
+        <ArrowUpDown size={12} strokeWidth={1.8} style={{ flex: 'none', color: c.textoGris2 }} aria-hidden />
       </button>
 
       <Rotulo primero>OPERACIÓN</Rotulo>

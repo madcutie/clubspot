@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { CalendarDays, Clock, LandPlot, Users } from 'lucide-react';
 import { useAgenda, useCanchas, useClub, useHorarios, usePersonas } from './api/queries';
 import { resumenAgenda } from './domain/agenda';
 import { isoDe } from './domain/fechas';
@@ -31,12 +32,13 @@ export default function App() {
       a: '/reservas',
       label: 'Reservas',
       tag: agenda ? String(resumenAgenda(agenda.canchas).turnos) : '',
+      icono: CalendarDays,
     },
-    { a: '/canchas', label: 'Canchas', tag: canchas ? String(canchas.length) : '' },
-    { a: '/horarios', label: 'Horarios', tag: horarios ? String(horarios.length) : '' },
+    { a: '/canchas', label: 'Canchas', tag: canchas ? String(canchas.length) : '', icono: LandPlot },
+    { a: '/horarios', label: 'Horarios', tag: horarios ? String(horarios.length) : '', icono: Clock },
   ];
   const base: ItemNav[] = [
-    { a: '/personas', label: 'Personas', tag: padron ? String(padron.padron) : '' },
+    { a: '/personas', label: 'Personas', tag: padron ? String(padron.padron) : '', icono: Users },
   ];
 
   return (

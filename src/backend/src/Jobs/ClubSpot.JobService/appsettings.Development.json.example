@@ -1,0 +1,13 @@
+{
+  "ConnectionStrings": {
+    "ClubSpot": "Host=localhost;Port=5432;Database=clubspot;Username=postgres;Password=clubspot",
+    "Hangfire": "Host=localhost;Port=5432;Database=clubspot-hangfire;Username=postgres;Password=clubspot"
+  },
+  "Payments": {
+    "Gateway": "mercadopago",
+    "MercadoPago": {
+      "AccessToken": "",
+      "WebhookSecret": ""
+    }
+  }
+}

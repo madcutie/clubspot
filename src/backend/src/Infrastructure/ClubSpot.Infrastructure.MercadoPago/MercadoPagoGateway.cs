@@ -1,6 +1,7 @@
 using System.Globalization;
 using ClubSpot.Application.Bookings;
 using MercadoPago.Client;
+using MercadoPago.Client.Common;
 using MercadoPago.Client.Payment;
 using MercadoPago.Client.Preference;
 using MercadoPago.Error;
@@ -20,6 +21,9 @@ public sealed class MercadoPagoGateway(IOptions<MercadoPagoOptions> options) : I
 
     public async Task<CheckoutSession> CreateCheckoutAsync(CheckoutRequest request, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(_options.PublicBaseUrl))
+            throw new InvalidOperationException("Payments:PublicBaseUrl is required to create a checkout.");
+
         var preference = await new PreferenceClient().CreateAsync(new PreferenceRequest
         {
             Items =
@@ -70,6 +74,22 @@ public sealed class MercadoPagoGateway(IOptions<MercadoPagoOptions> options) : I
         {
             return null;
         }
+    }
+
+    // Reconciliation: whatever Mercado Pago holds for this booking, delivered webhook or not.
+    public async Task<IReadOnlyList<PaymentNotification>> FindPaymentsAsync(Guid bookingId, CancellationToken cancellationToken)
+    {
+        var search = await new PaymentClient().SearchAsync(new SearchRequest
+        {
+            Filters = new Dictionary<string, object> { ["external_reference"] = bookingId.ToString() }
+        }, RequestOptions(), cancellationToken);
+
+        return (search.Results ?? [])
+            .Where(payment => payment.Id is not null && payment.Status is "approved" or "rejected")
+            .Select(payment => new PaymentNotification(bookingId, GatewayName,
+                payment.Id!.Value.ToString(CultureInfo.InvariantCulture),
+                payment.Status == "approved", payment.TransactionAmount))
+            .ToList();
     }
 
     public bool VerifyWebhookSignature(string? xSignature, string? xRequestId, string? dataId) =>

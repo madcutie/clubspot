@@ -98,9 +98,12 @@ src/
 │     │  ├─ ClubSpot.Domain/           agregados y servicios de dominio puros — carpeta por módulo
 │     │  └─ ClubSpot.Application/      casos de uso (handlers) y puertos — carpeta por módulo
 │     ├─ Infrastructure/
-│     │  └─ ClubSpot.Infrastructure/   EF Core, repositorios, tenancy, gateways
+│     │  ├─ ClubSpot.Infrastructure/   EF Core, repositorios, tenancy, gateway fake
+│     │  └─ ClubSpot.Infrastructure.MercadoPago/  SDK de MP aislado (regla de vendors, §6)
 │     ├─ Api/
 │     │  └─ ClubSpot.Api/              host: endpoints, JWT, middleware, DI, arranque
+│     ├─ Jobs/
+│     │  └─ ClubSpot.JobService/       host de jobs: Hangfire (base propia clubspot-hangfire), J2
 │     └─ Tests/
 │        ├─ ClubSpot.UnitTests/
 │        └─ ClubSpot.IntegrationTests/
@@ -113,8 +116,10 @@ docs/                                ADRs, plan del backend y su bitácora
 
 Referencias entre capas: `Api → Application + Infrastructure` · `Infrastructure → Application`
 · `Application → Domain` · `Domain → SharedKernel`. Los manifiestos del catálogo de módulos
-viven en `Application/Modularity/ProductModules.cs`. `Jobs` se recreará como proyecto cuando
-existan los jobs.
+viven en `Application/Modularity/ProductModules.cs`. `ClubSpot.JobService` referencia
+`Infrastructure` igual que la Api; su único job por ahora es **J2** (conciliación de pagos,
+[`docs/plan-jobservice.md`](docs/plan-jobservice.md)) — J1 fue descartado por decisión del
+usuario (la expiración perezosa del hold ya garantiza la corrección).
 
 ### Grafo de módulos
 
@@ -256,9 +261,10 @@ cd src/frontend/backoffice && npm i && npm run dev   # consola del club — :518
 cd src/frontend/reservas && npm i && npm run dev     # portal de reservas — :5183
 ```
 
-La API corre en `:5037` y **PostgreSQL en el `5433`** (el 5432 lo ocupa otro proyecto;
-override con `CLUBSPOT_PG_PORT`). En Development la API migra y siembra la base sola al
-arrancar. `dotnet ef` necesita `dotnet tool restore` una vez por clon.
+La API corre en `:5037` y **PostgreSQL en el `5432` estándar** (decisión del usuario,
+17/08/2026; si otro proyecto lo ocupa, override con `CLUBSPOT_PG_PORT`). En Development la
+API migra y siembra la base sola al arrancar. `dotnet ef` necesita `dotnet tool restore` una
+vez por clon.
 
 **`appsettings.Development.json` no se versiona** (decisión del usuario, 17/08/2026): es la
 configuración local del developer y ahí van también los secretos de dev (p. ej. el access
@@ -483,6 +489,10 @@ src/
   local y recién persisten al Guardar; Descartar vuelve a lo guardado.
 - **Estilos inline con tokens** en `ui/theme.ts`, como el diseño. Lo único en CSS es el reset,
   las animaciones y los `:hover` / `:focus`, que un objeto de estilo no puede expresar.
+- **Íconos con `lucide-react`** (decisión del usuario, 17/08/2026, vale para los dos
+  frontends): nada de glifos de texto (`←`, `✓`, `×`) ni emojis como íconos de UI. Tamaños
+  chicos (11–22 px), `strokeWidth` 1.8–2.5 según peso visual, `aria-hidden` cuando el botón ya
+  tiene `aria-label`.
 
 ### Lo que falta
 

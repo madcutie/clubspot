@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useBloquearPersonas, usePersonas } from '../../api/queries';
 import { POR_PAGINA } from '../../api/mockApi';
 import { pesos } from '../../domain/dinero';
@@ -302,7 +303,7 @@ export function PersonasScreen() {
               onClick={() => setMarcadas(todasMarcadas ? [] : items.map((p) => p.id))}
               style={casilla(todasMarcadas)}
             >
-              {todasMarcadas ? '✓' : ''}
+              {todasMarcadas ? <Check size={11} strokeWidth={3} aria-hidden /> : ''}
             </button>
           </div>
           {['NOMBRE', 'TELÉFONO', 'EMAIL', 'ESTADO'].map((h) => (
@@ -342,7 +343,7 @@ export function PersonasScreen() {
                   }
                   style={casilla(marcada)}
                 >
-                  {marcada ? '✓' : ''}
+                  {marcada ? <Check size={11} strokeWidth={3} aria-hidden /> : ''}
                 </button>
               </div>
               <button
@@ -443,7 +444,7 @@ export function PersonasScreen() {
             onClick={() => params.setPagina(Math.max(0, pagina - 1))}
             style={botonPagina(false, pagina === 0)}
           >
-            ←
+            <ChevronLeft size={13} strokeWidth={2} aria-hidden />
           </button>
           {Array.from({ length: paginas }, (_, i) => (
             <button
@@ -461,7 +462,7 @@ export function PersonasScreen() {
             onClick={() => params.setPagina(Math.min(paginas - 1, pagina + 1))}
             style={botonPagina(false, pagina === paginas - 1)}
           >
-            →
+            <ChevronRight size={13} strokeWidth={2} aria-hidden />
           </button>
         </div>
       </div>

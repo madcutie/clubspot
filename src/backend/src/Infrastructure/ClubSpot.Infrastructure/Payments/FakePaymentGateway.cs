@@ -21,4 +21,8 @@ public sealed class FakePaymentGateway(IOptions<PaymentsOptions> options) : IPay
             $"&return={Uri.EscapeDataString(request.ReturnUrl)}";
         return Task.FromResult(new CheckoutSession(url));
     }
+
+    // The fake has no store of its own: whatever the dev checkout posted already hit the webhook.
+    public Task<IReadOnlyList<PaymentNotification>> FindPaymentsAsync(Guid bookingId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<PaymentNotification>>([]);
 }

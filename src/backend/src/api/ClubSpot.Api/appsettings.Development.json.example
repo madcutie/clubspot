@@ -3,7 +3,7 @@
     "ClubSpot": "Host=localhost;Port=5432;Database=clubspot;Username=postgres;Password=clubspot"
   },
   "Payments": {
-    "Gateway": "fake",
+    "Provider": "fake",
     "MercadoPago": {
       "AccessToken": "",
       "WebhookSecret": "",

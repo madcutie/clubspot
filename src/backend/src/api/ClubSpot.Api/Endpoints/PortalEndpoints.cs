@@ -23,7 +23,7 @@ public static class PortalEndpoints
     }
 
     private static async Task<IResult> CreateBookingAsync(string clubSlug, PortalBookingRequest request,
-        IBookingsStore store, IClubSettings clubSettings, IEnumerable<IPaymentGateway> gateways,
+        IBookingsStore store, IClubSettings clubSettings, IEnumerable<IHostedCheckout> checkouts,
         Microsoft.Extensions.Options.IOptions<ClubSpot.Infrastructure.Payments.PaymentsOptions> paymentsOptions,
         CancellationToken cancellationToken)
     {
@@ -31,8 +31,8 @@ public static class PortalEndpoints
             return Results.BadRequest();
 
         var paymentMode = request.PaymentMode ?? PaymentMode.Club;
-        var gateway = gateways.FirstOrDefault();
-        if (paymentMode != PaymentMode.Club && (gateway is null || string.IsNullOrWhiteSpace(request.ReturnUrl)))
+        var checkout = checkouts.FirstOrDefault();
+        if (paymentMode != PaymentMode.Club && (checkout is null || string.IsNullOrWhiteSpace(request.ReturnUrl)))
             return Results.UnprocessableEntity();
 
         var result = await store.CreateAsync(new BookingCreateInput(
@@ -63,7 +63,7 @@ public static class PortalEndpoints
                 returnUrl = $"{publicBaseUrl}/api/payments/return?to={Uri.EscapeDataString(returnUrl)}";
             try
             {
-                var session = await gateway!.CreateCheckoutAsync(new CheckoutRequest(
+                var session = await checkout!.CreateCheckoutAsync(new CheckoutRequest(
                     result.Id, clubSlug, title, result.ChargeAmount, result.ExpiresAt!.Value, returnUrl),
                     cancellationToken);
                 checkoutUrl = session.Url;
@@ -95,10 +95,10 @@ public static class PortalEndpoints
         BookingStatus Status, DateTimeOffset? ExpiresAt, string? CheckoutUrl);
 
     private static async Task<IResult> GetCatalogAsync(GetPortalCatalogHandler handler,
-        IEnumerable<IPaymentGateway> gateways, CancellationToken cancellationToken)
+        IEnumerable<IHostedCheckout> checkouts, CancellationToken cancellationToken)
     {
         var catalog = await handler.HandleAsync(cancellationToken);
-        return Results.Ok(new { catalog.Club, catalog.Sports, OnlinePayments = gateways.Any() });
+        return Results.Ok(new { catalog.Club, catalog.Sports, OnlinePayments = checkouts.Any() });
     }
 
     private static async Task<IResult> GetAvailabilityAsync(string sport, DateOnly from, DateOnly to,

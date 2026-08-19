@@ -34,7 +34,7 @@ builder.Services.AddClubSpotAuth();
 builder.Services.AddClubSpotPeople();
 builder.Services.AddClubSpotBookings();
 builder.Services.AddClubSpotPayments(builder.Configuration);
-if (builder.Configuration["Payments:Gateway"] == MercadoPagoGateway.GatewayName)
+if (builder.Configuration["Payments:Provider"] == MercadoPagoProvider.ProviderName)
     builder.Services.AddClubSpotMercadoPago(builder.Configuration);
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddClubSpotModularity();

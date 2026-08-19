@@ -1,5 +1,6 @@
 using System.Globalization;
 using ClubSpot.Application.Bookings;
+using ClubSpot.Domain.Bookings;
 using MercadoPago.Client;
 using MercadoPago.Client.Common;
 using MercadoPago.Client.Payment;
@@ -11,13 +12,14 @@ namespace ClubSpot.Infrastructure.MercadoPago;
 
 // Checkout Pro: one preference per hold, redirect to its init point. The webhook is the only
 // source of truth — the payment is always fetched back by id, never trusted from the POST body.
-public sealed class MercadoPagoGateway(IOptions<MercadoPagoOptions> options) : IPaymentGateway
+// Orders (in-person Point/QR) will be a second capability of this same provider (ADR-0015).
+public sealed class MercadoPagoProvider(IOptions<MercadoPagoOptions> options) : IHostedCheckout
 {
-    public const string GatewayName = "mercadopago";
+    public const string ProviderName = "mercadopago";
 
     private readonly MercadoPagoOptions _options = options.Value;
 
-    public string Name => GatewayName;
+    public string Name => ProviderName;
 
     public async Task<CheckoutSession> CreateCheckoutAsync(CheckoutRequest request, CancellationToken cancellationToken)
     {
@@ -37,7 +39,7 @@ public sealed class MercadoPagoGateway(IOptions<MercadoPagoOptions> options) : I
                 }
             ],
             ExternalReference = request.BookingId.ToString(),
-            NotificationUrl = $"{_options.PublicBaseUrl}/api/payments/{GatewayName}/webhook/{request.ClubSlug}",
+            NotificationUrl = $"{_options.PublicBaseUrl}/api/payments/{ProviderName}/webhook/{request.ClubSlug}",
             BackUrls = new PreferenceBackUrlsRequest
             {
                 Success = request.ReturnUrl,
@@ -47,7 +49,7 @@ public sealed class MercadoPagoGateway(IOptions<MercadoPagoOptions> options) : I
             // Mercado Pago only honours auto_return with https back urls; over plain http
             // (local dev) the buyer clicks "Volver al sitio" instead.
             AutoReturn = request.ReturnUrl.StartsWith("https", StringComparison.OrdinalIgnoreCase) ? "approved" : null,
-            // Approved or rejected, nothing in between: the 15-minute hold cannot wait out an in_process.
+            // Approved or rejected, nothing in between: the short-lived hold cannot wait out an in_process.
             BinaryMode = true,
             Expires = true,
             ExpirationDateTo = request.ExpiresAt.UtcDateTime
@@ -66,7 +68,7 @@ public sealed class MercadoPagoGateway(IOptions<MercadoPagoOptions> options) : I
             var payment = await new PaymentClient().GetAsync(id, RequestOptions(), cancellationToken);
             if (payment.ExternalReference is null || !Guid.TryParse(payment.ExternalReference, out var bookingId))
                 return null;
-            return new PaymentNotification(bookingId, GatewayName,
+            return new PaymentNotification(bookingId, ProviderName, PaymentRail.Checkout,
                 payment.Id?.ToString(CultureInfo.InvariantCulture) ?? paymentId,
                 payment.Status == "approved", payment.TransactionAmount);
         }
@@ -86,7 +88,7 @@ public sealed class MercadoPagoGateway(IOptions<MercadoPagoOptions> options) : I
 
         return (search.Results ?? [])
             .Where(payment => payment.Id is not null && payment.Status is "approved" or "rejected")
-            .Select(payment => new PaymentNotification(bookingId, GatewayName,
+            .Select(payment => new PaymentNotification(bookingId, ProviderName, PaymentRail.Checkout,
                 payment.Id!.Value.ToString(CultureInfo.InvariantCulture),
                 payment.Status == "approved", payment.TransactionAmount))
             .ToList();

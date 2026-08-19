@@ -18,8 +18,8 @@ public static class PaymentEndpoints
         // Mandatory order: the slug filter opens the tenant scope that RequireModule needs.
         group.AddEndpointFilter(ClubScope.ResolveAsync);
         group.RequireModule(ModuleId.Bookings);
-        group.MapPost($"/{FakePaymentGateway.GatewayName}/webhook/{{clubSlug}}", FakeWebhookAsync);
-        group.MapPost($"/{MercadoPagoGateway.GatewayName}/webhook/{{clubSlug}}", MercadoPagoWebhookAsync);
+        group.MapPost($"/{FakePaymentProvider.ProviderName}/webhook/{{clubSlug}}", FakeWebhookAsync);
+        group.MapPost($"/{MercadoPagoProvider.ProviderName}/webhook/{{clubSlug}}", MercadoPagoWebhookAsync);
 
         // Checkout back urls must be https; this hop lives behind the public tunnel and bounces
         // the buyer back to the local portal so auto_return works in development.
@@ -40,7 +40,8 @@ public static class PaymentEndpoints
         if (!environment.IsDevelopment()) return Results.NotFound();
 
         var outcome = await store.ApplyPaymentAsync(new PaymentNotification(
-            request.BookingId, FakePaymentGateway.GatewayName, request.ExternalId, request.Approved, request.Amount),
+            request.BookingId, FakePaymentProvider.ProviderName, PaymentRail.Checkout,
+            request.ExternalId, request.Approved, request.Amount),
             PaymentSource.Webhook, cancellationToken);
         return Results.Ok(new { outcome });
     }
@@ -50,11 +51,11 @@ public static class PaymentEndpoints
     private static async Task<IResult> MercadoPagoWebhookAsync(HttpRequest httpRequest, IBookingsStore store,
         IServiceProvider services, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
     {
-        var gateway = services.GetService<MercadoPagoGateway>();
-        if (gateway is null) return Results.NotFound();
+        var provider = services.GetService<MercadoPagoProvider>();
+        if (provider is null) return Results.NotFound();
 
         var dataId = httpRequest.Query["data.id"].FirstOrDefault();
-        var signatureValid = gateway.VerifyWebhookSignature(
+        var signatureValid = provider.VerifyWebhookSignature(
             httpRequest.Headers["x-signature"].FirstOrDefault(),
             httpRequest.Headers["x-request-id"].FirstOrDefault(),
             dataId);
@@ -78,7 +79,7 @@ public static class PaymentEndpoints
         }
         if (string.IsNullOrEmpty(paymentId)) return Results.Ok();
 
-        var notification = await gateway.GetPaymentAsync(paymentId, cancellationToken);
+        var notification = await provider.GetPaymentAsync(paymentId, cancellationToken);
         if (notification is null) return Results.Ok();
 
         await store.ApplyPaymentAsync(notification, PaymentSource.Webhook, cancellationToken);

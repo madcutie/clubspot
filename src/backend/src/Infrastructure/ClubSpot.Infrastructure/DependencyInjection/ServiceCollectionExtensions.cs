@@ -39,8 +39,12 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddClubSpotPayments(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<PaymentsOptions>(configuration.GetSection(PaymentsOptions.SectionName));
-        if (configuration[$"{PaymentsOptions.SectionName}:Gateway"] == FakePaymentGateway.GatewayName)
-            services.AddScoped<IPaymentGateway, FakePaymentGateway>();
+        if (configuration[$"{PaymentsOptions.SectionName}:Provider"] == FakePaymentProvider.ProviderName)
+        {
+            services.AddScoped<FakePaymentProvider>();
+            services.AddScoped<IPaymentProvider>(services => services.GetRequiredService<FakePaymentProvider>());
+            services.AddScoped<IHostedCheckout>(services => services.GetRequiredService<FakePaymentProvider>());
+        }
         return services;
     }
 

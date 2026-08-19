@@ -16,7 +16,8 @@ public sealed record BookingCreateResult(BookingCreateOutcome Outcome, Guid Id, 
 
 public enum PaymentApplyOutcome { Confirmed, Rejected, AlreadyProcessed, Orphaned, UnknownBooking }
 
-public sealed record PaymentNotification(Guid BookingId, string Gateway, string ExternalId, bool Approved, decimal? Amount);
+public sealed record PaymentNotification(Guid BookingId, string Provider, PaymentRail Rail, string ExternalId,
+    bool Approved, decimal? Amount);
 
 public sealed record BookingSnapshot(Guid Id, Guid CourtId, string CourtName, Sport Sport, DateOnly Date,
     int StartMinute, int DurationMinutes, decimal Price, decimal PaidAmount, BookingStatus Status,

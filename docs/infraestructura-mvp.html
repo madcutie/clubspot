@@ -550,6 +550,436 @@
   </nav>
 
   <main>
-    <!--BODY-->
+    <section id="s1">
+      <div class="eyebrow">Zoom out</div>
+      <h2><span class="num">01</span>Qué necesitás, todo junto</h2>
+      <p class="lead">ClubSpot no es una aplicación sola: son cuatro cosas que se despliegan distinto. Dos contenedores que tienen que estar corriendo siempre, dos sitios estáticos que son archivos, y una base de datos que —por decisión tuya— siempre la administra alguien más.</p>
+
+      <div class="tiles">
+        <div class="tile"><div class="lab">Contenedores</div><div class="val">2</div><div class="sub">API .NET y JobService, los dos vivos 24/7</div></div>
+        <div class="tile"><div class="lab">Sitios estáticos</div><div class="val">2</div><div class="sub">Backoffice y portal de reservas</div></div>
+        <div class="tile"><div class="lab">Bases de datos</div><div class="val">2</div><div class="sub"><span class="mono">clubspot</span> y <span class="mono">clubspot-hangfire</span></div></div>
+        <div class="tile"><div class="lab">Entornos</div><div class="val">2</div><div class="sub">Todo lo anterior, por dos</div></div>
+      </div>
+
+      <figure>
+        <div class="figbox">
+          <svg class="dg" viewBox="0 0 980 470" role="img" aria-label="Arquitectura desplegada de ClubSpot: el navegador baja las dos SPA estáticas y llama a la API .NET; la API y el JobService escriben en un PostgreSQL gestionado con dos bases; la API crea checkouts en Mercado Pago y recibe su webhook; el JobService concilia pagos cada cinco minutos; Redis todavía no existe.">
+            <defs>
+              <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,1 L9,5 L0,9 z" fill="currentColor" />
+              </marker>
+            </defs>
+
+            <g style="color: var(--rule-strong)">
+              <path class="fl" d="M138,180 C180,180 186,62 230,62" marker-end="url(#ar)" />
+              <path class="fl" d="M138,196 H230" marker-end="url(#ar)" />
+              <path class="fl" d="M300,234 V300" marker-end="url(#ar)" />
+              <path class="fl" d="M545,234 V268 H440 V300" marker-end="url(#ar)" />
+              <path class="fl" d="M440,200 H465 V70 H760" marker-end="url(#ar)" marker-start="url(#ar)" />
+              <path class="fl" d="M670,150 V110 H800 V100" marker-end="url(#ar)" />
+            </g>
+            <g style="color: var(--ink-3)">
+              <path class="fl dash" d="M420,234 C520,250 560,340 690,352" marker-end="url(#ar)" />
+            </g>
+
+            <text class="lb" x="96" y="126">baja la SPA</text>
+            <text class="lb" x="184" y="188" text-anchor="middle">HTTPS · JWT</text>
+            <text class="lb" x="308" y="272">EF Core · Npgsql</text>
+            <text class="lb" x="556" y="262">estado de los jobs</text>
+            <text class="lb" x="612" y="60" text-anchor="middle">API → MP: crea el checkout</text>
+            <text class="lb" x="612" y="88" text-anchor="middle">MP → API: webhook de pago</text>
+            <text class="lb" x="742" y="128" text-anchor="middle">concilia cada 5 min</text>
+            <text class="lb" x="618" y="318" text-anchor="middle">caché · locks (a futuro)</text>
+
+            <rect class="box" x="230" y="24" width="210" height="76" rx="2" />
+            <text class="t" x="335" y="50" text-anchor="middle">Backoffice + Portal</text>
+            <text class="st" x="335" y="68" text-anchor="middle">2 SPA · build de Vite</text>
+            <text class="st" x="335" y="86" text-anchor="middle">archivos, no un servidor</text>
+
+            <rect class="box ext" x="760" y="24" width="200" height="76" rx="2" />
+            <text class="t" x="860" y="54" text-anchor="middle">Mercado Pago</text>
+            <text class="st" x="860" y="74" text-anchor="middle">externo</text>
+
+            <rect class="box" x="14" y="150" width="124" height="84" rx="2" />
+            <text class="t" x="76" y="180" text-anchor="middle">Navegador</text>
+            <text class="st" x="76" y="200" text-anchor="middle">operador</text>
+            <text class="st" x="76" y="216" text-anchor="middle">y socio</text>
+
+            <rect class="box" x="230" y="150" width="210" height="84" rx="2" />
+            <text class="t" x="335" y="178" text-anchor="middle">API .NET 10</text>
+            <text class="st" x="335" y="196" text-anchor="middle">contenedor · HTTP</text>
+            <text class="st" x="335" y="214" text-anchor="middle">multi-tenant · JWT propio</text>
+
+            <rect class="box" x="490" y="150" width="190" height="84" rx="2" />
+            <text class="t" x="585" y="178" text-anchor="middle">JobService</text>
+            <text class="st" x="585" y="196" text-anchor="middle">contenedor · Hangfire</text>
+            <text class="st" x="585" y="214" text-anchor="middle">sin puerto público</text>
+
+            <rect class="box db" x="230" y="300" width="270" height="140" rx="2" />
+            <text class="t" x="365" y="326" text-anchor="middle">PostgreSQL gestionado</text>
+            <text class="st" x="365" y="344" text-anchor="middle">v17 · lo administra el proveedor</text>
+            <rect class="box inner" x="244" y="356" width="122" height="68" rx="2" />
+            <text class="t2" x="305" y="382" text-anchor="middle">clubspot</text>
+            <text class="st" x="305" y="400" text-anchor="middle">datos del club</text>
+            <rect class="box inner" x="376" y="356" width="110" height="68" rx="2" />
+            <text class="t2" x="431" y="378" text-anchor="middle">clubspot-</text>
+            <text class="t2" x="431" y="392" text-anchor="middle">hangfire</text>
+            <text class="st" x="431" y="410" text-anchor="middle">cola de jobs</text>
+
+            <rect class="box future" x="690" y="330" width="200" height="64" rx="2" />
+            <text class="t" x="790" y="358" text-anchor="middle">Redis</text>
+            <text class="st" x="790" y="376" text-anchor="middle">todavía no existe</text>
+          </svg>
+        </div>
+        <figcaption><b>La arquitectura desplegada, con lo que ya está escrito en el repo.</b> Las cajas de línea llena existen hoy; Redis está punteado porque todavía no hay código que lo use. Los dos contenedores hablan con la misma base pero por caminos distintos: la API con EF Core, el JobService además con su propia base de Hangfire. Las dos flechas hacia Mercado Pago son la razón por la que la API necesita un dominio público estable con HTTPS válido: el webhook lo llama Mercado Pago desde afuera, no el navegador.</figcaption>
+      </figure>
+
+      <h3>Las cuatro cosas que definen todo lo demás</h3>
+      <p><strong>1. El JobService no puede dormir.</strong> Hangfire es un proceso que se despierta solo: el <span class="mono">payments-reconciliation</span> corre cada 5 minutos por cron interno, no porque alguien lo llame. Eso descarta el "escalar a cero" para ese contenedor en cualquier proveedor. La API sí puede dormir en test; en prod no conviene, porque el webhook de Mercado Pago llega sin aviso y un arranque en frío de .NET puede tardar segundos.</p>
+      <p><strong>2. Los frontends no son un servidor.</strong> <code>npm run build</code> deja una carpeta de archivos. Eso se sube a un CDN o a un bucket y cuesta prácticamente cero en todas las nubes. Nunca pagues un contenedor para servir los dos frontends si el proveedor te da hosting estático.</p>
+      <p><strong>3. La base va gestionada, y son dos bases.</strong> El JobService guarda el estado de Hangfire en una base aparte (<span class="mono">clubspot-hangfire</span>). Eso importa al elegir proveedor: algunos Postgres "serverless" no te dejan crear una segunda base, y hay uno que directamente no ofrece Postgres gestionado. Está en el detalle de cada proveedor.</p>
+      <p><strong>4. El costo real no es el contenedor.</strong> En una nube grande el cómputo de este sistema sale unos pocos dólares. Lo que infla la factura son las piezas de red —balanceador, NAT gateway— y el segundo entorno. Por eso la comparación de la sección 5 mide siempre <em>test + prod juntos</em>, que es lo que vas a pagar de verdad.</p>
+
+      <div class="callout warn">
+        <p class="ct"><span class="chip warn"><span class="dot"></span>Cuidado</span> Las seis líneas que aparecen después en la factura</p>
+        <ul>
+          <li><strong>NAT Gateway</strong> (AWS, GCP, Azure): unos 33 USD/mes fijos por zona, sólo para que un contenedor en subred privada pueda salir a internet. Se evita poniéndolo en subred pública con IP propia.</li>
+          <li><strong>Balanceador</strong>: en AWS un ALB arranca en ~16 USD/mes <em>antes</em> de procesar un solo byte. Los PaaS lo incluyen en el precio.</li>
+          <li><strong>El segundo entorno</strong>: duplica todo salvo el dominio. Es la mitad de tu factura si no lo apagás.</li>
+          <li><strong>Logs</strong>: baratos hasta que dejás el log level en Information y guardás 30 días.</li>
+          <li><strong>Egress</strong>: irrelevante con este tráfico, pero es lo que te muerde si algún día servís fotos o comprobantes desde la API.</li>
+          <li><strong>El dominio y el mail</strong>: chico, pero es plata que no está en ninguna calculadora de nube.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="s2">
+      <div class="eyebrow">Zoom in · inventario</div>
+      <h2><span class="num">02</span>El inventario, pieza por pieza</h2>
+      <p class="lead">Esta es la lista completa de lo que hay que tener resuelto, no sólo lo que se factura. La columna de costo típico es el orden de magnitud para los dos entornos juntos, con tráfico de un club.</p>
+
+      <div class="tw">
+        <table>
+          <caption>Inventario de infraestructura · test + prod</caption>
+          <thead>
+            <tr><th>Pieza</th><th>Qué es y por qué la necesitás</th><th class="num">Costo típico</th><th>¿Postergable?</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="name">Cómputo de la API</td><td>Un contenedor Linux con 0,5–1 GB de RAM. Es el único que recibe tráfico del navegador.</td><td class="num">5–15 USD</td><td><span class="chip bad"><span class="dot"></span>No</span></td></tr>
+            <tr><td class="name">Cómputo del JobService</td><td>Otro contenedor igual, sin puerto público, siempre vivo. Hoy corre un solo job (conciliación de pagos).</td><td class="num">5–15 USD</td><td><span class="chip warn"><span class="dot"></span>Sí, fusionándolo</span></td></tr>
+            <tr><td class="name">PostgreSQL gestionado</td><td>Con backups automáticos y capacidad de restaurar a un punto en el tiempo. Dos bases dentro del mismo servidor.</td><td class="num">0–46 USD</td><td><span class="chip bad"><span class="dot"></span>No</span></td></tr>
+            <tr><td class="name">Hosting estático ×2</td><td>Los <span class="mono">dist/</span> del backoffice y del portal, servidos por CDN con HTTPS.</td><td class="num">0–3 USD</td><td><span class="chip bad"><span class="dot"></span>No</span></td></tr>
+            <tr><td class="name">Dominio</td><td>Uno solo alcanza para los dos entornos, usando subdominios. Ver sección 7.</td><td class="num">~1 USD</td><td><span class="chip bad"><span class="dot"></span>No</span></td></tr>
+            <tr><td class="name">DNS gestionado</td><td>La zona donde viven los registros. Gratis en Cloudflare y en casi todos los VPS; 0,50 USD en Route 53.</td><td class="num">0–1 USD</td><td><span class="chip bad"><span class="dot"></span>No</span></td></tr>
+            <tr><td class="name">Certificados TLS</td><td>Let's Encrypt o el del proveedor. Gratis siempre. Sólo se complica con wildcard (sección 7).</td><td class="num">0 USD</td><td><span class="chip bad"><span class="dot"></span>No</span></td></tr>
+            <tr><td class="name">Registry de imágenes</td><td>Donde vive la imagen Docker. GitHub Container Registry es gratis para repos privados con límites amplios.</td><td class="num">0–5 USD</td><td><span class="chip good"><span class="dot"></span>Gratis</span></td></tr>
+            <tr><td class="name">Gestión de secretos</td><td><span class="mono">Jwt:SigningKey</span>, el access token de Mercado Pago, las cadenas de conexión. Variables de entorno del proveedor alcanzan para el MVP.</td><td class="num">0 USD</td><td><span class="chip bad"><span class="dot"></span>No</span></td></tr>
+            <tr><td class="name">CI/CD</td><td>Build de la imagen y deploy. GitHub Actions: 2.000 min/mes gratis en repos privados.</td><td class="num">0 USD</td><td><span class="chip warn"><span class="dot"></span>Sí, al principio</span></td></tr>
+            <tr><td class="name">Backups <em>y</em> un restore probado</td><td>Incluidos en el Postgres gestionado. Lo que no está incluido es haber probado restaurar: eso es media hora tuya, una vez.</td><td class="num">0 USD</td><td><span class="chip bad"><span class="dot"></span>No</span></td></tr>
+            <tr><td class="name">Logs</td><td>Los del proveedor alcanzan al principio. Si querés buscar en serio: Grafana Cloud o Better Stack tienen planes gratis chicos.</td><td class="num">0–5 USD</td><td><span class="chip warn"><span class="dot"></span>Parcial</span></td></tr>
+            <tr><td class="name">Uptime y alertas</td><td>Un ping cada minuto al <span class="mono">/health</span> de prod que te avise por mail o Telegram. Hay planes gratis que sobran.</td><td class="num">0 USD</td><td><span class="chip good"><span class="dot"></span>Gratis</span></td></tr>
+            <tr><td class="name">Errores en producción</td><td>Sentry tiene plan gratis y SDK para .NET. Sin esto te enterás de los errores porque llama el club.</td><td class="num">0 USD</td><td><span class="chip warn"><span class="dot"></span>Sí, no mucho</span></td></tr>
+            <tr><td class="name">Email transaccional</td><td>Hace falta cuando exista el outbox (J4) y el reset de contraseña. Resend o Brevo tienen tramos gratis suficientes para un club.</td><td class="num">0–20 USD</td><td><span class="chip good"><span class="dot"></span>Sí</span></td></tr>
+            <tr><td class="name">Redis</td><td>Todavía no hay código que lo use. Ver sección 8 para cuándo y con qué.</td><td class="num">0–15 USD</td><td><span class="chip good"><span class="dot"></span>Sí</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="t-note">Los rangos son estimaciones de orden de magnitud para los dos entornos juntos; los precios exactos por proveedor están en la sección 6.</p>
+    </section>
+
+    <section id="s3">
+      <div class="eyebrow">Zoom in · entornos</div>
+      <h2><span class="num">03</span>Test y prod</h2>
+      <p class="lead">Dos entornos no significa duplicar la factura. Significa decidir, pieza por pieza, qué se comparte sin riesgo y qué no. La regla: se comparte lo que no guarda datos.</p>
+
+      <div class="tw">
+        <table>
+          <caption>Qué se comparte entre entornos y qué no</caption>
+          <thead><tr><th>Pieza</th><th>Test</th><th>Prod</th><th>¿Compartir?</th></tr></thead>
+          <tbody>
+            <tr><td class="name">Contenedores</td><td>Los mismos dos, más chicos. Apagables de noche.</td><td>Los mismos dos, siempre vivos.</td><td><span class="chip bad"><span class="dot"></span>Nunca</span></td></tr>
+            <tr><td class="name">Servidor de base</td><td colspan="2">Un solo servidor gestionado, con dos bases lógicas: <span class="mono">clubspot</span> y <span class="mono">clubspot_test</span> (más las dos de Hangfire).</td><td><span class="chip warn"><span class="dot"></span>Sí, con cuidado</span></td></tr>
+            <tr><td class="name">Datos</td><td>Semilla o un dump anonimizado.</td><td>Los reales del club.</td><td><span class="chip bad"><span class="dot"></span>Nunca</span></td></tr>
+            <tr><td class="name">Dominio</td><td colspan="2">Uno solo, con subdominios distintos. Ver sección 7.</td><td><span class="chip good"><span class="dot"></span>Sí</span></td></tr>
+            <tr><td class="name">Registry</td><td colspan="2">El mismo, con tags distintos. La imagen que probaste en test es la que va a prod, bit por bit.</td><td><span class="chip good"><span class="dot"></span>Sí</span></td></tr>
+            <tr><td class="name">Credenciales de Mercado Pago</td><td>Las de sandbox.</td><td>Las de producción.</td><td><span class="chip bad"><span class="dot"></span>Nunca</span></td></tr>
+            <tr><td class="name">Clave de firma JWT</td><td>Una distinta.</td><td>Una distinta.</td><td><span class="chip bad"><span class="dot"></span>Nunca</span></td></tr>
+            <tr><td class="name">Redis (a futuro)</td><td colspan="2">Una instancia con dos bases lógicas, o dos prefijos de clave.</td><td><span class="chip warn"><span class="dot"></span>Sí, con prefijo</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <p class="ct">Compartir el servidor de base entre test y prod: cuándo sí</p>
+        <p>Es la palanca de ahorro más grande del MVP —evita pagar dos veces la pieza más cara— y es aceptable mientras el club sea uno y las pruebas no sean de carga. Lo que estás aceptando: una consulta pesada en test puede enlentecer prod, y un <span class="mono">restore</span> mal apuntado puede pisar datos reales. Se mitiga con un usuario de base distinto por entorno, sin permisos cruzados. Cuando el club dependa del sistema para cobrar, separalos.</p>
+      </div>
+
+      <h3>La palanca del apagado</h3>
+      <p>En cualquier proveedor donde el cómputo se paga por hora, test apagado fuera del horario en que trabajás cuesta la tercera parte. En los PaaS suele ser un botón ("suspend"), en un VPS es un <span class="mono">docker compose stop</span>, y en AWS App Runner el servicio se pausa. Es la diferencia entre 60 y 45 dólares al mes sin resignar nada, porque a test no lo mira nadie a las tres de la mañana.</p>
+    </section>
+
+    <section id="s4">
+      <div class="eyebrow">Zoom out · modelos</div>
+      <h2><span class="num">04</span>Los tres modelos de operación</h2>
+      <p class="lead">Antes del precio va esta decisión, porque es la que define cuánto tiempo tuyo consume la infraestructura. Todas las opciones de la sección 6 caen en uno de estos tres modelos. Lo que cambia entre ellos es dónde está la línea que separa lo que administra el proveedor de lo que administrás vos.</p>
+
+      <figure>
+        <div class="figbox">
+          <svg class="dg" viewBox="0 0 960 424" role="img" aria-label="Comparación de los tres modelos de operación: con PaaS el proveedor administra todo salvo tu código y el Dockerfile; con contenedores gestionados además administrás la red, el dominio y el balanceo; con un VPS administrás también el runtime de contenedores y el sistema operativo. La base de datos la administra el proveedor en los tres.">
+            <text class="t" x="276" y="30" text-anchor="middle">Todo gestionado</text>
+            <text class="st" x="276" y="46" text-anchor="middle">Render · Fly · App Runner</text>
+            <text class="t" x="544" y="30" text-anchor="middle">Contenedores gestionados</text>
+            <text class="st" x="544" y="46" text-anchor="middle">Fargate · Cloud Run · ACA</text>
+            <text class="t" x="812" y="30" text-anchor="middle">VPS propio</text>
+            <text class="st" x="812" y="46" text-anchor="middle">Hetzner · Hostinger · Droplet</text>
+
+            <text class="lb" x="132" y="86" text-anchor="end">Tu código y el build</text>
+            <text class="lb" x="132" y="134" text-anchor="end">Dockerfile e imagen</text>
+            <text class="lb" x="132" y="182" text-anchor="end">Dominio, TLS y balanceo</text>
+            <text class="lb" x="132" y="230" text-anchor="end">Red y reglas de firewall</text>
+            <text class="lb" x="132" y="278" text-anchor="end">Runtime de contenedores</text>
+            <text class="lb" x="132" y="326" text-anchor="end">Sistema operativo y parches</text>
+            <text class="lb" x="132" y="374" text-anchor="end">Base de datos y backups</text>
+
+            <g>
+              <rect class="band-you"  x="150" y="66" width="252" height="34" rx="2" /><text class="own" x="276" y="88" text-anchor="middle" style="fill:var(--accent-ink)">vos</text>
+              <rect class="band-you"  x="150" y="114" width="252" height="34" rx="2" /><text class="own" x="276" y="136" text-anchor="middle" style="fill:var(--accent-ink)">vos</text>
+              <rect class="band-prov" x="150" y="162" width="252" height="34" rx="2" /><text class="own" x="276" y="184" text-anchor="middle" style="fill:var(--ink-3)">el proveedor</text>
+              <rect class="band-prov" x="150" y="210" width="252" height="34" rx="2" /><text class="own" x="276" y="232" text-anchor="middle" style="fill:var(--ink-3)">el proveedor</text>
+              <rect class="band-prov" x="150" y="258" width="252" height="34" rx="2" /><text class="own" x="276" y="280" text-anchor="middle" style="fill:var(--ink-3)">el proveedor</text>
+              <rect class="band-prov" x="150" y="306" width="252" height="34" rx="2" /><text class="own" x="276" y="328" text-anchor="middle" style="fill:var(--ink-3)">el proveedor</text>
+              <rect class="band-prov" x="150" y="354" width="252" height="34" rx="2" /><text class="own" x="276" y="376" text-anchor="middle" style="fill:var(--ink-3)">el proveedor</text>
+              <line class="rline" x1="150" y1="155" x2="402" y2="155" />
+            </g>
+            <g>
+              <rect class="band-you"  x="418" y="66" width="252" height="34" rx="2" /><text class="own" x="544" y="88" text-anchor="middle" style="fill:var(--accent-ink)">vos</text>
+              <rect class="band-you"  x="418" y="114" width="252" height="34" rx="2" /><text class="own" x="544" y="136" text-anchor="middle" style="fill:var(--accent-ink)">vos</text>
+              <rect class="band-you"  x="418" y="162" width="252" height="34" rx="2" /><text class="own" x="544" y="184" text-anchor="middle" style="fill:var(--accent-ink)">vos</text>
+              <rect class="band-you"  x="418" y="210" width="252" height="34" rx="2" /><text class="own" x="544" y="232" text-anchor="middle" style="fill:var(--accent-ink)">vos</text>
+              <rect class="band-prov" x="418" y="258" width="252" height="34" rx="2" /><text class="own" x="544" y="280" text-anchor="middle" style="fill:var(--ink-3)">el proveedor</text>
+              <rect class="band-prov" x="418" y="306" width="252" height="34" rx="2" /><text class="own" x="544" y="328" text-anchor="middle" style="fill:var(--ink-3)">el proveedor</text>
+              <rect class="band-prov" x="418" y="354" width="252" height="34" rx="2" /><text class="own" x="544" y="376" text-anchor="middle" style="fill:var(--ink-3)">el proveedor</text>
+              <line class="rline" x1="418" y1="251" x2="670" y2="251" />
+            </g>
+            <g>
+              <rect class="band-you"  x="686" y="66" width="252" height="34" rx="2" /><text class="own" x="812" y="88" text-anchor="middle" style="fill:var(--accent-ink)">vos</text>
+              <rect class="band-you"  x="686" y="114" width="252" height="34" rx="2" /><text class="own" x="812" y="136" text-anchor="middle" style="fill:var(--accent-ink)">vos</text>
+              <rect class="band-you"  x="686" y="162" width="252" height="34" rx="2" /><text class="own" x="812" y="184" text-anchor="middle" style="fill:var(--accent-ink)">vos</text>
+              <rect class="band-you"  x="686" y="210" width="252" height="34" rx="2" /><text class="own" x="812" y="232" text-anchor="middle" style="fill:var(--accent-ink)">vos</text>
+              <rect class="band-you"  x="686" y="258" width="252" height="34" rx="2" /><text class="own" x="812" y="280" text-anchor="middle" style="fill:var(--accent-ink)">vos</text>
+              <rect class="band-you"  x="686" y="306" width="252" height="34" rx="2" /><text class="own" x="812" y="328" text-anchor="middle" style="fill:var(--accent-ink)">vos</text>
+              <rect class="band-prov" x="686" y="354" width="252" height="34" rx="2" /><text class="own" x="812" y="376" text-anchor="middle" style="fill:var(--ink-3)">el proveedor</text>
+              <line class="rline" x1="686" y1="347" x2="938" y2="347" />
+            </g>
+
+            <text class="st" x="150" y="412" style="fill:var(--critical)">— — —  la línea punteada es donde termina tu responsabilidad</text>
+          </svg>
+        </div>
+        <figcaption><b>La misma aplicación, tres repartos de trabajo.</b> Las filas son idénticas en los tres modelos; lo único que se mueve es la línea roja. Cada fila que cae de tu lado es algo que vas a tener que aprender, monitorear y arreglar un domingo. La última fila está del lado del proveedor en los tres porque así lo decidiste — con una excepción: Hostinger no ofrece PostgreSQL gestionado, así que ahí esa fila también cae de tu lado.</figcaption>
+      </figure>
+
+      <div class="pc-cols">
+        <div>
+          <h4>A · Todo gestionado</h4>
+          <p>Conectás el repo, el proveedor construye la imagen y la publica con HTTPS y dominio. No hay servidor que mirar.</p>
+          <ul>
+            <li>Deploy: <span class="mono">git push</span> o un click.</li>
+            <li>Lo que no controlás: la versión del runtime, la red, y cuándo reinician tu contenedor.</li>
+            <li>Es más caro por unidad de cómputo y más barato en total, porque no pagás balanceador ni NAT.</li>
+          </ul>
+        </div>
+        <div>
+          <h4>B · Contenedores gestionados</h4>
+          <p>La nube corre tu contenedor pero la red la armás vos: VPC, subredes, grupos de seguridad, balanceador, certificado, registros DNS.</p>
+          <ul>
+            <li>Deploy: pipeline propio que empuja la imagen y actualiza el servicio.</li>
+            <li>Es donde aparecen las líneas caras de la factura si no sabés qué desactivar.</li>
+            <li>Tiene sentido cuando ya estás en esa nube por otra cosa (RDS, por ejemplo).</li>
+          </ul>
+        </div>
+        <div>
+          <h4>C · VPS propio</h4>
+          <p>Una máquina Linux con Docker. Vos instalás, actualizás y reiniciás. Con la base afuera, gestionada.</p>
+          <ul>
+            <li>Deploy: <span class="mono">docker compose pull &amp;&amp; up -d</span>, o un panel tipo Coolify que lo hace por vos.</li>
+            <li>Es el más barato por lejos y el que más tiempo tuyo consume.</li>
+            <li>Riesgo real: los parches de seguridad del sistema operativo son tuyos.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Kubernetes: por qué no, y cuándo sí</h3>
+      <p>Kubernetes resuelve un problema que no tenés: coordinar muchos servicios en muchas máquinas, con equipos distintos tocándolos. Para dos contenedores en un club, agrega una capa entera de conceptos —ingress, service, deployment, secret, cert-manager— y en las nubes grandes suma el costo del control plane, más un balanceador propio por entorno. En DigitalOcean el control plane es gratis, así que el piso es sólo los nodos: incluso ahí termina saliendo más caro que el mismo sistema en App Platform, con mucho más para aprender.</p>
+      <p>Se vuelve razonable el día que tengas varios clubes con despliegues independientes, necesites escalar la API por réplicas y ya tengas alguien que sepa operarlo. Mientras tanto, <span class="mono">docker compose</span> en un VPS te da el 90% del beneficio con el 5% de los conceptos. Y si querés la experiencia de Kubernetes sin el costo, Coolify sobre un VPS da deploys por git, TLS automático y rollback con un panel web.</p>
+    </section>
+
+<!--PRICING-->
+
+    <section id="s7">
+      <div class="eyebrow">Zoom in · red</div>
+      <h2><span class="num">07</span>DNS, dominios y certificados</h2>
+      <p class="lead">Es la parte que menos cuesta y la que más rompe cuando está mal. Hay tres decisiones: cómo separás los entornos, dónde vive la zona, y qué pasa cuando cada club quiera su propio subdominio.</p>
+
+      <h3>El esquema recomendado: un dominio, una zona, subdominios</h3>
+      <p>Un solo dominio con subdominios para todo. Es más barato, se renueva una vez y los certificados son automáticos. La alternativa —un dominio separado para test— sólo tiene sentido si te preocupa que alguien encuentre el entorno de prueba, y eso se resuelve mejor con autenticación que con DNS.</p>
+
+      <div class="tw">
+        <table>
+          <caption>Registros DNS · ejemplo con clubspot.com.ar</caption>
+          <thead><tr><th>Nombre</th><th>Tipo</th><th>Apunta a</th><th>Para qué</th></tr></thead>
+          <tbody>
+            <tr><td class="name mono">clubspot.com.ar</td><td class="mono">A / ALIAS</td><td>hosting estático</td><td>Sitio institucional o redirección al portal</td></tr>
+            <tr><td class="name mono">api</td><td class="mono">CNAME</td><td>endpoint de la API</td><td>Backend de producción. Es la URL del webhook de Mercado Pago</td></tr>
+            <tr><td class="name mono">admin</td><td class="mono">CNAME</td><td>CDN del estático</td><td>Backoffice del club</td></tr>
+            <tr><td class="name mono">reservas</td><td class="mono">CNAME</td><td>CDN del estático</td><td>Portal de reservas</td></tr>
+            <tr><td class="name mono">api.test</td><td class="mono">CNAME</td><td>endpoint de la API de test</td><td>Backend de test, con las credenciales de sandbox</td></tr>
+            <tr><td class="name mono">admin.test · reservas.test</td><td class="mono">CNAME</td><td>CDN del estático de test</td><td>Los mismos frontends, compilados contra la API de test</td></tr>
+            <tr><td class="name mono">*.clubes</td><td class="mono">CNAME</td><td>CDN del estático</td><td>A futuro: un subdominio por club (<span class="mono">chacoforever.clubes…</span>)</td></tr>
+            <tr><td class="name mono">@</td><td class="mono">MX</td><td>proveedor de mail</td><td>Recibir correo en el dominio. No hace falta para enviar</td></tr>
+            <tr><td class="name mono">@</td><td class="mono">TXT (SPF)</td><td><span class="mono">v=spf1 include:… -all</span></td><td>Que los avisos del club no caigan en spam</td></tr>
+            <tr><td class="name mono">…_domainkey</td><td class="mono">TXT (DKIM)</td><td>lo da el proveedor de mail</td><td>Firma de los mails salientes</td></tr>
+            <tr><td class="name mono">_dmarc</td><td class="mono">TXT</td><td><span class="mono">v=DMARC1; p=none; rua=…</span></td><td>Reportes de quién manda mail en tu nombre</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Dónde conviene tener la zona</h3>
+      <p>Registrás el dominio donde sea, pero apuntá los nameservers a un DNS que administres cómodo. <strong>Cloudflare es gratis</strong> y es la opción por defecto: propaga rápido, tiene API para automatizar y no te ata al proveedor de hosting. Route 53 cuesta 0,50 USD por zona y sólo vale la pena si estás entero en AWS y querés registros <span class="mono">ALIAS</span> hacia un ALB o CloudFront, que se resuelven gratis. El DNS del VPS (DigitalOcean, Hostinger) también es gratis y alcanza; lo que perdés es la independencia si algún día te mudás.</p>
+      <p>Un detalle de Argentina: el <span class="mono">.com.ar</span> se registra en NIC.ar, sale bastante menos que un <span class="mono">.com</span> y se paga en pesos, pero la renovación es manual y si se te vence lo perdés. Un <span class="mono">.com</span> o un <span class="mono">.app</span> en un registrador internacional se renueva solo con la tarjeta y ronda los 12–15 USD al año. Para el sistema del club conviene tener los dos: el <span class="mono">.com.ar</span> porque es el que la gente escribe, apuntado al mismo lugar.</p>
+
+      <div class="callout warn">
+        <p class="ct"><span class="chip warn"><span class="dot"></span>Trampa</span> El wildcard no cubre dos niveles</p>
+        <p>Un certificado para <span class="mono">*.clubspot.com.ar</span> cubre <span class="mono">api.clubspot.com.ar</span> pero <strong>no</strong> cubre <span class="mono">api.test.clubspot.com.ar</span>: cada nivel necesita su propio wildcard. Si vas a usar subdominios por club, esto deja de ser un detalle. Dos consecuencias prácticas: emitir un wildcard obliga a validación por DNS —el proveedor necesita crear registros <span class="mono">_acme-challenge</span> en tu zona, así que le tenés que dar acceso a la API del DNS—, y muchos hostings estáticos no emiten wildcards en el plan gratis. Mientras los subdominios sean un puñado y fijos, pedí un certificado por nombre y listo: es automático en todos los proveedores.</p>
+      </div>
+
+      <h3>Lo que el código espera del DNS</h3>
+      <p>Tres puntos del repo dependen de que esto esté resuelto antes del primer deploy:</p>
+      <ul>
+        <li><span class="mono">Payments:PublicBaseUrl</span> es la base de la URL que se le pasa a Mercado Pago como <span class="mono">NotificationUrl</span>. Tiene que ser HTTPS público y estable: si cambia, los pagos viejos notifican a una URL que ya no existe.</li>
+        <li><span class="mono">Payments:AllowedReturnOrigins</span> es la lista blanca a donde puede volver el usuario después de pagar. Hoy tiene los dos <span class="mono">localhost</span>; en prod van los dos subdominios reales.</li>
+        <li><span class="mono">VITE_API_URL</span> se hornea en el build de cada frontend. Eso significa <strong>un build por entorno</strong>: el <span class="mono">dist/</span> de test y el de prod no son el mismo archivo, aunque el commit sea idéntico.</li>
+      </ul>
+    </section>
+
+    <section id="s8">
+      <div class="eyebrow">Zoom in · Redis</div>
+      <h2><span class="num">08</span>Redis: cuándo y para qué</h2>
+      <p class="lead">Redis es la única pieza de tu lista que todavía no tiene un caso de uso escrito en el repo. Vale la pena ser preciso sobre para qué serviría, porque dos de los tres usos que uno imagina ya están resueltos con Postgres.</p>
+
+      <div class="tw">
+        <table>
+          <caption>Los cuatro usos candidatos</caption>
+          <thead><tr><th>Uso</th><th>Estado hoy</th><th>¿Necesita Redis?</th></tr></thead>
+          <tbody>
+            <tr><td class="name">Caché de disponibilidad</td><td>La agenda se calcula en lectura desde el patrón semanal más las excepciones (ADR-0013). Es el cálculo más repetido del sistema y siempre da lo mismo hasta que alguien cambia un horario.</td><td><span class="chip good"><span class="dot"></span>Es el caso real</span></td></tr>
+            <tr><td class="name">Lock distribuido por job y tenant</td><td>Hangfire sobre PostgreSQL ya provee locks distribuidos.</td><td><span class="chip bad"><span class="dot"></span>No</span></td></tr>
+            <tr><td class="name">Cola de jobs</td><td>Hangfire con storage en <span class="mono">clubspot-hangfire</span>. Funciona y es transaccional con la base.</td><td><span class="chip bad"><span class="dot"></span>No</span></td></tr>
+            <tr><td class="name">Sesiones</td><td>El auth es JWT firmado: no hay estado de sesión que compartir.</td><td><span class="chip bad"><span class="dot"></span>No</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout bad">
+        <p class="ct"><span class="chip bad"><span class="dot"></span>Regla</span> Redis es caché, nunca la fuente de verdad</p>
+        <p>La tentación va a ser mover el hold de la reserva a Redis, porque "es más rápido para el TTL". No: el punto de serialización de una reserva es la fila del turno en PostgreSQL, con el <span class="mono">UPDATE</span> condicional atómico. Si el hold vive en Redis, dos personas pueden ganar la misma cancha cuando Redis se reinicia. Redis puede acelerar la <em>lectura</em> de la grilla; quién se queda con el turno lo decide la base.</p>
+      </div>
+
+      <h3>Cuándo agregarlo</h3>
+      <p>Cuando se cumpla alguno de estos tres, no antes: la grilla de disponibilidad empieza a aparecer en los tiempos de respuesta con el uso real; corrés más de una instancia de la API y querés que compartan caché; o aparece algo que Postgres no hace bien, como un rate limit por IP con ventana deslizante.</p>
+      <p>Sobre el costo, hay una asimetría grande según el modelo. En un VPS Redis es un contenedor más: <strong>cero pesos</strong> y dos líneas de <span class="mono">compose</span>. En las nubes grandes es un servicio con precio propio, y ahí el rango va de unos 6 USD al mes —ElastiCache Serverless con Valkey, o Upstash, que cobra por petición— hasta más de 90 si elegís mal el tipo de instancia. Está desglosado por proveedor en la sección 6.</p>
+    </section>
+
+    <section id="s9">
+      <div class="eyebrow">Zoom in · repo</div>
+      <h2><span class="num">09</span>Lo que falta en el código para poder desplegar</h2>
+      <p class="lead">Esto no es una crítica al estado del repo: hoy está pensado para correr en tu máquina y lo hace bien. Son los seis puntos concretos que hay que tocar antes del primer deploy, en cualquiera de los proveedores.</p>
+
+      <div class="tw">
+        <table>
+          <caption>Bloqueantes de despliegue, en el orden en que los vas a encontrar</caption>
+          <thead><tr><th>Qué</th><th>Dónde</th><th>Por qué bloquea</th></tr></thead>
+          <tbody>
+            <tr><td class="name">No hay Dockerfile</td><td>ninguno en el repo</td><td>Todos los proveedores de contenedores necesitan uno (algunos pueden inferirlo, pero no querés eso). Hay dos abajo.</td></tr>
+            <tr><td class="name">CORS fijo a localhost</td><td class="mono">Api/Program.cs:73</td><td><span class="mono">WithOrigins("http://localhost:5184", …)</span> está escrito en el código. Desde el dominio real, el navegador bloquea toda llamada. Tiene que salir de configuración.</td></tr>
+            <tr><td class="name">Migraciones sólo en Development</td><td class="mono">Api/Program.cs:80-86</td><td>En prod nadie corre <span class="mono">MigrateAsync</span>. Hay que decidir quién: un paso del deploy, o el arranque de la API con un lock. Y en prod no se siembra.</td></tr>
+            <tr><td class="name"><span class="mono">CREATE DATABASE</span> al arrancar</td><td class="mono">JobService/Program.cs:57-73</td><td>El JobService se conecta a la base <span class="mono">postgres</span> y crea <span class="mono">clubspot-hangfire</span> si falta. En varios Postgres gestionados eso no está permitido, o no existe una base llamada <span class="mono">postgres</span>. Alternativa: dejar Hangfire en un <em>esquema</em> aparte de la misma base.</td></tr>
+            <tr><td class="name">Secretos en configuración</td><td class="mono">Jwt:SigningKey</span>, MP</td><td>La clave de firma de ejemplo dice <span class="mono">development-only</span>. En prod van por variable de entorno del proveedor, nunca en un archivo del repo.</td></tr>
+            <tr><td class="name">Un build de frontend por entorno</td><td class="mono">frontend/*/src/api/config.ts</td><td><span class="mono">VITE_API_URL</span> se resuelve en tiempo de build. El pipeline tiene que compilar dos veces, con la variable de cada entorno.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <p class="ct"><span class="chip warn"><span class="dot"></span>Detalle que cuesta una tarde</span> La imagen necesita ICU</p>
+        <p>El repo tiene <span class="mono">InvariantGlobalization=false</span> a propósito, porque el club opera en es-AR y las fechas y montos dependen de la cultura. Eso significa que la imagen base <strong>tiene que traer ICU</strong>. La imagen <span class="mono">aspnet:10.0</span> normal lo trae; la variante <span class="mono">-alpine</span> no, y la aplicación revienta al arrancar con un error que no menciona la palabra ICU. Si querés Alpine por tamaño, hay que agregar <span class="mono">icu-libs</span> a mano.</p>
+      </div>
+
+      <h3>Dockerfile de la API</h3>
+      <pre><code><span class="cmt"># docker/api.Dockerfile — build desde la raíz del repo</span>
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+COPY src/backend/ .
+RUN dotnet restore ClubSpot.slnx
+RUN dotnet publish src/Api/ClubSpot.Api -c Release -o /app --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+<span class="cmt"># Esta imagen trae ICU; la -alpine no. Ver el aviso de arriba.</span>
+WORKDIR /app
+COPY --from=build /app .
+ENV ASPNETCORE_URLS=http://+:8080 TZ=America/Argentina/Buenos_Aires
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "ClubSpot.Api.dll"]</code></pre>
+
+      <p>El del JobService es el mismo cambiando el proyecto por <span class="mono">src/Jobs/ClubSpot.JobService</span>, el entrypoint por <span class="mono">ClubSpot.JobService.dll</span>, la imagen final por <span class="mono">dotnet/runtime:10.0</span> y sin <span class="mono">EXPOSE</span> ni <span class="mono">ASPNETCORE_URLS</span>, porque no escucha en ningún puerto.</p>
+
+      <h3>Cómo viaja la configuración</h3>
+      <p>En .NET los dos puntos de una clave de configuración se escriben con doble guion bajo en una variable de entorno. Esto es lo mínimo que necesita cada contenedor en producción:</p>
+      <pre><code><span class="cmt"># API</span>
+ConnectionStrings__ClubSpot=Host=…;Database=clubspot;Username=…;Password=…;SSL Mode=Require
+Jwt__SigningKey=&lt;32+ caracteres, generado al azar, distinto por entorno&gt;
+Payments__Gateway=mercadopago
+Payments__PublicBaseUrl=https://api.clubspot.com.ar
+Payments__AllowedReturnOrigins__0=https://reservas.clubspot.com.ar
+Payments__AllowedReturnOrigins__1=https://admin.clubspot.com.ar
+Payments__MercadoPago__AccessToken=&lt;secreto&gt;
+Payments__MercadoPago__WebhookSecret=&lt;secreto&gt;
+ASPNETCORE_ENVIRONMENT=Production
+
+<span class="cmt"># JobService</span>
+ConnectionStrings__ClubSpot=…
+ConnectionStrings__Hangfire=Host=…;Database=clubspot-hangfire;…
+DOTNET_ENVIRONMENT=Production</code></pre>
+
+      <h3>Si vas por VPS: el compose de producción</h3>
+      <p>Caddy resuelve el TLS solo, pidiendo los certificados a Let's Encrypt con sólo nombrar los dominios. Es la pieza que en las nubes grandes te cobran como balanceador.</p>
+      <pre><code><span class="cmt"># compose.prod.yaml — la base NO está acá: es gestionada, afuera</span>
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./dist:/srv:ro          <span class="cmt"># los dos dist/ de los frontends</span>
+      - caddy-data:/data
+    restart: unless-stopped
+  api:
+    image: ghcr.io/&lt;usuario&gt;/clubspot-api:${TAG}
+    env_file: [.env.api]
+    restart: unless-stopped
+  jobs:
+    image: ghcr.io/&lt;usuario&gt;/clubspot-jobs:${TAG}
+    env_file: [.env.jobs]
+    restart: unless-stopped
+volumes:
+  caddy-data:</code></pre>
+      <pre><code><span class="cmt"># Caddyfile — tres nombres, tres certificados, cero configuración de TLS</span>
+api.clubspot.com.ar      { reverse_proxy api:8080 }
+admin.clubspot.com.ar    { root * /srv/backoffice; try_files {path} /index.html; file_server }
+reservas.clubspot.com.ar { root * /srv/reservas;   try_files {path} /index.html; file_server }</code></pre>
+      <p class="footnote">El <span class="mono">try_files … /index.html</span> no es decorativo: sin eso, recargar el navegador en <span class="mono">/reservas/canchas</span> da 404, porque el archivo no existe — la ruta la resuelve React en el cliente.</p>
+    </section>
+
+<!--CLOSE-->
   </main>
 </div>

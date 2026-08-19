@@ -25,3 +25,5 @@ decisión, numerado, en español y en voz impersonal.
 | [0011](0011-convenciones-fisicas-de-postgresql.md) | Convenciones físicas de PostgreSQL (camelCase, plural, `pk`/`ix`/`ux`/`fk`) resueltas por convención en el contexto | 16/08/2026 | Aceptada |
 | [0012](0012-composicion-de-modulos-por-tenant.md) | Composición de módulos: el módulo es lo más chico que se vende; la persona es de `core` y ningún módulo le agrega columnas | 16/08/2026 | Aceptada, con capacidades pendientes |
 | [0013](0013-disponibilidad-patron-semanal-mas-excepciones.md) | Disponibilidad: patrón semanal pisado por excepciones con fecha y alcance; gana la más específica | 16/08/2026 | Aceptada |
+| [0014](0014-asiento-de-pago-agnostico-del-proveedor.md) | El asiento del pago registra proveedor + canal + id externo; puerto por proveedor con canales como capacidades | 18/08/2026 | Aceptada |
+| [0015](0015-mercadopago-checkout-pro-online-orders-presencial.md) | Mercado Pago: online por Checkout Pro; Orders reservado al cobro presencial; reevaluar si la billetera llega a Orders | 18/08/2026 | Aceptada |

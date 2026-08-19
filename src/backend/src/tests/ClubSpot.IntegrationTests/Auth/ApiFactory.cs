@@ -14,7 +14,7 @@ public sealed class ApiFactory(PostgresFixture postgres) : WebApplicationFactory
         builder.UseSetting("Jwt:Issuer", "ClubSpot.Tests");
         builder.UseSetting("Jwt:Audience", "ClubSpot.Tests");
         builder.UseSetting("Jwt:SigningKey", "test-signing-key-must-have-at-least-32-characters");
-        builder.UseSetting("Payments:Gateway", "fake");
+        builder.UseSetting("Payments:Provider", "fake");
         builder.UseSetting("Payments:HoldMinutes", "15");
     }
 }

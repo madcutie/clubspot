@@ -4,11 +4,11 @@ using Microsoft.Extensions.Options;
 namespace ClubSpot.Infrastructure.Payments;
 
 // Development only: "checkout" is a page served by the API whose buttons hit the real webhook.
-public sealed class FakePaymentGateway(IOptions<PaymentsOptions> options) : IPaymentGateway
+public sealed class FakePaymentProvider(IOptions<PaymentsOptions> options) : IHostedCheckout
 {
-    public const string GatewayName = "fake";
+    public const string ProviderName = "fake";
 
-    public string Name => GatewayName;
+    public string Name => ProviderName;
 
     public Task<CheckoutSession> CreateCheckoutAsync(CheckoutRequest request, CancellationToken cancellationToken)
     {

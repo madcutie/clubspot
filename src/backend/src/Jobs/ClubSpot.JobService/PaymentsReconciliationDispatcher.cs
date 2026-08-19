@@ -19,9 +19,9 @@ public sealed class PaymentsReconciliationDispatcher(
         IReadOnlyList<TenantId> clubs;
         using (var scope = scopeFactory.CreateScope())
         {
-            if (scope.ServiceProvider.GetService<IPaymentGateway>() is null)
+            if (!scope.ServiceProvider.GetRequiredService<IEnumerable<IPaymentProvider>>().Any())
             {
-                logger.LogWarning("No payment gateway configured; reconciliation skipped.");
+                logger.LogWarning("No payment provider configured; reconciliation skipped.");
                 return;
             }
             clubs = await scope.ServiceProvider.GetRequiredService<IClubDirectory>()
@@ -56,11 +56,12 @@ public sealed class PaymentsReconciliationDispatcher(
         using var jobLock = JobStorage.Current.GetConnection()
             .AcquireDistributedLock($"reconcile-payments:{tenant.Value}", TimeSpan.Zero);
 
-        var result = await scope.ServiceProvider.GetRequiredService<ReconcileOnlinePaymentsHandler>()
+        var results = await scope.ServiceProvider.GetRequiredService<ReconcileOnlinePaymentsHandler>()
             .HandleAsync(cancellationToken);
         // Provisional run record until real metrics exist (observability phase).
-        logger.LogInformation(
-            "Reconciliation for tenant {Tenant}: {Candidates} candidates, {Applied} applied, {Orphaned} orphaned.",
-            tenant.Value, result.Candidates, result.Applied, result.Orphaned);
+        foreach (var result in results)
+            logger.LogInformation(
+                "Reconciliation for tenant {Tenant} via {Provider}: {Candidates} candidates, {Applied} applied, {Orphaned} orphaned.",
+                tenant.Value, result.Provider, result.Candidates, result.Applied, result.Orphaned);
     }
 }

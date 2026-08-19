@@ -13,7 +13,8 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.Property(payment => payment.Id).HasColumnName("id").ValueGeneratedNever();
         builder.Property(payment => payment.TenantId).HasColumnName("tenantId");
         builder.Property(payment => payment.BookingId).HasColumnName("bookingId");
-        builder.Property(payment => payment.Gateway).HasColumnName("gateway").HasMaxLength(40);
+        builder.Property(payment => payment.Provider).HasColumnName("provider").HasMaxLength(40);
+        builder.Property(payment => payment.Rail).HasColumnName("rail").HasConversion<string>();
         builder.Property(payment => payment.ExternalId).HasColumnName("externalId").HasMaxLength(120);
         builder.ComplexProperty(payment => payment.Amount, amount =>
         {
@@ -24,7 +25,7 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.Property(payment => payment.Status).HasColumnName("status").HasConversion<string>();
         builder.Property(payment => payment.Source).HasColumnName("source").HasConversion<string>();
         builder.Property(payment => payment.CreatedAt).HasColumnName("createdAt");
-        builder.HasIndex(payment => new { payment.Gateway, payment.ExternalId }).IsUnique();
+        builder.HasIndex(payment => new { payment.Provider, payment.ExternalId }).IsUnique();
         builder.HasIndex(payment => payment.BookingId);
         builder.HasOne<Booking>().WithMany().HasForeignKey(payment => payment.BookingId).OnDelete(DeleteBehavior.Restrict);
     }

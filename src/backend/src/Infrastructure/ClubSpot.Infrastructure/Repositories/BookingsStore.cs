@@ -96,8 +96,8 @@ internal sealed class BookingsStore(
 
     public async Task<PaymentApplyOutcome> ApplyPaymentAsync(PaymentNotification notification, PaymentSource source, CancellationToken cancellationToken)
     {
-        // Idempotency anchor: (gateway, externalId) is unique, so a replayed webhook is a no-op.
-        if (await db.Payments.AnyAsync(payment => payment.Gateway == notification.Gateway
+        // Idempotency anchor: (provider, externalId) is unique, so a replayed webhook is a no-op.
+        if (await db.Payments.AnyAsync(payment => payment.Provider == notification.Provider
             && payment.ExternalId == notification.ExternalId, cancellationToken))
             return PaymentApplyOutcome.AlreadyProcessed;
 
@@ -110,8 +110,8 @@ internal sealed class BookingsStore(
             ? Money.Of(charged, booking.Price.Currency)
             : ChargeAmountFor(booking.PaymentMode, booking.Price, club.DepositPercent);
 
-        var payment = new Payment(Guid.NewGuid(), tenantContext.Current, booking.Id, notification.Gateway,
-            notification.ExternalId, amount, kind,
+        var payment = new Payment(Guid.NewGuid(), tenantContext.Current, booking.Id, notification.Provider,
+            notification.Rail, notification.ExternalId, amount, kind,
             notification.Approved ? PaymentStatus.Approved : PaymentStatus.Rejected, source, clock.UtcNow);
         db.Payments.Add(payment);
 

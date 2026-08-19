@@ -10,7 +10,9 @@ public sealed class Payment : ITenantOwned
     public Guid Id { get; private set; }
     public TenantId TenantId { get; private set; }
     public Guid BookingId { get; private set; }
-    public string Gateway { get; private set; }
+    public string Provider { get; private set; }
+    // Which of the provider's channels settled it: hosted checkout today, in-person orders later.
+    public PaymentRail Rail { get; private set; }
     public string ExternalId { get; private set; }
     public Money Amount { get; private set; }
     public PaymentKind Kind { get; private set; }
@@ -19,18 +21,20 @@ public sealed class Payment : ITenantOwned
     public PaymentSource Source { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
-    public Payment(Guid id, TenantId tenantId, Guid bookingId, string gateway, string externalId,
-        Money amount, PaymentKind kind, PaymentStatus status, PaymentSource source, DateTimeOffset createdAt)
+    public Payment(Guid id, TenantId tenantId, Guid bookingId, string provider, PaymentRail rail,
+        string externalId, Money amount, PaymentKind kind, PaymentStatus status, PaymentSource source,
+        DateTimeOffset createdAt)
     {
-        if (string.IsNullOrWhiteSpace(gateway))
-            throw new ArgumentException("Gateway cannot be empty.", nameof(gateway));
+        if (string.IsNullOrWhiteSpace(provider))
+            throw new ArgumentException("Provider cannot be empty.", nameof(provider));
         if (string.IsNullOrWhiteSpace(externalId))
             throw new ArgumentException("External id cannot be empty.", nameof(externalId));
 
         Id = id;
         TenantId = tenantId;
         BookingId = bookingId;
-        Gateway = gateway;
+        Provider = provider;
+        Rail = rail;
         ExternalId = externalId;
         Amount = amount;
         Kind = kind;
@@ -44,9 +48,15 @@ public sealed class Payment : ITenantOwned
 
     private Payment()
     {
-        Gateway = null!;
+        Provider = null!;
         ExternalId = null!;
     }
+}
+
+public enum PaymentRail
+{
+    Checkout,
+    Order
 }
 
 public enum PaymentKind

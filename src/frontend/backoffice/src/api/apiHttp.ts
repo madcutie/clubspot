@@ -220,9 +220,24 @@ interface AgendaCourtResponse {
   bookings: AgendaBookingResponse[];
 }
 
+interface AgendaInactiveResponse {
+  id: string;
+  courtId: string;
+  courtName: string;
+  startMinute: number;
+  durationMinutes: number;
+  customerName: string;
+  customerPhone: string | null;
+  price: number;
+  paidAmount: number;
+  status: 'confirmed' | 'cancelled' | 'pendingPayment' | 'expired';
+  cancelledAt: string | null;
+}
+
 interface AgendaResponse {
   currency: string;
   courts: AgendaCourtResponse[];
+  inactive: AgendaInactiveResponse[];
 }
 
 export async function fetchAgenda(deporte: Deporte, fecha: string): Promise<AgendaDia> {
@@ -248,6 +263,18 @@ export async function fetchAgenda(deporte: Deporte, fecha: string): Promise<Agen
           precio: b.price,
           pendientePago: b.status === 'pendingPayment',
         })),
+    })),
+    // Un hold pendiente que llega acá está vencido: si siguiera vivo, vendría entre las activas.
+    inactivas: agenda.inactive.map((b) => ({
+      id: b.id,
+      cancha: b.courtName,
+      t: b.startMinute,
+      dur: b.durationMinutes,
+      persona: b.customerName,
+      tel: b.customerPhone,
+      precio: b.price,
+      pagado: b.paidAmount,
+      estado: b.status === 'cancelled' ? ('cancelada' as const) : ('vencida' as const),
     })),
   };
 }

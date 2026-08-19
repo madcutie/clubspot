@@ -363,6 +363,16 @@ export function fetchBooking(id: string): Promise<BookingSnapshot> {
   return getJson<BookingSnapshot>(`/bookings/${id}`);
 }
 
+/** Abandono del checkout: libera el hold ya, sin esperar el TTL. Idempotente. */
+export async function releaseBooking(id: string): Promise<void> {
+  await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings/${id}/release`, { method: 'POST' });
+}
+
+/** El webhook no llegó todavía: pide conciliar esta reserva ya, sin esperar el job. */
+export async function settleBooking(id: string): Promise<void> {
+  await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings/${id}/settle`, { method: 'POST' });
+}
+
 /**
  * La disponibilidad cambió (se reservó o se perdió un turno): se invalida todo,
  * porque días, contadores y grilla derivan del mismo payload cacheado.

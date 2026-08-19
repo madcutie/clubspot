@@ -94,6 +94,21 @@ internal sealed class BookingsStore(
         return BookingCancelOutcome.Cancelled;
     }
 
+    public async Task<HoldReleaseOutcome> ReleaseHoldAsync(Guid id, CancellationToken cancellationToken)
+    {
+        // Conditional update: a hold the webhook confirmed a moment ago must never be cancelled.
+        var released = await db.Bookings
+            .Where(booking => booking.Id == id && booking.Status == BookingStatus.PendingPayment)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(booking => booking.Status, BookingStatus.Cancelled)
+                .SetProperty(booking => booking.CancelledAt, clock.UtcNow), cancellationToken);
+        if (released > 0) return HoldReleaseOutcome.Released;
+
+        return await db.Bookings.AnyAsync(booking => booking.Id == id, cancellationToken)
+            ? HoldReleaseOutcome.NotPending
+            : HoldReleaseOutcome.NotFound;
+    }
+
     public async Task<PaymentApplyOutcome> ApplyPaymentAsync(PaymentNotification notification, PaymentSource source, CancellationToken cancellationToken)
     {
         // Idempotency anchor: (provider, externalId) is unique, so a replayed webhook is a no-op.
@@ -127,6 +142,14 @@ internal sealed class BookingsStore(
             // Duplicate money on an already confirmed booking: recorded, needs manual follow-up.
             await db.SaveChangesAsync(cancellationToken);
             return PaymentApplyOutcome.Confirmed;
+        }
+
+        if (booking.Status == BookingStatus.Cancelled)
+        {
+            // The buyer paid while the hold was being released: keep the money recorded, flag it.
+            payment.MarkOrphaned();
+            await db.SaveChangesAsync(cancellationToken);
+            return PaymentApplyOutcome.Orphaned;
         }
 
         booking.ConfirmPayment();

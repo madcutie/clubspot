@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { CalendarX, Check, Hourglass } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchBooking, invalidateAvailability, type BookingSnapshot } from '../api/portalApi';
+import { fetchBooking, invalidateAvailability, releaseBooking, settleBooking, type BookingSnapshot } from '../api/portalApi';
 import { dayLabelOf, hhmm, parseDate } from '../domain/dates';
 import { sportLabel } from '../domain/sport';
 import { fmt } from '../domain/pricing';
@@ -32,6 +32,29 @@ export function ReturnScreen({ api }: { api: BookingApi }) {
     (b?.status === 'pendingPayment' && b.expiresAt != null && new Date(b.expiresAt) < new Date());
   const confirmada = b?.status === 'confirmed';
   const saldo = b ? b.price - b.paidAmount : 0;
+
+  /** Webhook lento o perdido: a los 5 s se pide la conciliación puntual, y se insiste. */
+  const esperando = b?.status === 'pendingPayment' && !holdVencido;
+  useEffect(() => {
+    if (!esperando || !b) return;
+    const timer = setInterval(() => {
+      void settleBooking(b.id).catch(() => {});
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [esperando, b?.id]);
+
+  /** Irse sin pagar libera el hold; si el pago justo entró, el backend no cancela nada. */
+  const volver = async () => {
+    if (b?.status === 'pendingPayment') {
+      try {
+        await releaseBooking(b.id);
+      } catch {
+        // El TTL lo libera igual en unos minutos.
+      }
+    }
+    await invalidateAvailability();
+    restart();
+  };
 
   const saved = useRef(false);
   useEffect(() => {
@@ -78,11 +101,11 @@ export function ReturnScreen({ api }: { api: BookingApi }) {
                 }}
               >
                 {confirmada ? (
-                  <Check size={28} strokeWidth={2.5} />
+                  <Check size={28} strokeWidth={2.5} className="pop" />
                 ) : holdVencido ? (
                   <CalendarX size={26} strokeWidth={2} />
                 ) : (
-                  <Hourglass size={26} strokeWidth={2} />
+                  <Hourglass size={26} strokeWidth={2} className="hourglass-flip" />
                 )}
               </div>
               <div style={{ font: `800 24px ${F.display}`, letterSpacing: '-.02em' }}>
@@ -120,7 +143,7 @@ export function ReturnScreen({ api }: { api: BookingApi }) {
       </Body>
 
       <Footer>
-        <button type="button" onClick={restart} style={ctaOn}>
+        <button type="button" onClick={() => void volver()} style={ctaOn}>
           {holdVencido ? 'Buscar otro horario' : 'Volver al inicio'}
         </button>
       </Footer>

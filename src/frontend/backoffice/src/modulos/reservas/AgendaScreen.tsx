@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAgenda } from '../../api/queries';
 import {
   GRILLA_DESDE,
@@ -10,7 +10,7 @@ import {
 } from '../../domain/agenda';
 import { pesos } from '../../domain/dinero';
 import { etiquetaDia, hhmm, isoDe } from '../../domain/fechas';
-import type { Deporte, ReservaDia } from '../../domain/types';
+import type { Deporte, ReservaDia, ReservaInactiva } from '../../domain/types';
 import { useParamsAgenda } from '../../rutas';
 import { Cargando } from '../../ui/Cargando';
 import { FILA, c, chipFiltro, mono, primario, sans, secundario } from '../../ui/theme';
@@ -235,6 +235,8 @@ export function AgendaScreen() {
               </div>
             ))}
           </div>
+
+          {agenda.inactivas.length > 0 && <Inactivas lista={agenda.inactivas} />}
         </div>
       </div>
 
@@ -256,6 +258,89 @@ export function AgendaScreen() {
         />
       )}
     </>
+  );
+}
+
+/**
+ * Registro del día: reservas que ya no bloquean el turno pero existieron.
+ * Sobre todo importa la plata: una cancelada con pago es un pendiente del operador.
+ */
+function Inactivas({ lista }: { lista: ReservaInactiva[] }) {
+  return (
+    <div style={{ marginTop: 22, borderTop: `1px solid ${c.linea}`, paddingTop: 14 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 7,
+          font: `500 12.5px ${sans}`,
+          color: c.textoGris,
+          marginBottom: 8,
+        }}
+      >
+        <CalendarX size={13} strokeWidth={2} aria-hidden />
+        Canceladas y vencidas del día
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {lista.map((r) => (
+          <div
+            key={r.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '7px 10px',
+              borderRadius: 8,
+              border: `1px dashed ${c.bordeFirme}`,
+              background: c.hueco,
+            }}
+          >
+            <span style={{ font: `400 11px ${mono}`, color: c.textoDato, width: 84, flex: 'none' }}>
+              {hhmm(r.t)}–{hhmm(r.t + r.dur)}
+            </span>
+            <span
+              style={{
+                font: `400 11px ${mono}`,
+                color: c.textoTenue,
+                width: 92,
+                flex: 'none',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {r.cancha}
+            </span>
+            <span
+              style={{
+                font: `500 12.5px ${sans}`,
+                color: c.tinta,
+                flex: 1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {r.persona}
+            </span>
+            <span style={{ font: `400 10.5px ${mono}`, color: c.textoGris, flex: 'none' }}>
+              {r.estado}
+            </span>
+            <span
+              style={{
+                font: `500 11px ${mono}`,
+                color: r.pagado > 0 ? '#c9971f' : c.textoTenue,
+                flex: 'none',
+                width: 120,
+                textAlign: 'right',
+              }}
+            >
+              {r.pagado > 0 ? `pagó ${pesos(r.pagado)}` : pesos(r.precio)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

@@ -2,6 +2,39 @@
 
 Registro de avance del [plan](plan-reserva-online.md). Lo más nuevo arriba.
 
+## 18/08/2026 — liberación del hold al abandonar y disponibilidad sin cache viejo
+
+El usuario detectó que tras bloquear un turno y volver atrás lo veía disponible. Diagnóstico:
+el bloqueo real (hold de 5 min) estaba sano en el backend; lo que mentía era el cache del
+portal (staleTime 15 s + bfcache del botón atrás), y además abandonar el checkout dejaba el
+hold puesto hasta vencer el TTL. Cambios:
+
+- **`POST /api/portal/{club}/bookings/{id}/release`**: libera el hold al abandonar. Update
+  condicional (`WHERE status = PendingPayment`): jamás cancela una reserva que el webhook
+  confirmó un instante antes; idempotente (204 también si ya no estaba pendiente).
+- **Pago sobre hold liberado ⇒ huérfano**: `ApplyPaymentAsync` asienta el pago con
+  `ApprovedOrphan` en vez de lanzar (antes `ConfirmPayment` habría tirado 500 al webhook).
+- **Portal**: "Volver al inicio" sin pagar llama al release y refresca disponibilidad; un
+  `pageshow` en `main.tsx` invalida el cache cuando el navegador restaura la página congelada
+  (botón atrás desde el checkout de MP).
+- 3 tests de integración nuevos (release libera el turno · release no toca confirmadas · pago
+  sobre hold liberado queda huérfano) — 114 verdes. Verificado además en vivo por API.
+- **Conciliación puntual** (`POST /bookings/{id}/settle`, `SettleBookingHandler`): a los 5 s de
+  espera sin webhook, el portal pide conciliar esa reserva contra los proveedores (mismo camino
+  idempotente que J2) y repite cada 5 s. Peor caso pasa de "próximo tick de J2" a segundos.
+  El reloj de arena de la espera ahora es una animación (`hourglass-flip`).
+- **Canceladas visibles en la agenda** (elección del usuario: lista debajo de la grilla): la
+  agenda devuelve `inactive` — canceladas, vencidas y holds muertos del día con el **monto
+  pagado** (huérfanos incluidos: plata sobre reserva muerta es lo que el operador debe ver) —
+  y el backoffice las lista con estado y "pagó $X" resaltado. Cancelar ya no hace desaparecer
+  la reserva.
+
+También hoy, del lado de MP: la URL de webhook de **modo prueba** del panel seguía apuntando
+al túnel viejo (por eso el pago 173600673583 rebotó con 502 y lo rescató J2). Corregida al
+dominio fijo `noe-uncephalic-jerome.ngrok-free.dev`, verificada con "Simular notificación"
+(200) y con el reintento real del webhook (200, idempotente: `AlreadyProcessed`). Falta un
+pago nuevo para ver la confirmación instantánea por webhook (`source=Webhook`).
+
 ## 17/08/2026 — primer pago real contra el sandbox de Mercado Pago
 
 Se cerró el ciclo con MP de verdad: reserva desde el portal → preferencia real (Checkout Pro,

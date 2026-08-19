@@ -102,9 +102,23 @@ export interface CanchaAgenda {
   reservas: ReservaDia[];
 }
 
+/** Reserva que ya no bloquea el turno (cancelada o vencida), con lo que tenía pagado. */
+export interface ReservaInactiva {
+  id: string;
+  cancha: string;
+  t: number;
+  dur: number;
+  persona: string;
+  tel: string | null;
+  precio: number;
+  pagado: number;
+  estado: 'cancelada' | 'vencida';
+}
+
 export interface AgendaDia {
   moneda: string;
   canchas: CanchaAgenda[];
+  inactivas: ReservaInactiva[];
 }
 
 export interface Club {

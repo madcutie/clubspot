@@ -2,6 +2,21 @@
 
 Registro de avance del [plan](plan-pagos-multiproveedor.md). La entrada más nueva arriba.
 
+## 18/08/2026 — Plan cerrado: F1, F2 y F3 verificadas (fake y Mercado Pago real)
+
+**F3 completa.** Reserva real desde el portal con tarjeta de prueba: webhook entregado al
+dominio fijo y aplicado en el mismo segundo (`22:11:56` en el túnel → asiento
+`2026-08-19 01:11:56Z`), sin intervención de J2. Asiento verificado por SQL:
+`provider=mercadopago, rail=Checkout, source=Webhook, Approved, 14000.00`
+(externalId `173607113639`), reserva `Confirmed`. Con esto el asiento demostró ser transparente:
+las filas de `fake` y de `mercadopago` tienen la misma forma y sólo cambia `provider`, y las
+tres vías de llegada quedaron ejercitadas contra la base — `Webhook` (esta corrida) y
+`Reconciliation` (los dos pagos que J2 rescató antes, cuando la URL del panel de MP apuntaba
+al túnel viejo).
+
+**Pendiente del plan que no se hizo, a propósito:** la clase registro `IPaymentProviders`
+(ver más abajo) y el proveedor por tenant, que sigue siendo pregunta abierta.
+
 ## 18/08/2026 — F1 y F2 cerradas; F3 verificada con el fake, falta la pata Mercado Pago real
 
 - **F1 (asiento):** `Payment.Gateway` → `Provider`, nueva `Rail` (`Checkout` | `Order`),

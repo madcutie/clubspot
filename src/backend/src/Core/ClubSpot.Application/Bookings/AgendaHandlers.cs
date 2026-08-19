@@ -12,7 +12,12 @@ public sealed record AgendaBooking(Guid Id, int StartMinute, int DurationMinutes
 public sealed record AgendaCourt(Guid CourtId, string Name, string Detail, bool IsCovered,
     IReadOnlyList<TimeRange> Windows, IReadOnlyList<AgendaSlot> Slots, IReadOnlyList<AgendaBooking> Bookings);
 
-public sealed record Agenda(string Currency, IReadOnlyList<AgendaCourt> Courts);
+public sealed record AgendaInactiveBooking(Guid Id, Guid CourtId, string CourtName, int StartMinute,
+    int DurationMinutes, string CustomerName, string? CustomerPhone, decimal Price, decimal PaidAmount,
+    BookingStatus Status, DateTimeOffset? CancelledAt);
+
+public sealed record Agenda(string Currency, IReadOnlyList<AgendaCourt> Courts,
+    IReadOnlyList<AgendaInactiveBooking> Inactive);
 
 public sealed class GetAgendaHandler(IAvailabilityQueries queries, IClubSettings clubSettings, IClock clock)
 {
@@ -41,6 +46,14 @@ public sealed class GetAgendaHandler(IAvailabilityQueries queries, IClubSettings
                 bookings.Select(booking => new AgendaBooking(booking.Id, booking.StartMinute, booking.DurationMinutes,
                     booking.CustomerName, booking.CustomerPhone, booking.Price.Amount, booking.Status)).ToList());
         }).ToList();
-        return new Agenda(club.Currency, courts);
+
+        var courtNames = data.Courts.ToDictionary(court => court.Id, court => court.Name);
+        var inactive = (await queries.GetInactiveBookingsAsync(courtNames.Keys, date, cancellationToken))
+            .Select(entry => new AgendaInactiveBooking(entry.Booking.Id, entry.Booking.CourtId,
+                courtNames[entry.Booking.CourtId], entry.Booking.StartMinute, entry.Booking.DurationMinutes,
+                entry.Booking.CustomerName, entry.Booking.CustomerPhone, entry.Booking.Price.Amount,
+                entry.PaidAmount, entry.Booking.Status, entry.Booking.CancelledAt))
+            .ToList();
+        return new Agenda(club.Currency, courts, inactive);
     }
 }

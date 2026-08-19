@@ -16,6 +16,8 @@ public sealed record BookingCreateResult(BookingCreateOutcome Outcome, Guid Id, 
 
 public enum PaymentApplyOutcome { Confirmed, Rejected, AlreadyProcessed, Orphaned, UnknownBooking }
 
+public enum HoldReleaseOutcome { Released, NotPending, NotFound }
+
 public sealed record PaymentNotification(Guid BookingId, string Provider, PaymentRail Rail, string ExternalId,
     bool Approved, decimal? Amount);
 
@@ -27,6 +29,8 @@ public interface IBookingsStore
 {
     Task<BookingCreateResult> CreateAsync(BookingCreateInput input, CancellationToken cancellationToken);
     Task<BookingCancelOutcome> CancelAsync(Guid id, CancellationToken cancellationToken);
+    // Abandoned checkout: frees a pending hold right away instead of waiting out its TTL.
+    Task<HoldReleaseOutcome> ReleaseHoldAsync(Guid id, CancellationToken cancellationToken);
     Task<PaymentApplyOutcome> ApplyPaymentAsync(PaymentNotification notification, PaymentSource source, CancellationToken cancellationToken);
     Task<BookingSnapshot?> GetAsync(Guid id, CancellationToken cancellationToken);
     // Reconciliation candidates: online bookings still unpaid on our side.

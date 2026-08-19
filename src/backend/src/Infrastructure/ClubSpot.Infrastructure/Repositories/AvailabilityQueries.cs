@@ -39,4 +39,29 @@ internal sealed class AvailabilityQueries(ClubSpotDbContext db, IClock clock) : 
 
         return new AvailabilityData(courts, schedules, overrides, activeBookings);
     }
+
+    public async Task<IReadOnlyList<InactiveBooking>> GetInactiveBookingsAsync(
+        IReadOnlyCollection<Guid> courtIds, DateOnly date, CancellationToken cancellationToken)
+    {
+        var now = clock.UtcNow;
+        var bookings = await db.Bookings.AsNoTracking()
+            .Where(booking => courtIds.Contains(booking.CourtId) && booking.Date == date
+                && (booking.Status == BookingStatus.Cancelled || booking.Status == BookingStatus.Expired
+                    || (booking.Status == BookingStatus.PendingPayment && booking.ExpiresAt <= now)))
+            .OrderBy(booking => booking.StartMinute)
+            .ToListAsync(cancellationToken);
+
+        var bookingIds = bookings.Select(booking => booking.Id).ToList();
+        // Orphans count as paid: money on a dead booking is exactly what the operator must see.
+        var paidByBooking = await db.Payments.AsNoTracking()
+            .Where(payment => bookingIds.Contains(payment.BookingId)
+                && (payment.Status == PaymentStatus.Approved || payment.Status == PaymentStatus.ApprovedOrphan))
+            .GroupBy(payment => payment.BookingId)
+            .Select(group => new { group.Key, Total = group.Sum(payment => payment.Amount.Amount) })
+            .ToDictionaryAsync(entry => entry.Key, entry => entry.Total, cancellationToken);
+
+        return bookings
+            .Select(booking => new InactiveBooking(booking, paidByBooking.GetValueOrDefault(booking.Id)))
+            .ToList();
+    }
 }

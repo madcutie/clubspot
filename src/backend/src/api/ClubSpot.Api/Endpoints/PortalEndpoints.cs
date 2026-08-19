@@ -19,6 +19,8 @@ public static class PortalEndpoints
         group.MapGet("/availability", GetAvailabilityAsync);
         group.MapPost("/bookings", CreateBookingAsync);
         group.MapGet("/bookings/{id:guid}", GetBookingAsync);
+        group.MapPost("/bookings/{id:guid}/release", ReleaseBookingAsync);
+        group.MapPost("/bookings/{id:guid}/settle", SettleBookingAsync);
         return app;
     }
 
@@ -83,6 +85,17 @@ public static class PortalEndpoints
 
     private static async Task<IResult> GetBookingAsync(Guid id, IBookingsStore store, CancellationToken cancellationToken) =>
         await store.GetAsync(id, cancellationToken) is { } snapshot ? Results.Ok(snapshot) : Results.NotFound();
+
+    // The buyer is staring at the waiting screen: ask the providers right now instead of J2.
+    private static async Task<IResult> SettleBookingAsync(Guid id, SettleBookingHandler handler,
+        CancellationToken cancellationToken) =>
+        Results.Ok(new { outcome = await handler.HandleAsync(id, cancellationToken) });
+
+    // Only frees pending holds; anything already settled is left as is, so the call is idempotent.
+    private static async Task<IResult> ReleaseBookingAsync(Guid id, IBookingsStore store, CancellationToken cancellationToken) =>
+        await store.ReleaseHoldAsync(id, cancellationToken) == HoldReleaseOutcome.NotFound
+            ? Results.NotFound()
+            : Results.NoContent();
 
     private static string TimeLabel(int minute) => $"{minute / 60:00}:{minute % 60:00}";
 

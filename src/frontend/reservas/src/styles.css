@@ -100,6 +100,25 @@ a:hover {
   animation: spin 0.8s linear infinite;
 }
 
+/* Reloj de arena de la espera de pago: da media vuelta y descansa, como uno real. */
+@keyframes hourglass-flip {
+  0%,
+  40% {
+    transform: rotate(0deg);
+  }
+  50%,
+  90% {
+    transform: rotate(180deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.hourglass-flip {
+  animation: hourglass-flip 2.4s ease-in-out infinite;
+}
+
 .pop {
   animation: pop 0.3s ease-out;
 }

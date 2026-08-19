@@ -103,6 +103,9 @@ public sealed class ReconcileOnlinePaymentsHandlerTests
         public Task<BookingCancelOutcome> CancelAsync(Guid id, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
+        public Task<HoldReleaseOutcome> ReleaseHoldAsync(Guid id, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
         public Task<BookingSnapshot?> GetAsync(Guid id, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
     }

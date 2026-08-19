@@ -1,19 +1,20 @@
-import { useState } from 'react';
-import { CalendarX, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useAgenda } from '../../api/queries';
+import { useEffect, useState } from 'react';
+import { CalendarX, ChevronLeft, ChevronRight, Clock, Plus } from 'lucide-react';
+import { useAgenda, useCanchas } from '../../api/queries';
 import {
   GRILLA_DESDE,
   GRILLA_HASTA,
   celdasDe,
   resumenAgenda,
+  type Celda,
   type CeldaLibre,
 } from '../../domain/agenda';
 import { pesos } from '../../domain/dinero';
-import { etiquetaDia, hhmm, isoDe } from '../../domain/fechas';
-import type { Deporte, ReservaDia, ReservaInactiva } from '../../domain/types';
+import { etiquetaDia, hhmm, isoDe, minutosDeAhora } from '../../domain/fechas';
+import type { Cancha, CanchaAgenda, Deporte, ReservaDia, ReservaInactiva } from '../../domain/types';
 import { useParamsAgenda } from '../../rutas';
 import { Cargando } from '../../ui/Cargando';
-import { FILA, c, chipFiltro, mono, primario, sans, secundario } from '../../ui/theme';
+import { AIRE, FILA, c, chipDia, chipFiltro, mono, primario, sans, secundario } from '../../ui/theme';
 import { useTostada } from '../../ui/Tostadas';
 import { CobroPanel } from './CobroPanel';
 import { NuevaReservaPanel, type SlotElegido } from './NuevaReservaPanel';
@@ -37,6 +38,9 @@ export function AgendaScreen() {
   const { deporte, dia, setDeporte, setDia } = useParamsAgenda();
   const fecha = isoDe(dia);
   const { data: agenda, isLoading } = useAgenda(deporte, fecha);
+  // El catálogo ya está en caché por la barra lateral: sale la tarifa sin pedir nada nuevo.
+  const { data: catalogo } = useCanchas();
+  const ahora = useAhora();
 
   const [verReserva, setVerReserva] = useState<string | null>(null);
   const [nueva, setNueva] = useState<SlotElegido | null>(null);
@@ -48,6 +52,7 @@ export function AgendaScreen() {
 
   const canchas = agenda.canchas;
   const resumen = resumenAgenda(canchas);
+  const tarifas = new Map((catalogo ?? []).map((x) => [x.id, x] as const));
 
   const horas = Array.from(
     { length: (GRILLA_HASTA - GRILLA_DESDE) / 60 },
@@ -144,7 +149,7 @@ export function AgendaScreen() {
                 setDia(i);
                 setVerReserva(null);
               }}
-              style={chipFiltro(dia === i)}
+              style={chipDia(dia === i)}
             >
               {etiquetaDia(i)}
             </button>
@@ -169,7 +174,7 @@ export function AgendaScreen() {
             style={{
               position: 'sticky',
               top: 0,
-              zIndex: 3,
+              zIndex: 6,
               background: c.papel,
               display: 'flex',
               gap: 6,
@@ -179,25 +184,30 @@ export function AgendaScreen() {
           >
             <div style={{ flex: 'none', width: 52 }} />
             {canchas.map((cancha) => (
-              <div key={cancha.courtId} style={{ flex: 1, minWidth: 118 }}>
-                <div style={{ font: `500 12.5px ${sans}`, color: c.tinta }}>{cancha.nombre}</div>
-                <div
-                  style={{
-                    font: `400 10.5px ${mono}`,
-                    color: c.textoTenue,
-                    marginTop: 3,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {cancha.detalle}
-                </div>
-              </div>
+              <Encabezado key={cancha.courtId} cancha={cancha} tarifa={tarifas.get(cancha.courtId)} />
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: 6, paddingTop: 6 }}>
+          <div style={{ display: 'flex', gap: 6, paddingTop: 6, position: 'relative' }}>
+            <div
+              aria-hidden
+              style={{ position: 'absolute', inset: '6px 0 0', zIndex: 1, pointerEvents: 'none' }}
+            >
+              {horas.slice(1).map((h) => (
+                <div
+                  key={h}
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    top: ((h - GRILLA_DESDE) / 30) * FILA,
+                    height: 1,
+                    background: c.regla,
+                  }}
+                />
+              ))}
+            </div>
+
             <div style={{ flex: 'none', width: 52, display: 'flex', flexDirection: 'column' }}>
               {horas.map((h) => (
                 <div
@@ -218,13 +228,20 @@ export function AgendaScreen() {
             {canchas.map((cancha) => (
               <div
                 key={cancha.courtId}
-                style={{ flex: 1, minWidth: 118, display: 'flex', flexDirection: 'column' }}
+                style={{
+                  flex: 1,
+                  minWidth: 118,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  position: 'relative',
+                }}
               >
-                {celdasDe(cancha).map((it) =>
+                {celdasDe(cancha).map((it, i, todas) =>
                   it.libre ? (
                     <Hueco
                       key={`l${it.t}`}
                       celda={it}
+                      abreBloque={!vieneDeUnHuecoVendible(todas[i - 1])}
                       onVender={() => setNueva({ courtId: cancha.courtId, t: it.t })}
                     />
                   ) : (
@@ -238,6 +255,37 @@ export function AgendaScreen() {
                 )}
               </div>
             ))}
+
+            {dia === 0 && ahora > GRILLA_DESDE && ahora < GRILLA_HASTA && (
+              <div
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: 6 + ((ahora - GRILLA_DESDE) / 30) * FILA - 7,
+                  zIndex: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  pointerEvents: 'none',
+                }}
+              >
+                <span style={{ flex: 'none', width: 52 }}>
+                  <span
+                    style={{
+                      font: `500 9.5px ${mono}`,
+                      color: c.papel,
+                      background: c.tinta,
+                      borderRadius: 4,
+                      padding: '1px 5px',
+                    }}
+                  >
+                    {hhmm(ahora)}
+                  </span>
+                </span>
+                <span style={{ flex: 1, height: 1.5, background: c.tinta, marginLeft: 6 }} />
+              </div>
+            )}
           </div>
 
           {agenda.inactivas.length > 0 && <Inactivas lista={agenda.inactivas} />}
@@ -368,40 +416,67 @@ function Inactivas({ lista }: { lista: ReservaInactiva[] }) {
   );
 }
 
-/** Hueco de la grilla. Sólo un arranque vendible se puede clickear. */
-function Hueco({ celda, onVender }: { celda: CeldaLibre; onVender: () => void }) {
+/**
+ * Hueco de la grilla. Sólo un arranque vendible se puede clickear, y por eso es
+ * lo único que se dibuja en blanco y con precio: en una agenda lo primero que
+ * hay que ver es qué se puede vender. El rayado es lo cerrado, no lo libre.
+ */
+function Hueco({
+  celda,
+  abreBloque,
+  onVender,
+}: {
+  celda: CeldaLibre;
+  abreBloque: boolean;
+  onVender: () => void;
+}) {
   return (
     <button
       type="button"
       onClick={celda.vendible ? onVender : undefined}
-      className={celda.vendible ? 'h-borde' : undefined}
+      className={celda.vendible ? 'h-vendible' : undefined}
       style={{
         height: FILA * (celda.span || 1),
         flex: 'none',
-        borderRadius: 6,
+        border: 'none',
         cursor: celda.vendible ? 'pointer' : 'default',
         display: 'flex',
-        alignItems: 'center',
-        padding: celda.vendible ? 0 : '0 9px',
-        border:
-          celda.vendible || celda.cerrado ? '1px solid transparent' : `1px dashed ${c.bordeFirme}`,
-        background: celda.vendible
-          ? `repeating-linear-gradient(135deg,#E3E7E0 0 5px,#F1F3EE 5px 10px)`
-          : celda.cerrado
-            ? c.cerrado
-            : c.hueco,
+        // Arriba de todo: centrado, un renglón de hora le pasaría por encima al texto.
+        alignItems: 'flex-start',
+        gap: 5,
+        padding: '7px 9px 0',
+        overflow: 'hidden',
+        background: celda.cerrado ? c.rayado : celda.vendible ? c.hueco : c.papel,
       }}
     >
       {celda.cerrado && (
-        <span style={{ font: `400 9.5px ${mono}`, color: '#66665E', letterSpacing: '.04em' }}>
+        <span style={{ font: `400 9.5px ${mono}`, color: c.textoGris, letterSpacing: '.04em' }}>
           cerrado
         </span>
+      )}
+      {celda.vendible && abreBloque && (
+        <>
+          <Plus size={11} strokeWidth={2.2} color={c.libreIcono} style={{ flex: 'none' }} aria-hidden />
+          {celda.precio !== null && (
+            <span
+              style={{
+                font: `400 10px ${mono}`,
+                color: c.textoGris,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {celda.desde ? `desde ${pesos(celda.precio)}` : pesos(celda.precio)}
+            </span>
+          )}
+        </>
       )}
     </button>
   );
 }
 
-/** Reserva confirmada, con su estado de cobro. */
+/** Reserva confirmada. El color de la tarjeta dice cómo está la plata. */
 function Turno({
   reserva,
   activo,
@@ -411,52 +486,46 @@ function Turno({
   activo: boolean;
   onAbrir: () => void;
 }) {
+  const pinta = pintaDe(reserva, activo);
+  // Media hora no da para tres renglones: nombre y plata en una sola línea.
+  const compacto = reserva.dur <= 30;
   return (
     <button
       type="button"
       onClick={onAbrir}
       style={{
-        height: (reserva.dur / 30) * FILA,
+        height: (reserva.dur / 30) * FILA - AIRE,
+        margin: `${AIRE / 2}px 0`,
         flex: 'none',
+        position: 'relative',
+        zIndex: 2,
         cursor: 'pointer',
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'stretch',
-        padding: '5px 9px',
+        flexDirection: compacto ? 'row' : 'column',
+        alignItems: compacto ? 'center' : 'stretch',
+        gap: compacto ? 8 : 0,
+        padding: compacto ? '0 9px' : '6px 10px',
         borderRadius: 8,
         textAlign: 'left',
         overflow: 'hidden',
-        border: reserva.pendientePago
-          ? '1px dashed #c9971f'
-          : `1px solid ${activo ? c.verde : c.verdeBorde}`,
-        background: reserva.pendientePago ? 'rgba(201,151,31,.08)' : c.verdeFondoSuave,
+        background: pinta.fondo,
+        border: pinta.borde,
       }}
     >
-      <span style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, height: 14 }}>
-        {/* Relleno = cobrado. En una grilla llena el color se lee antes que el texto. */}
-        <span
-          style={{
-            width: 6, height: 6, borderRadius: '50%', flex: 'none',
-            border: `1.5px solid ${reserva.pendientePago ? '#c9971f' : c.verdePunto}`,
-            background: reserva.pendientePago
-              ? '#c9971f'
-              : reserva.pagado >= reserva.precio
-                ? c.verdePunto
-                : 'transparent',
-          }}
-        />
-        <span style={{ font: `400 10.5px ${mono}`, color: c.textoDato, lineHeight: '14px' }}>
+      {!compacto && (
+        <span style={{ font: `400 10.5px ${mono}`, color: pinta.hora, lineHeight: '14px' }}>
           {hhmm(reserva.t)}–{hhmm(reserva.t + reserva.dur)}
         </span>
-      </span>
+      )}
       <span
         style={{
-          flex: 'none',
+          flex: compacto ? 1 : 'none',
+          minWidth: 0,
           display: 'block',
-          font: `500 12.5px ${sans}`,
+          font: `600 12.5px ${sans}`,
           lineHeight: '17px',
-          color: c.tinta,
-          marginTop: 2,
+          color: pinta.nombre,
+          marginTop: compacto ? 0 : 1,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -467,30 +536,152 @@ function Turno({
       <span
         style={{
           flex: 'none',
-          display: 'block',
-          font: `400 10px ${mono}`,
-          lineHeight: '13px',
-          color: c.textoTenue,
-          marginTop: 1,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          marginTop: compacto ? 0 : 2,
+          minWidth: 0,
         }}
       >
-        {estadoDeCobro(reserva)}
+        <span
+          style={{
+            font: `500 10px ${mono}`,
+            lineHeight: '13px',
+            color: pinta.plata,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {pinta.texto}
+        </span>
+        {pinta.reloj && (
+          <Clock size={10} strokeWidth={2.2} color={pinta.plata} style={{ flex: 'none' }} aria-hidden />
+        )}
       </span>
     </button>
   );
 }
 
-/** Lo que el mostrador necesita de un vistazo: si ese turno está cobrado o no. */
-function estadoDeCobro(reserva: ReservaDia): string {
-  if (reserva.pendientePago) return `${pesos(reserva.precio)} · pago pendiente`;
+/**
+ * Los cuatro estados de plata de un turno, que es lo que el mostrador necesita
+ * de un vistazo: cobrada, señada, sin pagar y hold de pago online sin acreditar.
+ */
+function pintaDe(reserva: ReservaDia, activo: boolean) {
+  if (reserva.pendientePago) {
+    return {
+      fondo: c.blanco,
+      borde: `1.5px dashed ${activo ? c.acento : c.holdBorde}`,
+      hora: c.acentoTenue,
+      nombre: c.tinta,
+      plata: c.acento,
+      texto: `${pesos(reserva.precio)} · pago online pendiente`,
+      reloj: true,
+    };
+  }
   const saldo = reserva.precio - reserva.pagado;
-  if (saldo < 0) return `${pesos(reserva.precio)} · cobrado de más`;
-  if (saldo === 0) return `${pesos(reserva.precio)} · pagado`;
-  if (reserva.pagado > 0) return `debe ${pesos(saldo)}`;
-  return pesos(reserva.precio);
+  if (saldo <= 0) {
+    return {
+      fondo: c.acento,
+      borde: `1.5px solid ${activo ? c.tinta : c.acento}`,
+      hora: c.sobreAcento,
+      nombre: c.blanco,
+      plata: c.sobreAcentoFuerte,
+      texto:
+        saldo < 0
+          ? `${pesos(reserva.precio)} · cobrado de más`
+          : `${pesos(reserva.precio)} · cobrada`,
+      reloj: false,
+    };
+  }
+  if (reserva.pagado > 0) {
+    return {
+      fondo: c.ambarFondo,
+      borde: `1.5px solid ${activo ? c.ambarFuerte : c.ambarBorde}`,
+      hora: c.ambarTexto,
+      nombre: c.tinta,
+      plata: c.ambarFuerte,
+      texto: `seña ${pesos(reserva.pagado)} · resta ${pesos(saldo)}`,
+      reloj: false,
+    };
+  }
+  return {
+    fondo: c.blanco,
+    borde: `1.5px dashed ${activo ? c.naranjaFuerte : c.naranjaBorde}`,
+    hora: c.naranjaTexto,
+    nombre: c.tinta,
+    plata: c.naranjaFuerte,
+    texto: `${pesos(reserva.precio)} · sin pagar`,
+    reloj: false,
+  };
+}
+
+/** Un hueco vendible sigue al anterior: entre los dos no se corta el bloque. */
+function vieneDeUnHuecoVendible(previa: Celda | undefined): boolean {
+  return previa !== undefined && previa.libre && previa.vendible;
+}
+
+/** Encabezado de columna: qué cancha es, cómo es y cuánto sale. */
+function Encabezado({ cancha, tarifa }: { cancha: CanchaAgenda; tarifa: Cancha | undefined }) {
+  const atributos = cancha.detalle
+    .split('·')
+    .map((x) => x.trim())
+    .filter(Boolean);
+  return (
+    <div style={{ flex: 1, minWidth: 118 }}>
+      <div
+        style={{
+          font: `600 13px ${sans}`,
+          color: c.tinta,
+          letterSpacing: '-.01em',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {cancha.nombre}
+      </div>
+      <div style={{ display: 'flex', gap: 4, marginTop: 5, overflow: 'hidden' }}>
+        {atributos.map((a) => (
+          <span
+            key={a}
+            style={{
+              font: `400 10px ${mono}`,
+              color: c.textoTenue,
+              background: c.hueco,
+              borderRadius: 4,
+              padding: '1px 6px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {a}
+          </span>
+        ))}
+      </div>
+      <div
+        style={{
+          font: `400 10px ${mono}`,
+          color: c.textoApagado,
+          marginTop: 6,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {tarifa ? `día ${pesos(tarifa.precioDia)} · noche ${pesos(tarifa.precioNoche)}` : ''}
+      </div>
+    </div>
+  );
+}
+
+/** Minuto del reloj, refrescado solo: la línea de la hora se mueve sin recargar. */
+function useAhora(): number {
+  const [ahora, setAhora] = useState(minutosDeAhora);
+  useEffect(() => {
+    const id = setInterval(() => setAhora(minutosDeAhora()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  return ahora;
 }
 
 const flecha = {

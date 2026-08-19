@@ -19,6 +19,10 @@ export interface CeldaLibre {
   cerrado: boolean;
   /** Hay al menos un turno vendible que arranca acá. */
   vendible: boolean;
+  /** Precio del turno más barato que arranca acá, o `null` si no se vende. */
+  precio: number | null;
+  /** Hay más de un precio posible según la duración elegida. */
+  desde: boolean;
 }
 
 export interface CeldaReserva {
@@ -40,7 +44,13 @@ export function celdasDe(cancha: CanchaAgenda): Celda[] {
   const reservaEn = new Map<number, ReservaDia>();
   cancha.reservas.forEach((r) => reservaEn.set(r.t, r));
 
-  const arranques = new Set(cancha.turnos.map((s) => s.t));
+  const preciosEn = new Map<number, number[]>();
+  cancha.turnos.forEach((s) => {
+    const xs = preciosEn.get(s.t);
+    if (xs) xs.push(s.precio);
+    else preciosEn.set(s.t, [s.precio]);
+  });
+  const arranques = new Set(preciosEn.keys());
 
   const out: Celda[] = [];
   let t = GRILLA_DESDE;
@@ -61,7 +71,16 @@ export function celdasDe(cancha: CanchaAgenda): Celda[] {
       if (!abiertas.has(m) !== cerrado) break;
       span++;
     }
-    out.push({ libre: true, t, span, cerrado, vendible });
+    const precios = vendible ? preciosEn.get(t) : undefined;
+    out.push({
+      libre: true,
+      t,
+      span,
+      cerrado,
+      vendible,
+      precio: precios ? Math.min(...precios) : null,
+      desde: precios ? new Set(precios).size > 1 : false,
+    });
     t += span * 30;
   }
   return out;

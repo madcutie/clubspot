@@ -32,7 +32,7 @@ function Item({ item }: { item: ItemNav }) {
             borderRadius: 8,
             cursor: 'pointer',
             background: isActive ? c.activo : 'transparent',
-            color: isActive ? '#101010' : c.textoGris2,
+            color: isActive ? c.tinta : c.textoGris2,
             font: `500 12.5px ${sans}`,
             textAlign: 'left',
           }}
@@ -43,7 +43,7 @@ function Item({ item }: { item: ItemNav }) {
               height: 12,
               borderRadius: 2,
               flex: 'none',
-              background: isActive ? c.verde : 'transparent',
+              background: isActive ? c.acento : 'transparent',
             }}
           />
           <item.icono size={14} strokeWidth={1.8} style={{ flex: 'none' }} aria-hidden />
@@ -106,7 +106,7 @@ export function Navegacion({
             width: 20,
             height: 20,
             borderRadius: 6,
-            background: c.verde,
+            background: c.acento,
             color: c.papel,
             display: 'flex',
             alignItems: 'center',

@@ -103,8 +103,8 @@ export function CanchasScreen() {
                           padding: '10px 11px',
                           borderRadius: 10,
                           cursor: 'pointer',
-                          border: `1px solid ${on ? c.verdeBordeSuave : 'transparent'}`,
-                          background: on ? c.verdeFondo : 'transparent',
+                          border: `1px solid ${on ? c.acentoBordeSuave : 'transparent'}`,
+                          background: on ? c.acentoFondo : 'transparent',
                           textAlign: 'left',
                         }}
                       >
@@ -115,7 +115,7 @@ export function CanchasScreen() {
                               height: 6,
                               borderRadius: '50%',
                               flex: 'none',
-                              background: x.activa ? c.verdePunto : c.puntoApagado,
+                              background: x.activa ? c.acentoPunto : c.puntoApagado,
                             }}
                           />
                           <span style={{ font: `500 13px ${sans}`, color: c.tinta }}>
@@ -198,9 +198,9 @@ export function CanchasScreen() {
                 padding: '0 13px',
                 borderRadius: 8,
                 cursor: 'pointer',
-                border: `1px solid ${cancha.activa ? c.verdeBordeSuave : c.bordeFirme}`,
-                background: cancha.activa ? c.verdeFondo : c.blanco,
-                color: cancha.activa ? c.verde : c.textoTenue2,
+                border: `1px solid ${cancha.activa ? c.acentoBordeSuave : c.bordeFirme}`,
+                background: cancha.activa ? c.acentoFondo : c.blanco,
+                color: cancha.activa ? c.acento : c.textoTenue2,
                 font: `500 12.5px ${sans}`,
               }}
             >
@@ -371,11 +371,11 @@ export function CanchasScreen() {
                 key={m}
                 style={{
                   font: `400 12px ${mono}`,
-                  color: c.verde,
+                  color: c.acento,
                   padding: '5px 9px',
                   borderRadius: 7,
-                  background: c.verdeFondo,
-                  border: `1px solid ${c.verdeBorde}`,
+                  background: c.acentoFondo,
+                  border: `1px solid ${c.acentoBorde}`,
                 }}
               >
                 {hhmm(m)}
@@ -434,7 +434,7 @@ export function CanchasScreen() {
               padding: '0 14px',
               borderRadius: 8,
               border: 'none',
-              background: sucio ? c.verde : c.linea,
+              background: sucio ? c.acento : c.linea,
               color: sucio ? c.blanco : c.textoApagado,
               font: `600 12.5px ${sans}`,
               cursor: sucio ? 'pointer' : 'default',

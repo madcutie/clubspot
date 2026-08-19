@@ -102,7 +102,7 @@ export function FichaPanel({ id, onCerrar }: { id: number; onCerrar: () => void 
                   padding: '0 0 10px',
                   font: `500 12.5px ${sans}`,
                   color: on ? c.titulo : c.textoTenue,
-                  borderBottom: `1px solid ${on ? c.verde : 'transparent'}`,
+                  borderBottom: `1px solid ${on ? c.acento : 'transparent'}`,
                 }}
               >
                 {t.label}
@@ -347,9 +347,9 @@ export function FichaPanel({ id, onCerrar }: { id: number; onCerrar: () => void 
             padding: '0 13px',
             borderRadius: 8,
             cursor: 'pointer',
-            border: `1px solid ${persona.bloqueado ? c.verdeBordeSuave : c.naranjaBorde}`,
+            border: `1px solid ${persona.bloqueado ? c.acentoBordeSuave : c.naranjaBorde}`,
             background: 'transparent',
-            color: persona.bloqueado ? c.verde : c.naranja,
+            color: persona.bloqueado ? c.acento : c.naranja,
             font: `500 12.5px ${sans}`,
           }}
         >

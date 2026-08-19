@@ -1,84 +1,102 @@
 import type { CSSProperties } from 'react';
 
 /**
- * Paleta y controles de la consola, tomados del diseño.
+ * Paleta y controles de la consola, tomados del diseño "Pizarra azul".
  *
- * El diseño es intencionalmente sobrio: papel claro, un verde para lo que el
- * club cobra y confirma, ámbar para lo que quedó a medias y naranja para lo que
- * hay que mirar. Nada más. Los nombres van por rol, no por color, para que
+ * Fondo gris azulado de plano técnico, el azul de la cancha de pádel para lo
+ * que el club cobra y confirma, ámbar para lo que quedó a medias y naranja
+ * para lo que hay que mirar. Los nombres van por rol, no por color, para que
  * cambiar el tono no obligue a renombrar media consola.
  */
 export const c = {
   // Superficies
-  papel: '#F7F7F5',
-  panel: '#FCFCFA',
+  papel: '#EEF1F5',
+  panel: '#FFFFFF',
   blanco: '#FFFFFF',
-  hover: '#F0F0EC',
-  activo: '#EDEDE8',
-  segmento: '#EDEDE9',
-  apagado: '#F1F3EF',
-  cerrado: '#F2F2EE',
-  hueco: '#EFEFEA',
+  hover: '#E4EAF1',
+  activo: '#E1E9F8',
+  segmento: '#E4EAF1',
+  apagado: '#E8EDF4',
+  cerrado: '#E4EAF1',
+  hueco: '#E4EAF1',
+  /** Trama de lo cerrado: el club no abre, no es un hueco que se pueda vender. */
+  rayado: 'repeating-linear-gradient(135deg,#DAE0EA 0 4px,#E4EAF1 4px 8px)',
 
   // Bordes, de más suave a más marcado
-  linea: '#E7E7E2',
-  borde: '#E2E2DD',
-  bordeFirme: '#D6D6D1',
-  bordePunteado: '#CBCBC5',
-  bordeCasilla: '#BEBEB7',
-  bordeFuerte: '#B2B2AB',
+  linea: '#DCE2EB',
+  borde: '#D8DEE7',
+  bordeFirme: '#C2CBD9',
+  bordePunteado: '#B6C1D2',
+  bordeCasilla: '#A9B5C8',
+  bordeFuerte: '#A3AEC0',
+  /** Renglón de hora de la grilla, visible en los canales entre canchas. */
+  regla: '#C9D3E1',
 
   // Texto
-  titulo: '#0F0F0D',
-  tinta: '#121210',
-  texto: '#1A1A18',
-  textoSuave: '#2A2A27',
-  textoBoton: '#333330',
-  textoDato: '#4B4B46',
-  textoTenue: '#5C5C55',
-  textoTenue2: '#5C5C56',
-  textoGris: '#6A6A63',
-  textoGris2: '#6E6E66',
-  textoApagado: '#94948C',
-  textoMuyApagado: '#A4A49D',
-  puntoApagado: '#C0C0B8',
+  titulo: '#14203A',
+  tinta: '#14203A',
+  texto: '#1E2A44',
+  textoSuave: '#33404F',
+  textoBoton: '#33404F',
+  textoDato: '#4A5772',
+  textoTenue: '#54617A',
+  textoTenue2: '#54617A',
+  textoGris: '#6B7689',
+  textoGris2: '#6B7689',
+  textoApagado: '#8592A6',
+  textoMuyApagado: '#94A0B4',
+  puntoApagado: '#B4BFCF',
 
-  // Verde: cobrado, confirmado, seleccionado
-  verde: '#1F7A4D',
-  verdeOscuro: '#17603C',
-  verdeTexto: '#2C6B45',
-  verdePunto: '#2F9E5F',
-  verdeFondo: '#EAF3EC',
-  verdeFondoSuave: '#F0F7F2',
-  verdeBorde: '#BEDCC8',
-  verdeBordeSuave: '#BCD9C6',
-  verdeTenue: '#5C7F69',
+  // Azul: cobrado, confirmado, seleccionado
+  acento: '#2553CC',
+  acentoOscuro: '#1B3E9C',
+  acentoTexto: '#1B3E9C',
+  acentoPunto: '#2553CC',
+  acentoFondo: '#E1E9F8',
+  acentoFondoSuave: '#EDF2FC',
+  acentoBorde: '#B7C9EE',
+  acentoBordeSuave: '#2553CC',
+  acentoTenue: '#4B62A8',
+  /** Sobre el bloque azul pleno de una reserva cobrada. */
+  sobreAcento: '#B8CBF5',
+  sobreAcentoFuerte: '#CFE0FF',
+
+  // Hueco vendible: lo único de la grilla que se puede clickear
+  libreBorde: '#D2DCEC',
+  libreIcono: '#8FA6D8',
+  holdBorde: '#7EA0EE',
 
   // Ámbar: seña, fecha propia, a medias
-  ambar: '#C29A26',
-  ambarTexto: '#87640F',
-  ambarBorde: '#E9D8AA',
-  ambarFondo: '#FDF7E9',
-  ambarChip: '#E8D07A',
+  ambar: '#C08A17',
+  ambarTexto: '#7A5B10',
+  ambarBorde: '#DEBE62',
+  ambarFondo: '#FBF0D2',
+  ambarChip: '#96700F',
+  ambarFuerte: '#96700F',
 
   // Naranja: deuda, bloqueo, error
   naranja: '#A24F29',
   naranjaPunto: '#CE6129',
-  naranjaBorde: '#EFC9B2',
-  naranjaBordeFirme: '#DBAA8D',
+  naranjaBorde: '#E0793F',
+  naranjaBordeFirme: '#D89A6E',
   naranjaFondo: '#FDF1EA',
+  naranjaTexto: '#8F4A22',
+  naranjaFuerte: '#C25A24',
 
   // Toast
-  tostadaFondo: '#1A1A18',
-  tostadaBorde: '#2E2E2A',
-  tostadaTexto: '#F7F7F5',
+  tostadaFondo: '#14203A',
+  tostadaBorde: '#2A3A5C',
+  tostadaTexto: '#EEF1F5',
 } as const;
 
-export const sans = 'Geist, sans-serif';
-export const mono = '"Geist Mono", monospace';
+export const sans = 'Archivo, sans-serif';
+export const mono = '"Spline Sans Mono", monospace';
 
 /** Alto de media hora en la grilla de agenda, en píxeles. */
 export const FILA = 32;
+
+/** Aire entre dos celdas de la grilla, para que cada turno se lea como una pieza. */
+export const AIRE = 3;
 
 // ── Controles ────────────────────────────────────────────────────────────────
 
@@ -90,8 +108,8 @@ export function primario(habilitado = true): CSSProperties {
         padding: '0 13px',
         borderRadius: 8,
         border: 'none',
-        background: c.verde,
-        color: c.papel,
+        background: c.acento,
+        color: c.blanco,
         font: `600 12.5px ${sans}`,
         cursor: 'pointer',
       }
@@ -142,10 +160,10 @@ export function chipOpcion(on: boolean, deshabilitado = false): CSSProperties {
     padding: '0 12px',
     borderRadius: 8,
     cursor: deshabilitado ? 'default' : 'pointer',
-    border: `1px solid ${on ? c.verdeBordeSuave : c.bordeFirme}`,
-    background: on ? c.verdeFondo : c.blanco,
-    color: on ? c.verde : deshabilitado ? c.textoApagado : c.textoTenue2,
-    font: `500 12.5px ${sans}`,
+    border: `1px solid ${on ? c.acentoBordeSuave : c.bordeFirme}`,
+    background: on ? c.acentoFondo : c.blanco,
+    color: on ? c.acentoTexto : deshabilitado ? c.textoApagado : c.textoTenue2,
+    font: `${on ? 600 : 500} 12.5px ${sans}`,
     whiteSpace: 'nowrap',
   };
 }
@@ -157,10 +175,25 @@ export function chipFiltro(on: boolean, deshabilitado = false): CSSProperties {
     padding: '0 12px',
     borderRadius: 8,
     cursor: deshabilitado ? 'default' : 'pointer',
-    border: `1px solid ${on ? c.verdeBordeSuave : c.borde}`,
-    background: on ? c.verdeFondo : 'transparent',
-    color: on ? c.verde : deshabilitado ? c.textoApagado : c.textoTenue2,
-    font: `500 12.5px ${sans}`,
+    border: `1px solid ${on ? c.acentoBordeSuave : c.borde}`,
+    background: on ? c.acentoFondo : 'transparent',
+    color: on ? c.acentoTexto : deshabilitado ? c.textoApagado : c.textoTenue2,
+    font: `${on ? 600 : 500} 12.5px ${sans}`,
+    whiteSpace: 'nowrap',
+  };
+}
+
+/** Chip de posición: qué día se está mirando. Va pleno, no es un filtro más. */
+export function chipDia(on: boolean): CSSProperties {
+  return {
+    minHeight: 34,
+    padding: '0 12px',
+    borderRadius: 8,
+    cursor: 'pointer',
+    border: `1px solid ${on ? c.tinta : c.borde}`,
+    background: on ? c.tinta : 'transparent',
+    color: on ? c.papel : c.textoTenue2,
+    font: `${on ? 600 : 500} 12.5px ${sans}`,
     whiteSpace: 'nowrap',
   };
 }
@@ -176,9 +209,9 @@ export function casilla(on: boolean): CSSProperties {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    border: `1px solid ${on ? c.verde : c.bordeCasilla}`,
-    background: on ? c.verde : 'transparent',
-    color: c.papel,
+    border: `1px solid ${on ? c.acento : c.bordeCasilla}`,
+    background: on ? c.acento : 'transparent',
+    color: c.blanco,
     font: `600 9px ${sans}`,
     lineHeight: 1,
   };
@@ -195,9 +228,9 @@ export function botonPagina(on: boolean, deshabilitado: boolean): CSSProperties 
     alignItems: 'center',
     justifyContent: 'center',
     cursor: deshabilitado ? 'default' : 'pointer',
-    border: `1px solid ${on ? c.verde : c.bordeFirme}`,
-    background: on ? c.verde : 'transparent',
-    color: on ? c.papel : deshabilitado ? c.textoApagado : c.textoDato,
+    border: `1px solid ${on ? c.acento : c.bordeFirme}`,
+    background: on ? c.acento : 'transparent',
+    color: on ? c.blanco : deshabilitado ? c.textoApagado : c.textoDato,
     font: `500 11.5px ${mono}`,
   };
 }

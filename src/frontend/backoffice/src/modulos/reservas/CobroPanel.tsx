@@ -156,7 +156,7 @@ export function CobroPanel({
           color: c.textoGris,
         }}
       >
-        <span className="spin" style={{ width: 11, height: 11, borderRadius: '50%', border: `2px solid ${c.bordeFirme}`, borderTopColor: c.verde, flex: 'none' }} />
+        <span className="spin" style={{ width: 11, height: 11, borderRadius: '50%', border: `2px solid ${c.bordeFirme}`, borderTopColor: c.acento, flex: 'none' }} />
         Esperando el pago…
       </div>
     </Panel>

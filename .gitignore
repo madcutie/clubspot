@@ -40,3 +40,6 @@ appsettings.Development.local.json
 Thumbs.db
 .DS_Store
 *.log
+
+# Reviews locales (no versionados)
+code-reviews/

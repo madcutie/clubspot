@@ -9,7 +9,7 @@
 
 body {
   margin: 0;
-  background: #f7f7f5;
+  background: #eef1f5;
 }
 
 * {
@@ -19,19 +19,19 @@ body {
 input,
 select,
 button {
-  font-family: Geist, system-ui, sans-serif;
+  font-family: Archivo, system-ui, sans-serif;
 }
 
 input::placeholder {
-  color: #6e6e66;
+  color: #6b7689;
 }
 
 a {
-  color: #1f7a4d;
+  color: #2553cc;
 }
 
 a:hover {
-  color: #17603c;
+  color: #1b3e9c;
 }
 
 @keyframes fadein {
@@ -60,46 +60,53 @@ div::-webkit-scrollbar {
 }
 
 div::-webkit-scrollbar-thumb {
-  background: #d9d9d4;
+  background: #cbd4e2;
   border-radius: 9px;
-  border: 3px solid #f7f7f5;
+  border: 3px solid #eef1f5;
 }
 
 /* ── Estados de interacción ────────────────────────────────────────────────── */
 
 /* Botón secundario: el borde se marca y el texto se oscurece. */
 .h-ghost:hover {
-  border-color: #b2b2ab !important;
-  color: #0f0f0d !important;
+  border-color: #a3aec0 !important;
+  color: #14203a !important;
 }
 
 /* Cualquier caja con borde que se marca al pasar por encima. */
 .h-borde:hover {
-  border-color: #b2b2ab !important;
+  border-color: #a3aec0 !important;
 }
 
 /* Selector de club: marca más suave, es un control de contexto. */
 .h-borde-suave:hover {
-  border-color: #cbcbc5 !important;
+  border-color: #c2cbd9 !important;
 }
 
-/* Botón principal verde. */
+/* Botón principal. */
 .h-primario:hover {
-  background: #17603c !important;
+  background: #1b3e9c !important;
 }
 
 /* Ítem de lista o botón sin borde que se resalta con fondo. */
 .h-fondo:hover {
-  background: #f0f0ec !important;
+  background: #e4eaf1 !important;
 }
 
 /* Acción destructiva discreta: el borde y el texto viran a naranja. */
 .h-quitar:hover {
-  border-color: #efc9b2 !important;
+  border-color: #e0793f !important;
   color: #a24f29 !important;
+}
+
+/* Hueco vendible: el bloque libre es una superficie continua, así que el tinte
+   al pasar por encima es lo único que dice qué media hora se está eligiendo. */
+.h-vendible:hover,
+.h-vendible:focus-visible {
+  background: #ffffff !important;
 }
 
 /* Campos de texto: el foco reemplaza al outline del navegador. */
 .f-borde:focus {
-  border-color: #b2b2ab !important;
+  border-color: #2553cc !important;
 }

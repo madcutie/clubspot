@@ -112,7 +112,7 @@ export function ReservaPanel({
             v={saldo === 0 ? pesos(reserva.pagado) : pesos(Math.abs(saldo))}
             estilo={{
               font: `500 12.5px ${mono}`,
-              color: saldo > 0 ? c.ambarTexto : saldo < 0 ? c.naranja : c.verdeTexto,
+              color: saldo > 0 ? c.ambarTexto : saldo < 0 ? c.naranja : c.acentoTexto,
             }}
           />
         </div>

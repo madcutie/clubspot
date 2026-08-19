@@ -213,7 +213,7 @@ export function PersonasScreen() {
                 <span
                   style={{
                     font: `400 11px ${mono}`,
-                    color: on ? c.verdeTenue : c.textoGris2,
+                    color: on ? c.acentoTenue : c.textoGris2,
                   }}
                 >
                   {data.totales[f.id]}
@@ -231,14 +231,14 @@ export function PersonasScreen() {
             margin: '14px 26px 0',
             padding: '8px 10px 8px 14px',
             borderRadius: 9,
-            background: c.verdeFondo,
-            border: `1px solid ${c.verdeBorde}`,
+            background: c.acentoFondo,
+            border: `1px solid ${c.acentoBorde}`,
             display: 'flex',
             alignItems: 'center',
             gap: 9,
           }}
         >
-          <span style={{ font: `500 12.5px ${mono}`, color: c.verde }}>
+          <span style={{ font: `500 12.5px ${mono}`, color: c.acento }}>
             {marcadas.length} seleccionadas
           </span>
           <div style={{ flex: 1 }} />
@@ -271,7 +271,7 @@ export function PersonasScreen() {
               padding: '0 7px',
               border: 'none',
               background: 'transparent',
-              color: c.verdeTenue,
+              color: c.acentoTenue,
               font: `500 12px ${sans}`,
               cursor: 'pointer',
             }}
@@ -329,7 +329,7 @@ export function PersonasScreen() {
                 minWidth: 612,
                 borderBottom: `1px solid ${c.segmento}`,
                 background: abierta ? c.apagado : 'transparent',
-                boxShadow: abierta ? `inset 2px 0 0 ${c.verde}` : 'none',
+                boxShadow: abierta ? `inset 2px 0 0 ${c.acento}` : 'none',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -480,9 +480,9 @@ const accionMasiva = {
   minHeight: 28,
   padding: '0 10px',
   borderRadius: 7,
-  border: `1px solid ${c.verdeBordeSuave}`,
+  border: `1px solid ${c.acentoBordeSuave}`,
   background: 'transparent',
-  color: c.verde,
+  color: c.acento,
   font: `500 12px ${sans}`,
   cursor: 'pointer',
 } as const;

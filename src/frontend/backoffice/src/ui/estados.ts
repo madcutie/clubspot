@@ -4,7 +4,7 @@ import { c, mono } from './theme';
 
 /**
  * Cómo se ve cada estado. El color dice de qué se trata antes de leer:
- * verde va, ámbar quedó a medias, naranja hay que mirarlo, gris no pasó nada.
+ * azul va, ámbar quedó a medias, naranja hay que mirarlo, gris no pasó nada.
  */
 export interface Estado {
   label: string;
@@ -19,12 +19,12 @@ export function estadoPersona(p: Persona): Estado {
   if (p.bloqueado) return { label: 'Bloqueada', fg: c.naranja, dot: c.naranjaPunto };
   if (p.deuda > 0) return { label: 'Con deuda', fg: c.ambarChip, dot: c.ambar };
   if (p.turnos === 0) return { label: 'Sin turnos', fg: c.textoGris, dot: c.textoMuyApagado };
-  return { label: 'Activa', fg: c.verde, dot: c.verdePunto };
+  return { label: 'Activa', fg: c.acento, dot: c.acentoPunto };
 }
 
 /** Color del chip de un turno del historial de la ficha. */
 export function colorTurnoHistorico(chip: string): string {
-  if (chip === 'Pagado') return c.verde;
+  if (chip === 'Pagado') return c.acento;
   if (chip === 'Seña pagada') return c.ambarChip;
   return c.naranja;
 }

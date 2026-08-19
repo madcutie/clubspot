@@ -32,6 +32,12 @@ export const DIAS: { dow: number; label: string }[] = [
 /** Hora simulada del reloj del club, en minutos desde medianoche. */
 export const AHORA = 14 * 60 + 30;
 
+/** Minutos desde medianoche del reloj real, para la línea de la hora en la agenda. */
+export function minutosDeAhora(): number {
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+
 /** Día `i` contando desde hoy, en la fecha local del navegador. */
 export function fechaDe(i: number): Date {
   const hoy = new Date();

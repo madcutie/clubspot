@@ -71,6 +71,15 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 builder.Services.AddCors(options => options.AddPolicy("backoffice", policy =>
     policy.WithOrigins("http://localhost:5184", "http://localhost:5183").AllowAnyHeader().AllowAnyMethod()));
+// The portal is anonymous, so the only thing standing between a script and the club's whole agenda
+// is this: holding a slot must cost the caller something. Reads stay generous, taking a slot does not.
+// Partitioned by caller and club so one club's traffic never starves another's.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(PortalRateLimits.Reads, PortalRateLimits.PerCallerAndClub(permitPerMinute: 120));
+    options.AddPolicy(PortalRateLimits.Bookings, PortalRateLimits.PerCallerAndClub(permitPerMinute: 10));
+});
 builder.Services.AddExceptionHandler<ModuleDisabledExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<DevSeeder>();
@@ -89,6 +98,8 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionHandler();
 app.MapGet("/", () => "Hello World!");
 app.UseCors("backoffice");
+// After CORS so a preflight never spends a permit, before the endpoints it protects.
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthorization();

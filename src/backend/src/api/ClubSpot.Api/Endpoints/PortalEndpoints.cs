@@ -16,12 +16,14 @@ public static class PortalEndpoints
         // Mandatory order: the slug filter opens the tenant scope that RequireModule needs.
         group.AddEndpointFilter(ClubScope.ResolveAsync);
         group.RequireModule(ModuleId.Bookings);
-        group.MapGet("/catalog", GetCatalogAsync);
-        group.MapGet("/availability", GetAvailabilityAsync);
-        group.MapPost("/bookings", CreateBookingAsync);
-        group.MapGet("/bookings/{id:guid}", GetBookingAsync);
-        group.MapPost("/bookings/{id:guid}/release", ReleaseBookingAsync);
-        group.MapPost("/bookings/{id:guid}/settle", SettleBookingAsync);
+        group.MapGet("/catalog", GetCatalogAsync).RequireRateLimiting(PortalRateLimits.Reads);
+        group.MapGet("/availability", GetAvailabilityAsync).RequireRateLimiting(PortalRateLimits.Reads);
+        group.MapGet("/bookings/{id:guid}", GetBookingAsync).RequireRateLimiting(PortalRateLimits.Reads);
+        // Taking, freeing or settling a slot is the expensive side: it writes, and it reaches the
+        // payment provider. Anonymous callers get a much shorter leash there than on reads.
+        group.MapPost("/bookings", CreateBookingAsync).RequireRateLimiting(PortalRateLimits.Bookings);
+        group.MapPost("/bookings/{id:guid}/release", ReleaseBookingAsync).RequireRateLimiting(PortalRateLimits.Bookings);
+        group.MapPost("/bookings/{id:guid}/settle", SettleBookingAsync).RequireRateLimiting(PortalRateLimits.Bookings);
         return app;
     }
 

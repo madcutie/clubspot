@@ -369,6 +369,30 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Flooding_the_portal_with_holds_runs_out_of_permits()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 26);
+        var request = new
+        {
+            courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
+            customerName = "Bot Flood", customerPhone = "362 400-0117", customerEmail = (string?)null,
+            paymentMode = "onlineFull", returnUrl = "http://localhost:5183/?retorno=x"
+        };
+
+        // A permit is spent per request, whatever the request turns out to be worth.
+        var codes = new List<HttpStatusCode>();
+        for (var attempt = 0; attempt < 12; attempt++)
+            codes.Add((await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", request)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Created, codes[0]);
+        Assert.Equal(10, codes.Count(code => code != HttpStatusCode.TooManyRequests));
+        Assert.Equal(2, codes.Count(code => code == HttpStatusCode.TooManyRequests));
+    }
+
+    [Fact]
     public async Task Settling_an_unknown_booking_never_reaches_the_provider()
     {
         await ResetAsync();

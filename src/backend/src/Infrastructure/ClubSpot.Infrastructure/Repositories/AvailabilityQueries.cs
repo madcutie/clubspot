@@ -55,8 +55,11 @@ internal sealed class AvailabilityQueries(ClubSpotDbContext db, IClock clock) : 
     public async Task<IReadOnlyDictionary<Guid, decimal>> GetPaidAmountsAsync(
         IReadOnlyCollection<Guid> bookingIds, CancellationToken cancellationToken) =>
         await db.Payments.AsNoTracking()
+            // Orphan money is money the club received but did not agree to — a duplicate, a payment
+            // short of the asking price, a slot already gone. It needs a person to decide what happens
+            // to it, so it is never blended into what a booking has paid. One definition, one answer.
             .Where(payment => bookingIds.Contains(payment.BookingId)
-                && (payment.Status == PaymentStatus.Approved || payment.Status == PaymentStatus.ApprovedOrphan))
+                && payment.Status == PaymentStatus.Approved)
             .GroupBy(payment => payment.BookingId)
             .Select(group => new { group.Key, Total = group.Sum(payment => payment.Amount.Amount) })
             .ToDictionaryAsync(entry => entry.Key, entry => entry.Total, cancellationToken);

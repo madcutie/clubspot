@@ -51,8 +51,7 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         });
         Assert.Equal(HttpStatusCode.OK, webhook.StatusCode);
 
-        var snapshot = await client.GetFromJsonAsync<SnapshotResponse>(
-            $"/api/portal/chaco-for-ever/bookings/{created.Id}", TestJsonOptions.Default);
+        var snapshot = await SnapshotAsync(client, created);
         Assert.Equal(BookingStatus.Confirmed, snapshot!.Status);
         Assert.Equal(created.ChargeAmount, snapshot.PaidAmount);
     }
@@ -93,8 +92,7 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         });
         Assert.Equal(HttpStatusCode.OK, webhook.StatusCode);
 
-        var snapshot = await client.GetFromJsonAsync<SnapshotResponse>(
-            $"/api/portal/chaco-for-ever/bookings/{created.Id}", TestJsonOptions.Default);
+        var snapshot = await SnapshotAsync(client, created);
         Assert.Equal(BookingStatus.PendingPayment, snapshot!.Status);
         Assert.Equal(0, snapshot.PaidAmount);
     }
@@ -155,7 +153,8 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 17);
         var created = await HoldAsync(client, court.Id, date, slot, "onlineFull", "362 400-0107");
 
-        var release = await client.PostAsync($"/api/portal/chaco-for-ever/bookings/{created.Id}/release", null);
+        var release = await SendWithTokenAsync(client, HttpMethod.Post,
+            $"/api/portal/chaco-for-ever/bookings/{created.Id}/release", created.Token);
         Assert.Equal(HttpStatusCode.NoContent, release.StatusCode);
 
         var retry = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
@@ -166,8 +165,7 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         });
         Assert.Equal(HttpStatusCode.Created, retry.StatusCode);
 
-        var snapshot = await client.GetFromJsonAsync<SnapshotResponse>(
-            $"/api/portal/chaco-for-ever/bookings/{created.Id}", TestJsonOptions.Default);
+        var snapshot = await SnapshotAsync(client, created);
         Assert.Equal(BookingStatus.Cancelled, snapshot!.Status);
     }
 
@@ -184,11 +182,11 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
             bookingId = created.Id, externalId = "fake-release-1", approved = true, amount = created.ChargeAmount
         });
 
-        var release = await client.PostAsync($"/api/portal/chaco-for-ever/bookings/{created.Id}/release", null);
+        var release = await SendWithTokenAsync(client, HttpMethod.Post,
+            $"/api/portal/chaco-for-ever/bookings/{created.Id}/release", created.Token);
 
         Assert.Equal(HttpStatusCode.NoContent, release.StatusCode);
-        var snapshot = await client.GetFromJsonAsync<SnapshotResponse>(
-            $"/api/portal/chaco-for-ever/bookings/{created.Id}", TestJsonOptions.Default);
+        var snapshot = await SnapshotAsync(client, created);
         Assert.Equal(BookingStatus.Confirmed, snapshot!.Status);
     }
 
@@ -200,7 +198,8 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         using var client = factory.CreateClient();
         var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 19);
         var created = await HoldAsync(client, court.Id, date, slot, "onlineFull", "362 400-0110");
-        await client.PostAsync($"/api/portal/chaco-for-ever/bookings/{created.Id}/release", null);
+        await SendWithTokenAsync(client, HttpMethod.Post,
+            $"/api/portal/chaco-for-ever/bookings/{created.Id}/release", created.Token);
 
         var webhook = await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
         {
@@ -293,8 +292,7 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         });
         Assert.Equal(HttpStatusCode.OK, webhook.StatusCode);
 
-        var snapshot = await client.GetFromJsonAsync<SnapshotResponse>(
-            $"/api/portal/chaco-for-ever/bookings/{created.Id}", TestJsonOptions.Default);
+        var snapshot = await SnapshotAsync(client, created);
         Assert.Equal(BookingStatus.PendingPayment, snapshot!.Status);
 
         var tenantContext = new AsyncLocalTenantContext();
@@ -319,8 +317,7 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         });
         Assert.Equal(HttpStatusCode.OK, webhook.StatusCode);
 
-        var snapshot = await client.GetFromJsonAsync<SnapshotResponse>(
-            $"/api/portal/chaco-for-ever/bookings/{created.Id}", TestJsonOptions.Default);
+        var snapshot = await SnapshotAsync(client, created);
         Assert.Equal(BookingStatus.Confirmed, snapshot!.Status);
         Assert.Equal(created.ChargeAmount, snapshot.PaidAmount);
     }
@@ -405,6 +402,43 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         Assert.Equal(HttpStatusCode.NotFound, settle.StatusCode);
     }
 
+    [Fact]
+    public async Task A_visitor_holding_only_the_id_can_neither_read_nor_release_the_booking()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 27);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineFull", "362 400-0118");
+        var path = $"/api/portal/chaco-for-ever/bookings/{created.Id}";
+
+        var readNoToken = await SendWithTokenAsync(client, HttpMethod.Get, path, null);
+        var readWrongToken = await SendWithTokenAsync(client, HttpMethod.Get, path, new string('a', 64));
+        var release = await SendWithTokenAsync(client, HttpMethod.Post, path + "/release", null);
+
+        Assert.Equal(HttpStatusCode.NotFound, readNoToken.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, readWrongToken.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, release.StatusCode);
+        // The hold the attacker tried to free is untouched, so the slot stays the buyer's.
+        Assert.Equal(BookingStatus.PendingPayment, (await SnapshotAsync(client, created)).Status);
+    }
+
+    private static Task<HttpResponseMessage> SendWithTokenAsync(HttpClient client, HttpMethod method,
+        string path, string? token)
+    {
+        var request = new HttpRequestMessage(method, path);
+        if (token is not null) request.Headers.Add("X-Booking-Token", token);
+        return client.SendAsync(request);
+    }
+
+    private static async Task<SnapshotResponse> SnapshotAsync(HttpClient client, CreatedResponse created)
+    {
+        var response = await SendWithTokenAsync(client, HttpMethod.Get,
+            $"/api/portal/chaco-for-ever/bookings/{created.Id}", created.Token);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<SnapshotResponse>(TestJsonOptions.Default))!;
+    }
+
     private static async Task<CreatedResponse> HoldAsync(HttpClient client, Guid courtId, DateOnly date,
         SlotResponse slot, string mode, string phone)
     {
@@ -444,7 +478,7 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
     }
 
     private sealed record CreatedResponse(Guid Id, decimal Price, decimal ChargeAmount, BookingStatus Status,
-        DateTimeOffset? ExpiresAt, string? CheckoutUrl);
+        DateTimeOffset? ExpiresAt, string? CheckoutUrl, string Token);
     private sealed record SnapshotResponse(Guid Id, Guid CourtId, string CourtName, Sport Sport, DateOnly Date,
         int StartMinute, int DurationMinutes, decimal Price, decimal PaidAmount, BookingStatus Status,
         PaymentMode PaymentMode, DateTimeOffset? ExpiresAt);

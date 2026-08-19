@@ -4,6 +4,7 @@ import { durLabel, fmt } from '../domain/pricing';
 import { ApiError, createBooking, invalidateAvailability, type ApiPaymentMode } from '../api/portalApi';
 import { useClub } from '../api/queries';
 import { saveMyBooking } from '../state/myBookings';
+import { saveBookingToken } from '../state/bookingTokens';
 import { BackTitle, Body, Footer, Header, Screen } from '../ui/Screen';
 import { C, F, card, ctaOff, ctaOn, divider, input, label, optCard, radio, rowLabel, rowValue } from '../ui/theme';
 import type { BookingApi } from '../state/useBooking';
@@ -49,6 +50,9 @@ export function ConfirmScreen({ api }: { api: BookingApi }) {
         paymentMode: API_MODE[pago],
         returnUrl: pago === 'club' ? null : window.location.origin + window.location.pathname,
       });
+      // Antes de cualquier redirección: a la vuelta del checkout sólo tenemos el id de la URL,
+      // y sin el token el servidor no nos deja ni mirar la reserva.
+      saveBookingToken(created.id, created.token);
       if (created.checkoutUrl) {
         // El hold quedó tomado; el resto pasa en el checkout y en la pantalla de retorno.
         window.location.href = created.checkoutUrl;

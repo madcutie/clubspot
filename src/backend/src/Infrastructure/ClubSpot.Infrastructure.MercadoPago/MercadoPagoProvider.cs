@@ -1,6 +1,7 @@
 using System.Globalization;
 using ClubSpot.Application.Bookings;
 using ClubSpot.Domain.Bookings;
+using ClubSpot.SharedKernel.Time;
 using MercadoPago.Client;
 using MercadoPago.Client.Common;
 using MercadoPago.Client.Payment;
@@ -13,7 +14,7 @@ namespace ClubSpot.Infrastructure.MercadoPago;
 // Checkout Pro: one preference per hold, redirect to its init point. The webhook is the only
 // source of truth — the payment is always fetched back by id, never trusted from the POST body.
 // Orders (in-person Point/QR) will be a second capability of this same provider (ADR-0015).
-public sealed class MercadoPagoProvider(IOptions<MercadoPagoOptions> options) : IHostedCheckout
+public sealed class MercadoPagoProvider(IOptions<MercadoPagoOptions> options, IClock clock) : IHostedCheckout
 {
     public const string ProviderName = "mercadopago";
 
@@ -102,7 +103,7 @@ public sealed class MercadoPagoProvider(IOptions<MercadoPagoOptions> options) : 
     }
 
     public bool VerifyWebhookSignature(string? xSignature, string? xRequestId, string? dataId) =>
-        MercadoPagoWebhookSignature.IsValid(_options.WebhookSecret, xSignature, xRequestId, dataId);
+        MercadoPagoWebhookSignature.IsValid(_options.WebhookSecret, xSignature, xRequestId, dataId, clock.UtcNow);
 
     private RequestOptions RequestOptions() => new() { AccessToken = _options.AccessToken };
 }

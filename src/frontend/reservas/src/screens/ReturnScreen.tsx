@@ -6,6 +6,7 @@ import { dayLabelOf, hhmm, parseDate } from '../domain/dates';
 import { sportLabel } from '../domain/sport';
 import { fmt } from '../domain/pricing';
 import { loadMyBookings, saveMyBooking } from '../state/myBookings';
+import { loadBookingToken } from '../state/bookingTokens';
 import { Body, Footer, Header, Screen } from '../ui/Screen';
 import { C, F, card, ctaOn, divider, rowLabel, rowValue } from '../ui/theme';
 import type { BookingApi } from '../state/useBooking';
@@ -18,9 +19,11 @@ export function ReturnScreen({ api }: { api: BookingApi }) {
   const { st, restart } = api;
   const id = st.retornoId;
 
+  const token = id != null ? loadBookingToken(id) : null;
+
   const q = useQuery({
     queryKey: ['booking', id],
-    queryFn: () => fetchBooking(id!),
+    queryFn: () => fetchBooking(id!, token),
     enabled: id != null,
     refetchInterval: (query) =>
       query.state.data?.status === 'pendingPayment' ? 2500 : false,
@@ -38,16 +41,16 @@ export function ReturnScreen({ api }: { api: BookingApi }) {
   useEffect(() => {
     if (!esperando || !b) return;
     const timer = setInterval(() => {
-      void settleBooking(b.id).catch(() => {});
+      void settleBooking(b.id, token).catch(() => {});
     }, 5000);
     return () => clearInterval(timer);
-  }, [esperando, b?.id]);
+  }, [esperando, b?.id, token]);
 
   /** Irse sin pagar libera el hold; si el pago justo entró, el backend no cancela nada. */
   const volver = async () => {
     if (b?.status === 'pendingPayment') {
       try {
-        await releaseBooking(b.id);
+        await releaseBooking(b.id, token);
       } catch {
         // El TTL lo libera igual en unos minutos.
       }

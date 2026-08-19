@@ -43,6 +43,7 @@ builder.Services.AddSingleton(new ModuleCatalog([
 ]));
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.AddSingleton<JwtIssuer>();
+builder.Services.AddSingleton<ClubSpot.Api.Endpoints.PortalBookingToken>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {

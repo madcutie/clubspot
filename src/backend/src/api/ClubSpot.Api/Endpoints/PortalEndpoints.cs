@@ -30,7 +30,7 @@ public static class PortalEndpoints
     private static async Task<IResult> CreateBookingAsync(string clubSlug, PortalBookingRequest request,
         IBookingsStore store, IClubSettings clubSettings, IEnumerable<IHostedCheckout> checkouts,
         Microsoft.Extensions.Options.IOptions<ClubSpot.Infrastructure.Payments.PaymentsOptions> paymentsOptions,
-        CancellationToken cancellationToken)
+        PortalBookingToken tokens, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.CustomerName) || string.IsNullOrWhiteSpace(request.CustomerPhone))
             return Results.BadRequest();
@@ -85,26 +85,42 @@ public static class PortalEndpoints
 
         return Results.Created($"/api/portal/{clubSlug}/bookings/{result.Id}",
             new PortalBookingCreatedResponse(result.Id, result.Price.Amount, result.ChargeAmount.Amount,
-                result.Status, result.ExpiresAt, checkoutUrl));
+                result.Status, result.ExpiresAt, checkoutUrl, tokens.For(result.Id)));
     }
 
-    private static async Task<IResult> GetBookingAsync(Guid id, IBookingsStore store, CancellationToken cancellationToken) =>
-        await store.GetAsync(id, cancellationToken) is { } snapshot ? Results.Ok(snapshot) : Results.NotFound();
+    // A wrong or missing token answers exactly like an id that does not exist: whoever is guessing
+    // learns nothing about which bookings are real.
+    private static async Task<IResult> GetBookingAsync(Guid id, HttpRequest httpRequest,
+        PortalBookingToken tokens, IBookingsStore store, CancellationToken cancellationToken)
+    {
+        if (!tokens.IsValid(id, httpRequest.Headers[PortalBookingToken.HeaderName].FirstOrDefault()))
+            return Results.NotFound();
+        return await store.GetAsync(id, cancellationToken) is { } snapshot
+            ? Results.Ok(snapshot) : Results.NotFound();
+    }
 
     // The buyer is staring at the waiting screen: ask the providers right now instead of J2.
-    // Anonymous endpoint: the booking must exist before an unknown id can reach the provider's API.
-    private static async Task<IResult> SettleBookingAsync(Guid id, IBookingsStore store,
-        SettleBookingHandler handler, CancellationToken cancellationToken)
+    // Anonymous endpoint: the token, then the booking, before an unknown id reaches the provider's API.
+    private static async Task<IResult> SettleBookingAsync(Guid id, HttpRequest httpRequest,
+        PortalBookingToken tokens, IBookingsStore store, SettleBookingHandler handler,
+        CancellationToken cancellationToken)
     {
+        if (!tokens.IsValid(id, httpRequest.Headers[PortalBookingToken.HeaderName].FirstOrDefault()))
+            return Results.NotFound();
         if (await store.GetAsync(id, cancellationToken) is null) return Results.NotFound();
         return Results.Ok(new { outcome = await handler.HandleAsync(id, cancellationToken) });
     }
 
     // Only frees pending holds; anything already settled is left as is, so the call is idempotent.
-    private static async Task<IResult> ReleaseBookingAsync(Guid id, IBookingsStore store, CancellationToken cancellationToken) =>
-        await store.ReleaseHoldAsync(id, cancellationToken) == HoldReleaseOutcome.NotFound
+    private static async Task<IResult> ReleaseBookingAsync(Guid id, HttpRequest httpRequest,
+        PortalBookingToken tokens, IBookingsStore store, CancellationToken cancellationToken)
+    {
+        if (!tokens.IsValid(id, httpRequest.Headers[PortalBookingToken.HeaderName].FirstOrDefault()))
+            return Results.NotFound();
+        return await store.ReleaseHoldAsync(id, cancellationToken) == HoldReleaseOutcome.NotFound
             ? Results.NotFound()
             : Results.NoContent();
+    }
 
     private static string TimeLabel(int minute) => $"{minute / 60:00}:{minute % 60:00}";
 
@@ -114,7 +130,7 @@ public static class PortalEndpoints
         PaymentMode? PaymentMode, string? ReturnUrl);
 
     private sealed record PortalBookingCreatedResponse(Guid Id, decimal Price, decimal ChargeAmount,
-        BookingStatus Status, DateTimeOffset? ExpiresAt, string? CheckoutUrl);
+        BookingStatus Status, DateTimeOffset? ExpiresAt, string? CheckoutUrl, string Token);
 
     private static async Task<IResult> GetCatalogAsync(GetPortalCatalogHandler handler,
         IEnumerable<IHostedCheckout> checkouts, CancellationToken cancellationToken)

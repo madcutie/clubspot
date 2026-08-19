@@ -332,7 +332,11 @@ export interface BookingCreated {
   status: BookingStatus;
   expiresAt: string | null;
   checkoutUrl: string | null;
+  /** Prueba de propiedad: sin esto el servidor no deja ver, liberar ni conciliar la reserva. */
+  token: string;
 }
+
+const TOKEN_HEADER = 'X-Booking-Token';
 
 export async function createBooking(request: BookingRequest): Promise<BookingCreated> {
   const res = await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings`, {
@@ -359,18 +363,28 @@ export interface BookingSnapshot {
   expiresAt: string | null;
 }
 
-export function fetchBooking(id: string): Promise<BookingSnapshot> {
-  return getJson<BookingSnapshot>(`/bookings/${id}`);
+export async function fetchBooking(id: string, token: string | null): Promise<BookingSnapshot> {
+  const res = await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings/${id}`, {
+    headers: token ? { [TOKEN_HEADER]: token } : {},
+  });
+  if (!res.ok) throw new ApiError(res.status, `/bookings/${id}`);
+  return res.json() as Promise<BookingSnapshot>;
 }
 
 /** Abandono del checkout: libera el hold ya, sin esperar el TTL. Idempotente. */
-export async function releaseBooking(id: string): Promise<void> {
-  await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings/${id}/release`, { method: 'POST' });
+export async function releaseBooking(id: string, token: string | null): Promise<void> {
+  await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings/${id}/release`, {
+    method: 'POST',
+    headers: token ? { [TOKEN_HEADER]: token } : {},
+  });
 }
 
 /** El webhook no llegó todavía: pide conciliar esta reserva ya, sin esperar el job. */
-export async function settleBooking(id: string): Promise<void> {
-  await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings/${id}/settle`, { method: 'POST' });
+export async function settleBooking(id: string, token: string | null): Promise<void> {
+  await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings/${id}/settle`, {
+    method: 'POST',
+    headers: token ? { [TOKEN_HEADER]: token } : {},
+  });
 }
 
 /**

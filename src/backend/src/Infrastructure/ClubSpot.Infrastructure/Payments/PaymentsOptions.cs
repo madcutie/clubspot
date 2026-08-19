@@ -13,4 +13,6 @@ public sealed class PaymentsOptions
     public string? PublicBaseUrl { get; set; }
     // Where /api/payments/return may bounce the buyer to; blocks open redirects.
     public string[] AllowedReturnOrigins { get; set; } = [];
+    // The customer's receipt lives in the portal: counter checkouts send them back there.
+    public string PortalBaseUrl { get; set; } = "http://localhost:5183";
 }

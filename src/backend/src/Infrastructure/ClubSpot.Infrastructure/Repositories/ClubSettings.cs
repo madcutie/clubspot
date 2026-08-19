@@ -10,6 +10,6 @@ internal sealed class ClubSettings(ClubSpotDbContext db, ITenantContext tenantCo
     public async Task<ClubInfo> GetAsync(CancellationToken cancellationToken)
     {
         var club = await db.Clubs.AsNoTracking().SingleAsync(club => club.Id == tenantContext.Current, cancellationToken);
-        return new ClubInfo(club.Name, club.Venue, club.TimeZone, club.Currency, club.DepositPercent);
+        return new ClubInfo(club.Slug, club.Name, club.Venue, club.TimeZone, club.Currency, club.DepositPercent);
     }
 }

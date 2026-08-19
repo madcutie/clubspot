@@ -15,6 +15,7 @@ import { useParamsAgenda } from '../../rutas';
 import { Cargando } from '../../ui/Cargando';
 import { FILA, c, chipFiltro, mono, primario, sans, secundario } from '../../ui/theme';
 import { useTostada } from '../../ui/Tostadas';
+import { CobroPanel } from './CobroPanel';
 import { NuevaReservaPanel, type SlotElegido } from './NuevaReservaPanel';
 import { ReservaPanel } from './ReservaPanel';
 
@@ -39,6 +40,9 @@ export function AgendaScreen() {
 
   const [verReserva, setVerReserva] = useState<string | null>(null);
   const [nueva, setNueva] = useState<SlotElegido | null>(null);
+  // El cobro se monta acá, no dentro del panel de la reserva: ese se desmonta cada vez
+  // que la agenda se refresca, y con él se perdía el código recién emitido.
+  const [cobro, setCobro] = useState<{ reserva: ReservaDia; cancha: string } | null>(null);
 
   if (!agenda) return isLoading ? <Cargando que="la agenda" /> : null;
 
@@ -246,6 +250,19 @@ export function AgendaScreen() {
           dia={dia}
           reservaId={verReserva}
           onCerrar={() => setVerReserva(null)}
+          onCobrar={(reserva, cancha) => {
+            setVerReserva(null);
+            setCobro({ reserva, cancha });
+          }}
+        />
+      )}
+      {cobro && (
+        <CobroPanel
+          reserva={cobro.reserva}
+          cancha={cobro.cancha}
+          deporte={deporte}
+          dia={dia}
+          onCerrar={() => setCobro(null)}
         />
       )}
       {nueva && (
@@ -279,7 +296,7 @@ function Inactivas({ lista }: { lista: ReservaInactiva[] }) {
         }}
       >
         <CalendarX size={13} strokeWidth={2} aria-hidden />
-        Canceladas y vencidas del día
+        Canceladas y abandonadas del día
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {lista.map((r) => (
@@ -323,7 +340,14 @@ function Inactivas({ lista }: { lista: ReservaInactiva[] }) {
             >
               {r.persona}
             </span>
-            <span style={{ font: `400 10.5px ${mono}`, color: c.textoGris, flex: 'none' }}>
+            <span
+              title={
+                r.estado === 'abandonada'
+                  ? 'Empezó a reservar con pago online y no completó el pago'
+                  : 'La canceló el club'
+              }
+              style={{ font: `400 10.5px ${mono}`, color: c.textoGris, flex: 'none' }}
+            >
               {r.estado}
             </span>
             <span
@@ -377,7 +401,7 @@ function Hueco({ celda, onVender }: { celda: CeldaLibre; onVender: () => void })
   );
 }
 
-/** Reserva confirmada. Sin estado de cobro: ese dato todavía no existe. */
+/** Reserva confirmada, con su estado de cobro. */
 function Turno({
   reserva,
   activo,
@@ -409,10 +433,16 @@ function Turno({
       }}
     >
       <span style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, height: 14 }}>
+        {/* Relleno = cobrado. En una grilla llena el color se lee antes que el texto. */}
         <span
           style={{
             width: 6, height: 6, borderRadius: '50%', flex: 'none',
-            background: reserva.pendientePago ? '#c9971f' : c.verdePunto,
+            border: `1.5px solid ${reserva.pendientePago ? '#c9971f' : c.verdePunto}`,
+            background: reserva.pendientePago
+              ? '#c9971f'
+              : reserva.pagado >= reserva.precio
+                ? c.verdePunto
+                : 'transparent',
           }}
         />
         <span style={{ font: `400 10.5px ${mono}`, color: c.textoDato, lineHeight: '14px' }}>
@@ -447,10 +477,20 @@ function Turno({
           textOverflow: 'ellipsis',
         }}
       >
-        {reserva.pendientePago ? `${pesos(reserva.precio)} · pago pendiente` : pesos(reserva.precio)}
+        {estadoDeCobro(reserva)}
       </span>
     </button>
   );
+}
+
+/** Lo que el mostrador necesita de un vistazo: si ese turno está cobrado o no. */
+function estadoDeCobro(reserva: ReservaDia): string {
+  if (reserva.pendientePago) return `${pesos(reserva.precio)} · pago pendiente`;
+  const saldo = reserva.precio - reserva.pagado;
+  if (saldo < 0) return `${pesos(reserva.precio)} · cobrado de más`;
+  if (saldo === 0) return `${pesos(reserva.precio)} · pagado`;
+  if (reserva.pagado > 0) return `debe ${pesos(saldo)}`;
+  return pesos(reserva.precio);
 }
 
 const flecha = {

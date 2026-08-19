@@ -207,6 +207,7 @@ interface AgendaBookingResponse {
   customerName: string;
   customerPhone: string | null;
   price: number;
+  paidAmount: number;
   status: 'confirmed' | 'cancelled' | 'pendingPayment' | 'expired';
 }
 
@@ -261,6 +262,7 @@ export async function fetchAgenda(deporte: Deporte, fecha: string): Promise<Agen
           persona: b.customerName,
           tel: b.customerPhone,
           precio: b.price,
+          pagado: b.paidAmount,
           pendientePago: b.status === 'pendingPayment',
         })),
     })),
@@ -274,7 +276,7 @@ export async function fetchAgenda(deporte: Deporte, fecha: string): Promise<Agen
       tel: b.customerPhone,
       precio: b.price,
       pagado: b.paidAmount,
-      estado: b.status === 'cancelled' ? ('cancelada' as const) : ('vencida' as const),
+      estado: b.status === 'cancelled' ? ('cancelada' as const) : ('abandonada' as const),
     })),
   };
 }
@@ -305,6 +307,21 @@ export async function crearReserva(input: NuevaReserva): Promise<{ id: string; p
 
 export async function cancelarReserva(id: string): Promise<void> {
   await api<void>(`/api/bookings/${id}/cancel`, { method: 'POST' });
+}
+
+/** Link de pago del saldo, para mostrar como QR o mandar por WhatsApp. Se puede reemitir. */
+export interface Cobro {
+  url: string;
+  monto: number;
+  venceEn: string;
+}
+
+export async function cobrarReserva(id: string): Promise<Cobro> {
+  const cobro = await api<{ url: string; amount: number; expiresAt: string }>(
+    `/api/bookings/${id}/checkout`,
+    { method: 'POST' },
+  );
+  return { url: cobro.url, monto: cobro.amount, venceEn: cobro.expiresAt };
 }
 
 export async function guardarCanchas(canchas: Cancha[]): Promise<void> {

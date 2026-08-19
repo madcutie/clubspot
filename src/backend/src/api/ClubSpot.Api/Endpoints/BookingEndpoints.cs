@@ -1,9 +1,12 @@
 using System.Security.Claims;
 using ClubSpot.Api.Auth;
 using ClubSpot.Api.Modularity;
+using ClubSpot.Api.Payments;
 using ClubSpot.Application.Bookings;
 using ClubSpot.Domain.Bookings;
+using ClubSpot.Infrastructure.Payments;
 using ClubSpot.SharedKernel.Modularity;
+using Microsoft.Extensions.Options;
 
 namespace ClubSpot.Api.Endpoints;
 
@@ -17,7 +20,26 @@ public static class BookingEndpoints
         group.MapGet("/agenda", GetAgendaAsync);
         group.MapPost("/bookings", CreateAsync);
         group.MapPost("/bookings/{id:guid}/cancel", CancelAsync);
+        group.MapPost("/bookings/{id:guid}/checkout", CreateCheckoutAsync);
         return app;
+    }
+
+    // Counter charge: hands the operator a link (shown as a QR) for the outstanding balance.
+    // Reissuing is free — the slot is already the customer's, so nothing is being held.
+    private static async Task<IResult> CreateCheckoutAsync(Guid id, CreateBookingCheckoutHandler handler,
+        IOptions<PaymentsOptions> paymentsOptions, CancellationToken cancellationToken)
+    {
+        var returnUrl = CheckoutReturnUrl.For(paymentsOptions.Value, paymentsOptions.Value.PortalBaseUrl, id);
+        var result = await handler.HandleAsync(id, returnUrl, cancellationToken);
+        return result.Outcome switch
+        {
+            BookingCheckoutOutcome.Created => Results.Ok(
+                new BookingCheckoutResponse(result.Url!, result.Amount, result.ExpiresAt!.Value)),
+            BookingCheckoutOutcome.NotFound => Results.NotFound(),
+            BookingCheckoutOutcome.NotChargeable => Results.Conflict(),
+            BookingCheckoutOutcome.NoProvider => Results.UnprocessableEntity(),
+            _ => throw new ArgumentOutOfRangeException(nameof(result.Outcome))
+        };
     }
 
     private static async Task<IResult> GetAgendaAsync(string sport, DateOnly date, GetAgendaHandler handler, CancellationToken cancellationToken)
@@ -56,4 +78,6 @@ public static class BookingEndpoints
     }
 
     private sealed record BookingCreatedResponse(Guid Id, decimal Price);
+
+    private sealed record BookingCheckoutResponse(string Url, decimal Amount, DateTimeOffset ExpiresAt);
 }

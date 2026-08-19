@@ -1,7 +1,8 @@
+import { QrCode } from 'lucide-react';
 import { useAgenda, useCancelarReserva } from '../../api/queries';
 import { pesos } from '../../domain/dinero';
 import { duracionTurno, etiquetaDia, hhmm, isoDe } from '../../domain/fechas';
-import type { Deporte } from '../../domain/types';
+import type { Deporte, ReservaDia } from '../../domain/types';
 import { BotonCerrar, FilaDato, Panel } from '../../ui/Panel';
 import { c, mono, sans } from '../../ui/theme';
 import { useTostada } from '../../ui/Tostadas';
@@ -16,11 +17,13 @@ export function ReservaPanel({
   dia,
   reservaId,
   onCerrar,
+  onCobrar,
 }: {
   deporte: Deporte;
   dia: number;
   reservaId: string;
   onCerrar: () => void;
+  onCobrar: (reserva: ReservaDia, cancha: string) => void;
 }) {
   const avisar = useTostada();
   const { data: agenda } = useAgenda(deporte, isoDe(dia));
@@ -32,6 +35,7 @@ export function ReservaPanel({
 
   if (!hallada) return null;
   const { cancha, reserva } = hallada;
+  const saldo = reserva.precio - reserva.pagado;
 
   return (
     <Panel onCerrar={onCerrar}>
@@ -103,12 +107,23 @@ export function ReservaPanel({
             v={pesos(reserva.precio)}
             estilo={{ font: `400 12.5px ${mono}`, color: c.tinta }}
           />
+          <FilaDato
+            k={saldo > 0 ? 'debe' : saldo < 0 ? 'cobrado de más' : 'pagado'}
+            v={saldo === 0 ? pesos(reserva.pagado) : pesos(Math.abs(saldo))}
+            estilo={{
+              font: `500 12.5px ${mono}`,
+              color: saldo > 0 ? c.ambarTexto : saldo < 0 ? c.naranja : c.verdeTexto,
+            }}
+          />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 14 }}>
-          <button type="button" onClick={() => avisar('Cobrar el turno')} style={accion}>
-            Cobrar
-          </button>
+          {saldo > 0 && (
+            <button type="button" onClick={() => onCobrar(reserva, cancha.nombre)} style={accion}>
+              <QrCode size={14} strokeWidth={2} aria-hidden style={{ marginRight: 8, verticalAlign: -2 }} />
+              Cobrar con Mercado Pago
+            </button>
+          )}
           <button type="button" onClick={() => avisar('Reprogramar turno')} style={accion}>
             Reprogramar turno
           </button>

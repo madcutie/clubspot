@@ -76,6 +76,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBookingsStore, BookingsStore>();
         services.AddScoped<ReconcileOnlinePaymentsHandler>();
         services.AddScoped<SettleBookingHandler>();
+        services.AddScoped<CreateBookingCheckoutHandler>();
         services.AddScoped<GetSchedulesHandler>();
         services.AddScoped<ReplaceSchedulesHandler>();
         services.AddScoped<GetCourtsHandler>();

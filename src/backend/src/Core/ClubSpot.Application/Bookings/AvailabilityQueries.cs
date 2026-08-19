@@ -8,12 +8,13 @@ public sealed record AvailabilityData(
     IReadOnlyList<AvailabilityOverride> Overrides,
     IReadOnlyList<Booking> ActiveBookings);
 
-public sealed record InactiveBooking(Booking Booking, decimal PaidAmount);
-
 public interface IAvailabilityQueries
 {
     Task<AvailabilityData> GetDataAsync(Sport sport, DateOnly from, DateOnly to, CancellationToken cancellationToken);
     // Cancelled and dead-hold bookings of the day: they don't block, but the agenda shows them.
-    Task<IReadOnlyList<InactiveBooking>> GetInactiveBookingsAsync(
+    Task<IReadOnlyList<Booking>> GetInactiveBookingsAsync(
         IReadOnlyCollection<Guid> courtIds, DateOnly date, CancellationToken cancellationToken);
+    // Approved money per booking, orphans included: money on a dead booking is what must be seen.
+    Task<IReadOnlyDictionary<Guid, decimal>> GetPaidAmountsAsync(
+        IReadOnlyCollection<Guid> bookingIds, CancellationToken cancellationToken);
 }

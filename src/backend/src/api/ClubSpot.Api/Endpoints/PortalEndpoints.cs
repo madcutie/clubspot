@@ -1,4 +1,5 @@
 using ClubSpot.Api.Modularity;
+using ClubSpot.Api.Payments;
 using ClubSpot.Application.Bookings;
 using ClubSpot.Application.Core;
 using ClubSpot.Domain.Bookings;
@@ -56,13 +57,7 @@ public static class PortalEndpoints
             var club = await clubSettings.GetAsync(cancellationToken);
             var title = $"{club.Name} · reserva {request.Date:dd/MM} {TimeLabel(request.StartMinute)}";
             // The client cannot know the booking id before this call; the return URL gets it here.
-            var returnUrl = Microsoft.AspNetCore.WebUtilities.QueryHelpers
-                .AddQueryString(request.ReturnUrl!, "retorno", result.Id.ToString());
-            // Providers demand https back urls: route the return through the public tunnel,
-            // which bounces to the local portal (/api/payments/return) and enables auto_return.
-            var publicBaseUrl = paymentsOptions.Value.PublicBaseUrl;
-            if (!string.IsNullOrWhiteSpace(publicBaseUrl) && !returnUrl.StartsWith("https", StringComparison.OrdinalIgnoreCase))
-                returnUrl = $"{publicBaseUrl}/api/payments/return?to={Uri.EscapeDataString(returnUrl)}";
+            var returnUrl = CheckoutReturnUrl.For(paymentsOptions.Value, request.ReturnUrl!, result.Id);
             try
             {
                 var session = await checkout!.CreateCheckoutAsync(new CheckoutRequest(

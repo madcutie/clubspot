@@ -7,7 +7,7 @@ namespace ClubSpot.Application.Bookings;
 public sealed record AgendaSlot(int StartMinute, int Duration, decimal Price);
 
 public sealed record AgendaBooking(Guid Id, int StartMinute, int DurationMinutes, string CustomerName,
-    string? CustomerPhone, decimal Price, BookingStatus Status);
+    string? CustomerPhone, decimal Price, decimal PaidAmount, BookingStatus Status);
 
 public sealed record AgendaCourt(Guid CourtId, string Name, string Detail, bool IsCovered,
     IReadOnlyList<TimeRange> Windows, IReadOnlyList<AgendaSlot> Slots, IReadOnlyList<AgendaBooking> Bookings);
@@ -28,6 +28,12 @@ public sealed class GetAgendaHandler(IAvailabilityQueries queries, IClubSettings
         var today = calendar.Today();
 
         var data = await queries.GetDataAsync(sport, date, date, cancellationToken);
+        var courtNames = data.Courts.ToDictionary(court => court.Id, court => court.Name);
+        var inactiveBookings = await queries.GetInactiveBookingsAsync(courtNames.Keys, date, cancellationToken);
+        var paid = await queries.GetPaidAmountsAsync(
+            data.ActiveBookings.Concat(inactiveBookings).Select(booking => booking.Id).ToList(),
+            cancellationToken);
+
         var courts = data.Courts.Select(court =>
         {
             var schedule = data.Schedules[court.ScheduleId];
@@ -44,15 +50,15 @@ public sealed class GetAgendaHandler(IAvailabilityQueries queries, IClubSettings
                 AvailabilityCalculator.EffectiveWindows(court, schedule, data.Overrides, date),
                 slots,
                 bookings.Select(booking => new AgendaBooking(booking.Id, booking.StartMinute, booking.DurationMinutes,
-                    booking.CustomerName, booking.CustomerPhone, booking.Price.Amount, booking.Status)).ToList());
+                    booking.CustomerName, booking.CustomerPhone, booking.Price.Amount,
+                    paid.GetValueOrDefault(booking.Id), booking.Status)).ToList());
         }).ToList();
 
-        var courtNames = data.Courts.ToDictionary(court => court.Id, court => court.Name);
-        var inactive = (await queries.GetInactiveBookingsAsync(courtNames.Keys, date, cancellationToken))
-            .Select(entry => new AgendaInactiveBooking(entry.Booking.Id, entry.Booking.CourtId,
-                courtNames[entry.Booking.CourtId], entry.Booking.StartMinute, entry.Booking.DurationMinutes,
-                entry.Booking.CustomerName, entry.Booking.CustomerPhone, entry.Booking.Price.Amount,
-                entry.PaidAmount, entry.Booking.Status, entry.Booking.CancelledAt))
+        var inactive = inactiveBookings
+            .Select(booking => new AgendaInactiveBooking(booking.Id, booking.CourtId,
+                courtNames[booking.CourtId], booking.StartMinute, booking.DurationMinutes,
+                booking.CustomerName, booking.CustomerPhone, booking.Price.Amount,
+                paid.GetValueOrDefault(booking.Id), booking.Status, booking.CancelledAt))
             .ToList();
         return new Agenda(club.Currency, courts, inactive);
     }

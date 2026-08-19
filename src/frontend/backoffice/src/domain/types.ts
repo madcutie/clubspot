@@ -86,6 +86,8 @@ export interface ReservaDia {
   persona: string;
   tel: string | null;
   precio: number;
+  /** Acreditado hasta ahora. Mayor al precio ⇒ se cobró de más y hay que devolver. */
+  pagado: number;
   /** Hold de pago online todavía sin acreditar; bloquea el turno hasta vencer. */
   pendientePago: boolean;
 }
@@ -102,7 +104,10 @@ export interface CanchaAgenda {
   reservas: ReservaDia[];
 }
 
-/** Reserva que ya no bloquea el turno (cancelada o vencida), con lo que tenía pagado. */
+/**
+ * Reserva que ya no bloquea el turno, con lo que tenía pagado. `abandonada` es un
+ * intento de compra online que nunca se pagó: el hold venció, nadie la canceló.
+ */
 export interface ReservaInactiva {
   id: string;
   cancha: string;
@@ -112,7 +117,7 @@ export interface ReservaInactiva {
   tel: string | null;
   precio: number;
   pagado: number;
-  estado: 'cancelada' | 'vencida';
+  estado: 'cancelada' | 'abandonada';
 }
 
 export interface AgendaDia {

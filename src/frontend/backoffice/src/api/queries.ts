@@ -4,6 +4,7 @@ import { useTostada } from '../ui/Tostadas';
 import {
   borrarExcepcion,
   cancelarReserva,
+  cobrarReserva,
   crearExcepcion,
   crearReserva,
   fetchAgenda,
@@ -36,6 +37,7 @@ export const qk = {
   ficha: (id: number | null) => ['ficha', id] as const,
   agenda: () => ['agenda'] as const,
   agendaDia: (deporte: Deporte, fecha: string) => ['agenda', deporte, fecha] as const,
+  cobro: (reservaId: string) => ['cobro', reservaId] as const,
   canchas: () => ['canchas'] as const,
   horarios: () => ['horarios'] as const,
   excepciones: (desde: string, hasta: string) => ['excepciones', desde, hasta] as const,
@@ -45,7 +47,7 @@ export const qk = {
  * Cada vez que cambia algo se invalida todo lo que lo mira, en vez de parchear
  * cachés a mano.
  */
-function useInvalidar() {
+export function useInvalidar() {
   const qc = useQueryClient();
   return {
     personas: () => qc.invalidateQueries({ queryKey: qk.personas() }),
@@ -156,6 +158,22 @@ export function useCrearReserva() {
         avisar('No se pudo crear la reserva. Probá de nuevo.');
       }
     },
+  });
+}
+
+/**
+ * Link de cobro de un turno. Es una query y no una mutación a propósito: el cache de
+ * React Query es global, así que el link sobrevive a que el panel se desmonte —una
+ * mutación pierde su resultado ahí—. Reemitir es `refetch`: la cancha ya está
+ * reservada, no hay hold que cuidar.
+ */
+export function useCobro(reservaId: string) {
+  return useQuery({
+    queryKey: qk.cobro(reservaId),
+    queryFn: () => cobrarReserva(reservaId),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: false,
   });
 }
 

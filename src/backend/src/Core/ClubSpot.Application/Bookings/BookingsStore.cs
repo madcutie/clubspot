@@ -19,7 +19,7 @@ public enum PaymentApplyOutcome { Confirmed, Rejected, AlreadyProcessed, Orphane
 public enum HoldReleaseOutcome { Released, NotPending, NotFound }
 
 public sealed record PaymentNotification(Guid BookingId, string Provider, PaymentRail Rail, string ExternalId,
-    bool Approved, decimal? Amount);
+    bool Approved, decimal? Amount, string? Currency = null);
 
 public sealed record BookingSnapshot(Guid Id, Guid CourtId, string CourtName, Sport Sport, DateOnly Date,
     int StartMinute, int DurationMinutes, decimal Price, decimal PaidAmount, BookingStatus Status,

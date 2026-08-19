@@ -33,9 +33,17 @@ public static class PortalEndpoints
         if (string.IsNullOrWhiteSpace(request.CustomerName) || string.IsNullOrWhiteSpace(request.CustomerPhone))
             return Results.BadRequest();
 
-        var paymentMode = request.PaymentMode ?? PaymentMode.Club;
+        // How a portal booking may be paid is the server's call, never the caller's: with a checkout
+        // wired the slot is only held against an online payment, so a request asking to pay at the
+        // club cannot confirm it for free. Paying at the club stays the only mode where no gateway
+        // is contracted, which is a supported configuration (AGENTS.md §5).
         var checkout = checkouts.FirstOrDefault();
-        if (paymentMode != PaymentMode.Club && (checkout is null || string.IsNullOrWhiteSpace(request.ReturnUrl)))
+        PaymentMode[] allowedModes = checkout is null
+            ? [PaymentMode.Club]
+            : [PaymentMode.OnlineFull, PaymentMode.OnlineDeposit];
+        var paymentMode = request.PaymentMode ?? allowedModes[0];
+        if (!allowedModes.Contains(paymentMode)) return Results.UnprocessableEntity();
+        if (checkout is not null && string.IsNullOrWhiteSpace(request.ReturnUrl))
             return Results.UnprocessableEntity();
 
         var result = await store.CreateAsync(new BookingCreateInput(
@@ -82,9 +90,13 @@ public static class PortalEndpoints
         await store.GetAsync(id, cancellationToken) is { } snapshot ? Results.Ok(snapshot) : Results.NotFound();
 
     // The buyer is staring at the waiting screen: ask the providers right now instead of J2.
-    private static async Task<IResult> SettleBookingAsync(Guid id, SettleBookingHandler handler,
-        CancellationToken cancellationToken) =>
-        Results.Ok(new { outcome = await handler.HandleAsync(id, cancellationToken) });
+    // Anonymous endpoint: the booking must exist before an unknown id can reach the provider's API.
+    private static async Task<IResult> SettleBookingAsync(Guid id, IBookingsStore store,
+        SettleBookingHandler handler, CancellationToken cancellationToken)
+    {
+        if (await store.GetAsync(id, cancellationToken) is null) return Results.NotFound();
+        return Results.Ok(new { outcome = await handler.HandleAsync(id, cancellationToken) });
+    }
 
     // Only frees pending holds; anything already settled is left as is, so the call is idempotent.
     private static async Task<IResult> ReleaseBookingAsync(Guid id, IBookingsStore store, CancellationToken cancellationToken) =>

@@ -4,11 +4,13 @@ namespace ClubSpot.Domain.Bookings;
 
 public static class AvailabilityCalculator
 {
+    // blockingBookings is taken as given: what blocks a slot — a confirmation, a live hold — is
+    // decided by whoever queries, so the same rule is not written twice with different answers.
     public static IReadOnlyList<AvailableSlot> SlotsFor(
         Court court,
         Schedule schedule,
         IReadOnlyList<AvailabilityOverride> overrides,
-        IReadOnlyList<Booking> bookings,
+        IReadOnlyList<Booking> blockingBookings,
         DateOnly date,
         DateOnly todayAtClub,
         int nowMinuteAtClub)
@@ -27,7 +29,7 @@ public static class AvailabilityCalculator
                 for (; start + duration <= window.ClosesAtMinute; start += court.StartIncrementMinutes)
                 {
                     if (noticeFloor + start < court.MinimumNoticeMinutes) continue;
-                    if (OverlapsConfirmedBooking(bookings, start, duration)) continue;
+                    if (Overlaps(blockingBookings, start, duration)) continue;
                     slots.Add(new AvailableSlot(start, duration, PriceFor(court, start, duration)));
                 }
             }
@@ -54,9 +56,8 @@ public static class AvailabilityCalculator
     private static int CeilToIncrement(int minute, int increment) =>
         (minute + increment - 1) / increment * increment;
 
-    private static bool OverlapsConfirmedBooking(IReadOnlyList<Booking> bookings, int start, int duration) =>
-        bookings.Any(booking => booking.Status == BookingStatus.Confirmed
-            && booking.StartMinute < start + duration
+    private static bool Overlaps(IReadOnlyList<Booking> blockingBookings, int start, int duration) =>
+        blockingBookings.Any(booking => booking.StartMinute < start + duration
             && start < booking.StartMinute + booking.DurationMinutes);
 
     private static AvailabilityOverride? MostRecentOverride(

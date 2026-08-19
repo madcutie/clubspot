@@ -109,7 +109,24 @@ internal sealed class BookingsStore(
             : HoldReleaseOutcome.NotFound;
     }
 
-    public async Task<PaymentApplyOutcome> ApplyPaymentAsync(PaymentNotification notification, PaymentSource source, CancellationToken cancellationToken)
+    public async Task<PaymentApplyOutcome> ApplyPaymentAsync(PaymentNotification notification, PaymentSource source,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await ApplyPaymentCoreAsync(notification, source, cancellationToken);
+        }
+        catch (DbUpdateException exception)
+            when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            // The webhook and the buyer's settle call raced past the check below: the unique index on
+            // (provider, externalId) is what actually makes a replayed payment a no-op.
+            return PaymentApplyOutcome.AlreadyProcessed;
+        }
+    }
+
+    private async Task<PaymentApplyOutcome> ApplyPaymentCoreAsync(PaymentNotification notification,
+        PaymentSource source, CancellationToken cancellationToken)
     {
         // Idempotency anchor: (provider, externalId) is unique, so a replayed webhook is a no-op.
         if (await db.Payments.AnyAsync(payment => payment.Provider == notification.Provider
@@ -121,9 +138,10 @@ internal sealed class BookingsStore(
 
         var club = await clubSettings.GetAsync(cancellationToken);
         var kind = booking.PaymentMode == PaymentMode.OnlineDeposit ? PaymentKind.Deposit : PaymentKind.Full;
+        var expected = ChargeAmountFor(booking.PaymentMode, booking.Price, club.DepositPercent);
         var amount = notification.Amount is { } charged
             ? Money.Of(charged, booking.Price.Currency)
-            : ChargeAmountFor(booking.PaymentMode, booking.Price, club.DepositPercent);
+            : expected;
 
         var payment = new Payment(Guid.NewGuid(), tenantContext.Current, booking.Id, notification.Provider,
             notification.Rail, notification.ExternalId, amount, kind,
@@ -139,14 +157,33 @@ internal sealed class BookingsStore(
 
         if (booking.Status == BookingStatus.Confirmed)
         {
-            // Duplicate money on an already confirmed booking: recorded, needs manual follow-up.
+            // A confirmed booking can still owe money (a deposit paid online, the balance at the
+            // counter): only what arrives on top of a settled balance is duplicate money, and that
+            // is flagged instead of being filed as one more ordinary payment.
+            var paid = await db.Payments.AsNoTracking()
+                .Where(candidate => candidate.BookingId == booking.Id && candidate.Status == PaymentStatus.Approved)
+                .SumAsync(candidate => candidate.Amount.Amount, cancellationToken);
+            var duplicate = paid >= booking.Price.Amount;
+            if (duplicate) payment.MarkOrphaned();
             await db.SaveChangesAsync(cancellationToken);
-            return PaymentApplyOutcome.Confirmed;
+            return duplicate ? PaymentApplyOutcome.Orphaned : PaymentApplyOutcome.Confirmed;
         }
 
         if (booking.Status == BookingStatus.Cancelled)
         {
             // The buyer paid while the hold was being released: keep the money recorded, flag it.
+            payment.MarkOrphaned();
+            await db.SaveChangesAsync(cancellationToken);
+            return PaymentApplyOutcome.Orphaned;
+        }
+
+        // Either the deposit the site asked for or the whole price: nothing in between takes a slot.
+        // A short payment, or one settled in another currency, is kept on record and flagged instead
+        // of confirming — the club decides what to do with money it did not agree to.
+        var wrongCurrency = notification.Currency is { } paidCurrency
+            && !string.Equals(paidCurrency, booking.Price.Currency, StringComparison.OrdinalIgnoreCase);
+        if (wrongCurrency || amount.Amount < expected.Amount)
+        {
             payment.MarkOrphaned();
             await db.SaveChangesAsync(cancellationToken);
             return PaymentApplyOutcome.Orphaned;

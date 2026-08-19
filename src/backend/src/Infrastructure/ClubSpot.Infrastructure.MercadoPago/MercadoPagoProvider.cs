@@ -68,9 +68,11 @@ public sealed class MercadoPagoProvider(IOptions<MercadoPagoOptions> options) : 
             var payment = await new PaymentClient().GetAsync(id, RequestOptions(), cancellationToken);
             if (payment.ExternalReference is null || !Guid.TryParse(payment.ExternalReference, out var bookingId))
                 return null;
+            // Provisional (18/08/2026): every status other than approved collapses into rejected, so a
+            // refund or a chargeback leaves the booking confirmed. Replaced when refunds are modelled.
             return new PaymentNotification(bookingId, ProviderName, PaymentRail.Checkout,
                 payment.Id?.ToString(CultureInfo.InvariantCulture) ?? paymentId,
-                payment.Status == "approved", payment.TransactionAmount);
+                payment.Status == "approved", payment.TransactionAmount, payment.CurrencyId);
         }
         catch (MercadoPagoApiException)
         {
@@ -81,16 +83,21 @@ public sealed class MercadoPagoProvider(IOptions<MercadoPagoOptions> options) : 
     // Reconciliation: whatever Mercado Pago holds for this booking, delivered webhook or not.
     public async Task<IReadOnlyList<PaymentNotification>> FindPaymentsAsync(Guid bookingId, CancellationToken cancellationToken)
     {
+        var reference = bookingId.ToString();
         var search = await new PaymentClient().SearchAsync(new SearchRequest
         {
-            Filters = new Dictionary<string, object> { ["external_reference"] = bookingId.ToString() }
+            Filters = new Dictionary<string, object> { ["external_reference"] = reference }
         }, RequestOptions(), cancellationToken);
 
+        // The reference is checked on the way back too: a filter the API silently ignores would
+        // otherwise settle this booking with somebody else's payments.
         return (search.Results ?? [])
-            .Where(payment => payment.Id is not null && payment.Status is "approved" or "rejected")
+            .Where(payment => payment.Id is not null
+                && string.Equals(payment.ExternalReference, reference, StringComparison.OrdinalIgnoreCase)
+                && payment.Status is "approved" or "rejected")
             .Select(payment => new PaymentNotification(bookingId, ProviderName, PaymentRail.Checkout,
                 payment.Id!.Value.ToString(CultureInfo.InvariantCulture),
-                payment.Status == "approved", payment.TransactionAmount))
+                payment.Status == "approved", payment.TransactionAmount, payment.CurrencyId))
             .ToList();
     }
 

@@ -145,7 +145,8 @@ public sealed class PortalEndpointsTests(PostgresFixture postgres)
         var response = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
         {
             courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
-            customerName = "Carla Ruiz", customerPhone = "362 411-2233", customerEmail = "Carla@Test.com"
+            customerName = "Carla Ruiz", customerPhone = "362 411-2233", customerEmail = "Carla@Test.com",
+            paymentMode = "onlineFull", returnUrl = "http://localhost:5183/?retorno=x"
         });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -175,13 +176,15 @@ public sealed class PortalEndpointsTests(PostgresFixture postgres)
         var first = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
         {
             courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
-            customerName = "Diego Paz", customerPhone = "362 400-0001", customerEmail = "diego@test.com"
+            customerName = "Diego Paz", customerPhone = "362 400-0001", customerEmail = "diego@test.com",
+            paymentMode = "onlineFull", returnUrl = "http://localhost:5183/?retorno=x"
         });
         var repeat = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
         {
             courtId = second.Court.Id, date = second.Date, startMinute = second.Slot.StartMinute,
             durationMinutes = second.Slot.Duration,
-            customerName = "Diego Paz", customerPhone = "362 999-9999", customerEmail = "diego@test.com"
+            customerName = "Diego Paz", customerPhone = "362 999-9999", customerEmail = "diego@test.com",
+            paymentMode = "onlineFull", returnUrl = "http://localhost:5183/?retorno=x"
         });
 
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
@@ -209,7 +212,8 @@ public sealed class PortalEndpointsTests(PostgresFixture postgres)
         var request = new
         {
             courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
-            customerName = "Eva Sosa", customerPhone = "362 400-0002", customerEmail = (string?)null
+            customerName = "Eva Sosa", customerPhone = "362 400-0002", customerEmail = (string?)null,
+            paymentMode = "onlineFull", returnUrl = "http://localhost:5183/?retorno=x"
         };
 
         var first = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", request);

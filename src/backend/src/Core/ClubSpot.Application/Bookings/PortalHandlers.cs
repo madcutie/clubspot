@@ -65,7 +65,10 @@ public sealed class GetPortalAvailabilityHandler(IAvailabilityQueries queries, I
         for (var date = from; date <= to; date = date.AddDays(1))
         {
             var currentDate = date;
+            // A court pointing at a missing schedule offers nothing; it does not take the whole
+            // sport's availability down with it.
             var courts = data.Courts
+                .Where(court => data.Schedules.ContainsKey(court.ScheduleId))
                 .Select(court => new PortalDayCourt(court.Id, AvailabilityCalculator
                     .SlotsFor(court, data.Schedules[court.ScheduleId], data.Overrides,
                         data.ActiveBookings.Where(booking => booking.CourtId == court.Id && booking.Date == currentDate).ToList(),

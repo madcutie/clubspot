@@ -29,7 +29,9 @@ export function ConfirmScreen({ api }: { api: BookingApi }) {
   const [error, setError] = useState<string | null>(null);
 
   const ready = st.nombre.trim().length > 0 && st.tel.trim().length > 0;
-  const pago: PayMode = pagoOnline ? st.pago : 'club';
+  // Con gateway configurado el turno sólo se toma contra un pago online (seña o total): el servidor
+  // rechaza el modo "club" desde el portal, así que la UI tampoco lo ofrece.
+  const pago: PayMode = pagoOnline ? (st.pago === 'club' ? 'total' : st.pago) : 'club';
 
   const confirm = async () => {
     if (!st.sel || sending) return;
@@ -142,13 +144,6 @@ export function ConfirmScreen({ api }: { api: BookingApi }) {
           <>
             <div style={{ ...label, margin: '26px 0 10px' }}>Forma de pago</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <PayOption
-                active={pago === 'club'}
-                onClick={() => set({ pago: 'club' })}
-                title="Pagás en el club"
-                detail="El turno queda confirmado a tu nombre y abonás cuando venís a jugar."
-                amount={fmt(total)}
-              />
               <PayOption
                 active={pago === 'total'}
                 onClick={() => set({ pago: 'total' })}

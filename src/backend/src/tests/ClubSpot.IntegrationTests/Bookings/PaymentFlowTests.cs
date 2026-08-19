@@ -40,7 +40,8 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         var conflicting = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
         {
             courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
-            customerName = "Otro Cliente", customerPhone = "362 400-0101", customerEmail = (string?)null
+            customerName = "Otro Cliente", customerPhone = "362 400-0101", customerEmail = (string?)null,
+            paymentMode = "onlineFull", returnUrl = "http://localhost:5183/?retorno=x"
         });
         Assert.Equal(HttpStatusCode.Conflict, conflicting.StatusCode);
 
@@ -134,7 +135,8 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         var retry = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
         {
             courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
-            customerName = "Segundo Cliente", customerPhone = "362 400-0106", customerEmail = (string?)null
+            customerName = "Segundo Cliente", customerPhone = "362 400-0106", customerEmail = (string?)null,
+            paymentMode = "onlineFull", returnUrl = "http://localhost:5183/?retorno=x"
         });
 
         Assert.Equal(HttpStatusCode.Created, retry.StatusCode);
@@ -159,7 +161,8 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         var retry = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
         {
             courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
-            customerName = "Segundo Cliente", customerPhone = "362 400-0108", customerEmail = (string?)null
+            customerName = "Segundo Cliente", customerPhone = "362 400-0108", customerEmail = (string?)null,
+            paymentMode = "onlineFull", returnUrl = "http://localhost:5183/?retorno=x"
         });
         Assert.Equal(HttpStatusCode.Created, retry.StatusCode);
 
@@ -212,6 +215,170 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         Assert.Equal(PaymentStatus.ApprovedOrphan, payment.Status);
         var booking = await db.Bookings.SingleAsync(candidate => candidate.Id == created.Id);
         Assert.Equal(BookingStatus.Cancelled, booking.Status);
+    }
+
+    [Fact]
+    public async Task A_second_payment_on_a_fully_paid_booking_is_orphaned()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 20);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineFull", "362 400-0111");
+        await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "fake-double-1", approved = true, amount = created.ChargeAmount
+        });
+
+        // The operator reissued the link and the customer paid it twice.
+        var second = await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "fake-double-2", approved = true, amount = created.ChargeAmount
+        });
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        var payments = await db.Payments.Where(payment => payment.BookingId == created.Id)
+            .OrderBy(payment => payment.CreatedAt).ToListAsync();
+        Assert.Equal(2, payments.Count);
+        Assert.Equal(PaymentStatus.Approved, payments[0].Status);
+        Assert.Equal(PaymentStatus.ApprovedOrphan, payments[1].Status);
+    }
+
+    [Fact]
+    public async Task The_balance_of_a_deposit_booking_is_an_ordinary_payment()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 21);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineDeposit", "362 400-0112");
+        await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "fake-deposit-1", approved = true, amount = created.ChargeAmount
+        });
+
+        // Confirmed by the deposit, the booking still owes the balance: that is not duplicate money.
+        var balance = await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "fake-deposit-2", approved = true,
+            amount = created.Price - created.ChargeAmount
+        });
+        Assert.Equal(HttpStatusCode.OK, balance.StatusCode);
+
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        var payments = await db.Payments.Where(payment => payment.BookingId == created.Id).ToListAsync();
+        Assert.Equal(2, payments.Count);
+        Assert.All(payments, payment => Assert.Equal(PaymentStatus.Approved, payment.Status));
+        Assert.Equal(created.Price, payments.Sum(payment => payment.Amount.Amount));
+    }
+
+    [Fact]
+    public async Task A_payment_short_of_the_asking_price_never_confirms_the_slot()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 24);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineFull", "362 400-0115");
+
+        var webhook = await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "fake-short-1", approved = true,
+            amount = created.ChargeAmount - 1m
+        });
+        Assert.Equal(HttpStatusCode.OK, webhook.StatusCode);
+
+        var snapshot = await client.GetFromJsonAsync<SnapshotResponse>(
+            $"/api/portal/chaco-for-ever/bookings/{created.Id}", TestJsonOptions.Default);
+        Assert.Equal(BookingStatus.PendingPayment, snapshot!.Status);
+
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        var payment = await db.Payments.SingleAsync(candidate => candidate.BookingId == created.Id);
+        Assert.Equal(PaymentStatus.ApprovedOrphan, payment.Status);
+    }
+
+    [Fact]
+    public async Task The_exact_deposit_the_site_asked_for_confirms_the_slot()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 25);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineDeposit", "362 400-0116");
+
+        var webhook = await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "fake-exact-1", approved = true, amount = created.ChargeAmount
+        });
+        Assert.Equal(HttpStatusCode.OK, webhook.StatusCode);
+
+        var snapshot = await client.GetFromJsonAsync<SnapshotResponse>(
+            $"/api/portal/chaco-for-ever/bookings/{created.Id}", TestJsonOptions.Default);
+        Assert.Equal(BookingStatus.Confirmed, snapshot!.Status);
+        Assert.Equal(created.ChargeAmount, snapshot.PaidAmount);
+    }
+
+    [Fact]
+    public async Task The_portal_refuses_to_confirm_a_slot_against_a_promise_to_pay_at_the_club()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 22);
+
+        var response = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
+        {
+            courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
+            customerName = "Vivo Vivaldi", customerPhone = "362 400-0113", customerEmail = (string?)null,
+            paymentMode = "club", returnUrl = "http://localhost:5183/?retorno=x"
+        });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        Assert.False(await db.Bookings.AnyAsync());
+    }
+
+    [Fact]
+    public async Task A_portal_booking_without_a_payment_mode_defaults_to_paying_online()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 23);
+
+        var response = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
+        {
+            courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
+            customerName = "Sin Modo", customerPhone = "362 400-0114", customerEmail = (string?)null,
+            returnUrl = "http://localhost:5183/?retorno=x"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<CreatedResponse>(TestJsonOptions.Default);
+        Assert.Equal(BookingStatus.PendingPayment, created!.Status);
+        Assert.Equal(created.Price, created.ChargeAmount);
+    }
+
+    [Fact]
+    public async Task Settling_an_unknown_booking_never_reaches_the_provider()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+
+        var settle = await client.PostAsync(
+            $"/api/portal/chaco-for-ever/bookings/{Guid.NewGuid()}/settle", null);
+
+        Assert.Equal(HttpStatusCode.NotFound, settle.StatusCode);
     }
 
     private static async Task<CreatedResponse> HoldAsync(HttpClient client, Guid courtId, DateOnly date,

@@ -27,10 +27,16 @@ public static class PaymentEndpoints
         return app;
     }
 
+    // Origins are compared parsed, never as string prefixes: "https://club.com.attacker.io" starts
+    // with an allowed "https://club.com" and would otherwise be redirected to.
     private static IResult Return(string to, IOptions<PaymentsOptions> options)
     {
-        var allowed = options.Value.AllowedReturnOrigins
-            .Any(origin => to.StartsWith(origin, StringComparison.OrdinalIgnoreCase));
+        if (!Uri.TryCreate(to, UriKind.Absolute, out var target)) return Results.BadRequest();
+
+        var allowed = options.Value.AllowedReturnOrigins.Any(origin =>
+            Uri.TryCreate(origin, UriKind.Absolute, out var allowedOrigin)
+            && Uri.Compare(target, allowedOrigin, UriComponents.SchemeAndServer, UriFormat.UriEscaped,
+                StringComparison.OrdinalIgnoreCase) == 0);
         return allowed ? Results.Redirect(to) : Results.BadRequest();
     }
 

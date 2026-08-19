@@ -34,7 +34,9 @@ public sealed class GetAgendaHandler(IAvailabilityQueries queries, IClubSettings
             data.ActiveBookings.Concat(inactiveBookings).Select(booking => booking.Id).ToList(),
             cancellationToken);
 
-        var courts = data.Courts.Select(court =>
+        // A court pointing at a missing schedule offers nothing; it does not take the whole agenda
+        // down with it.
+        var courts = data.Courts.Where(court => data.Schedules.ContainsKey(court.ScheduleId)).Select(court =>
         {
             var schedule = data.Schedules[court.ScheduleId];
             var bookings = data.ActiveBookings

@@ -36,12 +36,16 @@ public sealed class AvailabilityCalculatorTests
         Guid? courtId, DateOnly[] dates, TimeRange[] windows, DateTimeOffset createdAt) =>
         new(Guid.NewGuid(), Tenant, courtId, dates, windows, null, createdAt, Guid.NewGuid());
 
-    private static Booking MakeBooking(int startMinute, int durationMinutes, bool cancelled = false)
-    {
-        var booking = new Booking(Guid.NewGuid(), Tenant, CourtId, Today, startMinute, durationMinutes,
+    private static Booking MakeBooking(int startMinute, int durationMinutes) =>
+        new(Guid.NewGuid(), Tenant, CourtId, Today, startMinute, durationMinutes,
             Money.Of(14000m, "ARS"), "Ana Suarez", null, null, BookingOrigin.Counter, DateTimeOffset.UtcNow, Guid.NewGuid());
-        if (cancelled) booking.Cancel(DateTimeOffset.UtcNow);
-        return booking;
+
+    private static Booking MakeHold(int startMinute, int durationMinutes)
+    {
+        var createdAt = DateTimeOffset.UtcNow;
+        return Booking.Hold(Guid.NewGuid(), Tenant, CourtId, Today, startMinute, durationMinutes,
+            Money.Of(14000m, "ARS"), "Ana Suarez", null, Guid.NewGuid(), BookingOrigin.Portal,
+            PaymentMode.OnlineFull, createdAt.AddMinutes(5), createdAt, null);
     }
 
     [Fact]
@@ -343,17 +347,17 @@ public sealed class AvailabilityCalculatorTests
     }
 
     [Fact]
-    public void A_cancelled_booking_does_not_discard_its_start()
+    public void A_live_hold_discards_its_start_exactly_like_a_confirmation()
     {
         var schedule = MakeSchedule(new Dictionary<DayOfWeek, List<TimeRange>>
         {
             [Today.DayOfWeek] = [new TimeRange(600, 660)]
         });
         var court = MakeCourt(durations: [60], startIncrementMinutes: 30);
-        var booking = MakeBooking(600, 60, cancelled: true);
+        var hold = MakeHold(600, 60);
 
-        var slots = AvailabilityCalculator.SlotsFor(court, schedule, [], [booking], Today, Today, 0);
+        var slots = AvailabilityCalculator.SlotsFor(court, schedule, [], [hold], Today, Today, 0);
 
-        Assert.Equal([600], slots.Select(slot => slot.StartMinute));
+        Assert.Empty(slots);
     }
 }

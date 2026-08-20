@@ -67,10 +67,11 @@ export function useClub() {
 
 // ── Personas ─────────────────────────────────────────────────────────────────
 
-export function usePersonas(q: ConsultaPersonas) {
+export function usePersonas(q: ConsultaPersonas, habilitado = true) {
   return useQuery({
     queryKey: qk.personasPagina(q),
     queryFn: () => fetchPersonas(q),
+    enabled: habilitado,
     // Al tipear o cambiar de página se mantiene la tabla anterior en pantalla
     // en vez de vaciarla mientras llega la nueva.
     placeholderData: (prev) => prev,
@@ -136,10 +137,11 @@ export function useRegistrarPago() {
 
 // ── Agenda ───────────────────────────────────────────────────────────────────
 
-export function useAgenda(deporte: Deporte, fecha: string) {
+export function useAgenda(deporte: Deporte, fecha: string, habilitado = true) {
   return useQuery({
     queryKey: qk.agendaDia(deporte, fecha),
     queryFn: () => fetchAgenda(deporte, fecha),
+    enabled: habilitado,
     placeholderData: (prev) => prev,
   });
 }
@@ -189,12 +191,14 @@ export function useCancelarReserva() {
 
 // ── Canchas y horarios ───────────────────────────────────────────────────────
 
-export function useCanchas() {
-  return useQuery({ queryKey: qk.canchas(), queryFn: fetchCanchas });
+// `habilitado` lo decide el rol: sin permiso no se pide, así la consola no dispara requests
+// que la API va a rechazar con 403 (ADR-0018). Vale también para agenda y personas.
+export function useCanchas(habilitado = true) {
+  return useQuery({ queryKey: qk.canchas(), queryFn: fetchCanchas, enabled: habilitado });
 }
 
-export function useHorarios() {
-  return useQuery({ queryKey: qk.horarios(), queryFn: fetchHorarios });
+export function useHorarios(habilitado = true) {
+  return useQuery({ queryKey: qk.horarios(), queryFn: fetchHorarios, enabled: habilitado });
 }
 
 function mensajeDeGuardado(error: unknown): string {

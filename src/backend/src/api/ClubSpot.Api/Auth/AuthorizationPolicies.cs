@@ -12,10 +12,10 @@ public static class AuthorizationPolicies
     public static IServiceCollection AddClubSpotAuthorization(this IServiceCollection services)
     {
         services.AddAuthorizationBuilder()
-            .AddPolicy(PeopleView, policy => policy.RequireRole(Role.Administrator.ToString(), Role.MemberDesk.ToString(), Role.CourtReception.ToString()))
-            .AddPolicy(PeopleManage, policy => policy.RequireRole(Role.Administrator.ToString(), Role.MemberDesk.ToString()))
-            .AddPolicy(AgendaOperate, policy => policy.RequireRole(Role.Administrator.ToString(), Role.CourtReception.ToString()))
-            .AddPolicy(ConfigurationEdit, policy => policy.RequireRole(Role.Administrator.ToString()));
+            .AddPolicy(PeopleView, policy => policy.RequireRole(Role.Administrator.Wire(), Role.MemberDesk.Wire(), Role.CourtReception.Wire()))
+            .AddPolicy(PeopleManage, policy => policy.RequireRole(Role.Administrator.Wire(), Role.MemberDesk.Wire()))
+            .AddPolicy(AgendaOperate, policy => policy.RequireRole(Role.Administrator.Wire(), Role.CourtReception.Wire()))
+            .AddPolicy(ConfigurationEdit, policy => policy.RequireRole(Role.Administrator.Wire()));
         return services;
     }
 }

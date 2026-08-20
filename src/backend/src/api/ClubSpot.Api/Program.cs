@@ -10,7 +10,6 @@ using ClubSpot.Api.Seed;
 using ClubSpot.Api.Tenancy;
 using ClubSpot.Application.Modularity;
 using ClubSpot.Domain.Bookings;
-using ClubSpot.Domain.Core;
 using ClubSpot.Domain.Core.People;
 using ClubSpot.Infrastructure.DependencyInjection;
 using ClubSpot.Infrastructure.MercadoPago;
@@ -49,6 +48,8 @@ builder.Services.AddSingleton<ClubSpot.Api.Endpoints.PortalBookingToken>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        // What travels is what gets read: no implicit claim mapping in either direction (ADR-0018).
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -57,7 +58,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtOptions.Audience,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
-            ValidateLifetime = true
+            ValidateLifetime = true,
+            NameClaimType = ClubSpotClaims.Name,
+            RoleClaimType = ClubSpotClaims.Role
         };
     });
 builder.Services.AddClubSpotAuthorization();
@@ -70,7 +73,6 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<BookingStatus>(JsonNamingPolicy.CamelCase));
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<PaymentMode>(JsonNamingPolicy.CamelCase));
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<ClubSpot.Application.Bookings.PaymentApplyOutcome>(JsonNamingPolicy.CamelCase));
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<Role>(JsonNamingPolicy.CamelCase));
 });
 builder.Services.AddCors(options => options.AddPolicy("backoffice", policy =>
     policy.WithOrigins("http://localhost:5184", "http://localhost:5183").AllowAnyHeader().AllowAnyMethod()));

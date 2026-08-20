@@ -43,6 +43,17 @@ a:hover {
   }
 }
 
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Espera de una acción que ya salió: entrar a la consola. */
+.girando {
+  animation: girar 0.9s linear infinite;
+}
+
 @keyframes slidein {
   from {
     transform: translateX(16px);

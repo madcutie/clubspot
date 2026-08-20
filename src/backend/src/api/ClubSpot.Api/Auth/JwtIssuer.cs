@@ -15,17 +15,21 @@ public sealed class JwtIssuer(IOptions<JwtOptions> options)
     {
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new("tenant", user.TenantId.Value.ToString()),
-            new(ClaimTypes.Name, user.Name)
+            new(ClubSpotClaims.Subject, user.Id.ToString()),
+            new(ClubSpotClaims.Tenant, user.TenantId.Value.ToString()),
+            new(ClubSpotClaims.Name, user.Name)
         };
-        claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role.ToString())));
+        claims.AddRange(user.Roles.Select(role => new Claim(ClubSpotClaims.Role, role.Wire())));
 
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),
             SecurityAlgorithms.HmacSha256);
 
-        return new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
+        var handler = new JwtSecurityTokenHandler();
+        // Without this the handler rewrites well-known claim types on the way out.
+        handler.OutboundClaimTypeMap.Clear();
+
+        return handler.WriteToken(new JwtSecurityToken(
             _options.Issuer,
             _options.Audience,
             claims,

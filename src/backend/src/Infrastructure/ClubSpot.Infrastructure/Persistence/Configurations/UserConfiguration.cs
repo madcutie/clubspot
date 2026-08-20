@@ -17,7 +17,8 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.PasswordHash).HasColumnName("passwordHash").HasMaxLength(500).IsRequired();
         builder.Property(u => u.IsActive).HasColumnName("isActive").IsRequired();
         builder.Property(u => u.CreatedAt).HasColumnName("createdAt").IsRequired();
-        builder.HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
+        // Unique across tenants, not within one: sign-in resolves the club from the email (ADR-0018).
+        builder.HasIndex(u => u.Email).IsUnique();
 
         builder.OwnsMany(u => u.UserRoles, roles =>
         {

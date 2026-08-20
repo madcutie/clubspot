@@ -152,27 +152,8 @@ export interface ClubResponse {
   venue: string | null;
 }
 
-export type Role = typeof Role[keyof typeof Role];
-
-
-export const Role = {
-  administrator: 'administrator',
-  memberDesk: 'memberDesk',
-  treasury: 'treasury',
-  courtReception: 'courtReception',
-  accessControl: 'accessControl',
-  coach: 'coach',
-  member: 'member',
-} as const;
-
-export interface OperatorResponse {
-  name: string;
-  roles: Role[];
-}
-
 export interface ContextResponse {
   club: ClubResponse;
-  operator: OperatorResponse;
   modules: string[];
 }
 
@@ -448,7 +429,6 @@ export interface SetBlockRequest {
 }
 
 export interface SignInRequest {
-  club: string;
   email: string;
   password: string;
 }

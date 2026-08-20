@@ -73,7 +73,7 @@ public static class PeopleEndpoints
         return paid is null ? TypedResults.NotFound() : TypedResults.Ok(new PaymentResponse(paid.Value.Amount));
     }
 
-    private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
+    private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClubSpotClaims.Subject), out var id) ? id : null;
 
     // Both sides of the check read the same normalized value: comparing the raw one rejected
     // "withoutBookings", which is the very spelling this endpoint publishes in Totals.

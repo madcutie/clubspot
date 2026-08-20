@@ -1,7 +1,5 @@
 using ClubSpot.Api.Auth;
-using ClubSpot.Application.Core;
 using ClubSpot.Application.Core.Users;
-using ClubSpot.SharedKernel.Tenancy;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace ClubSpot.Api.Endpoints;
@@ -16,24 +14,29 @@ public static class AuthEndpoints
 
     private static async Task<Results<Ok<SessionResponse>, UnauthorizedHttpResult>> SignInAsync(
         SignInRequest request,
-        IClubDirectory clubDirectory,
-        ITenantScopeFactory tenantScopeFactory,
         IUserRepository users,
         IPasswordHasher passwordHasher,
         JwtIssuer jwtIssuer,
         CancellationToken cancellationToken)
     {
-        var clubId = await clubDirectory.FindClubIdBySlugAsync(request.Club, cancellationToken);
-        if (clubId is null) return TypedResults.Unauthorized();
-
-        using var tenantScope = tenantScopeFactory.BeginScope(clubId.Value);
-        var user = await users.FindByEmailAsync(request.Email, cancellationToken);
-        if (user is null || !user.IsActive || !passwordHasher.Verify(user.PasswordHash, request.Password))
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
             return TypedResults.Unauthorized();
 
-        return TypedResults.Ok(new SessionResponse(jwtIssuer.Issue(user)));
+        var user = await users.FindForSignInAsync(request.Email, cancellationToken);
+        if (user is null)
+        {
+            // Hash anyway: an unknown email has to cost the same as a wrong password, or sign-in
+            // becomes an oracle that tells which emails exist.
+            passwordHasher.Hash(request.Password);
+            return TypedResults.Unauthorized();
+        }
+
+        // Verify before looking at IsActive, for the same reason.
+        return passwordHasher.Verify(user.PasswordHash, request.Password) && user.IsActive
+            ? TypedResults.Ok(new SessionResponse(jwtIssuer.Issue(user)))
+            : TypedResults.Unauthorized();
     }
 
-    internal sealed record SignInRequest(string Club, string Email, string Password);
+    internal sealed record SignInRequest(string Email, string Password);
     internal sealed record SessionResponse(string AccessToken);
 }

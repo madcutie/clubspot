@@ -1,6 +1,4 @@
-using System.Security.Claims;
 using ClubSpot.Application.Core;
-using ClubSpot.Domain.Core;
 using ClubSpot.SharedKernel.Modularity;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -14,18 +12,16 @@ public static class ContextEndpoints
         return app;
     }
 
-    private static async Task<Ok<ContextResponse>> GetAsync(IClubSettings clubSettings, ITenantModules modules, ClaimsPrincipal user, CancellationToken cancellationToken)
+    // Who the operator is comes from the token the caller already has; this is what only the server
+    // knows: the club and what it contracted (ADR-0018).
+    private static async Task<Ok<ContextResponse>> GetAsync(IClubSettings clubSettings, ITenantModules modules, CancellationToken cancellationToken)
     {
         var club = await clubSettings.GetAsync(cancellationToken);
-        var roles = user.FindAll(ClaimTypes.Role).Select(claim => Enum.Parse<Role>(claim.Value)).ToList();
-        var operatorInfo = new OperatorResponse(user.Identity?.Name ?? string.Empty, roles);
         return TypedResults.Ok(new ContextResponse(
             new ClubResponse(club.Name, club.Venue),
-            operatorInfo,
             [.. modules.Enabled.Select(module => module.Value).OrderBy(module => module)]));
     }
 
     internal sealed record ClubResponse(string Name, string? Venue);
-    internal sealed record OperatorResponse(string Name, IReadOnlyCollection<Role> Roles);
-    internal sealed record ContextResponse(ClubResponse Club, OperatorResponse Operator, IReadOnlyList<string> Modules);
+    internal sealed record ContextResponse(ClubResponse Club, IReadOnlyList<string> Modules);
 }

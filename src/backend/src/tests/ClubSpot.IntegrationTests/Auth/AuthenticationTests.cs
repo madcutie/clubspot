@@ -18,35 +18,9 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
     [Fact]
     public async Task A_valid_session_request_returns_a_token_with_tenant_and_roles()
     {
-        var club = new Club(
-            TenantId.From(Guid.NewGuid()),
-            "club-auth",
-            "Club Auth",
-            null,
-            "America/Argentina/Buenos_Aires",
-            "ARS",
-            50,
-            DateTimeOffset.UtcNow);
-        var passwordHasher = new PasswordHasher<User>();
-        var user = new User(
-            Guid.NewGuid(),
-            club.Id,
-            "operator@clubspot.test",
-            "Court Operator",
-            passwordHasher.HashPassword(null!, "correct-password"),
-            [Role.CourtReception],
-            DateTimeOffset.UtcNow);
-
-        var tenantContext = new AsyncLocalTenantContext();
-        await using (var db = postgres.CreateDbContext(tenantContext))
-        {
-            db.Clubs.Add(club);
-            await db.SaveChangesAsync();
-
-            using var tenantScope = tenantContext.BeginScope(club.Id);
-            db.Users.Add(user);
-            await db.SaveChangesAsync();
-        }
+        var club = NewClub("club-auth", "Club Auth");
+        var user = NewUser(club.Id, "operator@clubspot.test", "Court Operator", Role.CourtReception);
+        await SaveAsync(club, user);
 
         using var factory = new ApiFactory(postgres);
         await using (var scope = factory.Services.CreateAsyncScope())
@@ -59,7 +33,6 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
         using var client = factory.CreateClient();
         var response = await client.PostAsJsonAsync("/api/auth/session", new
         {
-            club = club.Slug,
             email = "operator@clubspot.test",
             password = "correct-password"
         });
@@ -70,7 +43,38 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
         var token = new JwtSecurityTokenHandler().ReadJwtToken(session.AccessToken);
         Assert.Equal(user.Id.ToString(), token.Subject);
         Assert.Equal(club.Id.Value.ToString(), token.Claims.Single(claim => claim.Type == "tenant").Value);
-        Assert.Contains(token.Claims, claim => claim.Type.EndsWith("role") && claim.Value == Role.CourtReception.ToString());
+        Assert.Equal("Court Operator", token.Claims.Single(claim => claim.Type == "name").Value);
+        Assert.Equal("courtReception", token.Claims.Single(claim => claim.Type == "role").Value);
+    }
+
+    [Fact]
+    public async Task The_club_comes_from_the_user_not_from_the_request()
+    {
+        var first = NewClub("club-origin-a", "Club A");
+        var second = NewClub("club-origin-b", "Club B");
+        var here = NewUser(first.Id, "here@clubspot.test", "Here", Role.CourtReception);
+        var there = NewUser(second.Id, "there@clubspot.test", "There", Role.Administrator);
+        await SaveAsync(first, here);
+        await SaveAsync(second, there);
+
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+
+        Assert.Equal(first.Id.Value.ToString(), await TenantOfSessionAsync(client, "here@clubspot.test"));
+        Assert.Equal(second.Id.Value.ToString(), await TenantOfSessionAsync(client, "there@clubspot.test"));
+    }
+
+    [Fact]
+    public async Task The_same_email_cannot_exist_in_two_clubs()
+    {
+        var first = NewClub("club-shared-a", "Club Shared A");
+        var second = NewClub("club-shared-b", "Club Shared B");
+        await SaveAsync(first, NewUser(first.Id, "shared@clubspot.test", "First", Role.Administrator));
+
+        var conflict = await Assert.ThrowsAsync<DbUpdateException>(() =>
+            SaveAsync(second, NewUser(second.Id, "shared@clubspot.test", "Second", Role.Administrator)));
+
+        Assert.Contains("uxUsersEmail", conflict.InnerException?.Message ?? conflict.Message);
     }
 
     [Fact]
@@ -79,14 +83,22 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
         using var factory = new ApiFactory(postgres);
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/api/auth/session", new
+        var unknownEmail = await client.PostAsJsonAsync("/api/auth/session", new
         {
-            club = "missing-club",
             email = "missing@clubspot.test",
             password = "wrong-password"
         });
+        var wrongPassword = await client.PostAsJsonAsync("/api/auth/session", new
+        {
+            email = "admin@chacoforever.test",
+            password = "wrong-password"
+        });
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, unknownEmail.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, wrongPassword.StatusCode);
+        Assert.Equal(
+            await unknownEmail.Content.ReadAsStringAsync(),
+            await wrongPassword.Content.ReadAsStringAsync());
     }
 
     [Fact]
@@ -94,23 +106,34 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
     {
         using var factory = new ApiFactory(postgres);
         using var client = factory.CreateClient();
-        var sessionResponse = await client.PostAsJsonAsync("/api/auth/session", new
-        {
-            club = "chaco-for-ever",
-            email = "admin@chacoforever.test",
-            password = "clubspot-dev"
-        });
-        var session = await sessionResponse.Content.ReadFromJsonAsync<SessionResponse>();
+        client.DefaultRequestHeaders.Authorization =
+            new("Bearer", await TokenAsync(client, "admin@chacoforever.test"));
 
-        client.DefaultRequestHeaders.Authorization = new("Bearer", session!.AccessToken);
         var contextResponse = await client.GetAsync("/api/context");
         var context = await contextResponse.Content.ReadFromJsonAsync<ContextResponse>(TestJsonOptions.Default);
 
         Assert.Equal(HttpStatusCode.OK, contextResponse.StatusCode);
         Assert.Equal(["bookings", "core", "finance", "members"], context!.Modules.Order());
         Assert.Equal("Club Atlético Chaco For Ever", context.Club.Name);
-        Assert.Equal("Administrador", context.Operator.Name);
-        Assert.Equal([Role.Administrator], context.Operator.Roles);
+    }
+
+    [Fact]
+    public async Task The_court_reception_operates_the_agenda_but_does_not_configure_the_club()
+    {
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new("Bearer", await TokenAsync(client, "reception@chacoforever.test"));
+
+        var agenda = await client.GetAsync($"/api/agenda?sport=padel&date={DateOnly.FromDateTime(DateTime.UtcNow):yyyy-MM-dd}");
+        var courts = await client.GetAsync("/api/courts");
+        var schedules = await client.GetAsync("/api/schedules");
+        var people = await client.GetAsync("/api/people");
+
+        Assert.Equal(HttpStatusCode.OK, agenda.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, people.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, courts.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, schedules.StatusCode);
     }
 
     [Fact]
@@ -130,8 +153,56 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
         Assert.Contains("http://localhost:5184", cors.Headers.GetValues("Access-Control-Allow-Origin"));
     }
 
+    private static Club NewClub(string slug, string name) => new(
+        TenantId.From(Guid.NewGuid()),
+        slug,
+        name,
+        null,
+        "America/Argentina/Buenos_Aires",
+        "ARS",
+        50,
+        DateTimeOffset.UtcNow);
+
+    private static User NewUser(TenantId tenantId, string email, string name, Role role) => new(
+        Guid.NewGuid(),
+        tenantId,
+        email,
+        name,
+        new PasswordHasher<User>().HashPassword(null!, "correct-password"),
+        [role],
+        DateTimeOffset.UtcNow);
+
+    private async Task SaveAsync(Club club, User user)
+    {
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        if (!await db.Clubs.AnyAsync(candidate => candidate.Id == club.Id))
+        {
+            db.Clubs.Add(club);
+            await db.SaveChangesAsync();
+        }
+
+        using var tenantScope = tenantContext.BeginScope(club.Id);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task<string> TokenAsync(HttpClient client, string email)
+    {
+        var response = await client.PostAsJsonAsync("/api/auth/session", new { email, password = "clubspot-dev" });
+        var session = await response.Content.ReadFromJsonAsync<SessionResponse>();
+        return session!.AccessToken;
+    }
+
+    private static async Task<string> TenantOfSessionAsync(HttpClient client, string email)
+    {
+        var response = await client.PostAsJsonAsync("/api/auth/session", new { email, password = "correct-password" });
+        var session = await response.Content.ReadFromJsonAsync<SessionResponse>();
+        var token = new JwtSecurityTokenHandler().ReadJwtToken(session!.AccessToken);
+        return token.Claims.Single(claim => claim.Type == "tenant").Value;
+    }
+
     private sealed record SessionResponse(string AccessToken);
     private sealed record ClubResponse(string Name, string? Venue);
-    private sealed record OperatorResponse(string Name, IReadOnlyCollection<Role> Roles);
-    private sealed record ContextResponse(ClubResponse Club, OperatorResponse Operator, IEnumerable<string> Modules);
+    private sealed record ContextResponse(ClubResponse Club, IEnumerable<string> Modules);
 }

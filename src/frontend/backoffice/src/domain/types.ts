@@ -130,7 +130,4 @@ export interface AgendaDia {
 export interface Club {
   nombre: string;
   sede: string;
-  operador: string;
-  operadorIniciales: string;
-  rol: string;
 }

@@ -88,7 +88,7 @@ public static class BookingEndpoints
         };
 
     private static Guid? UserId(ClaimsPrincipal user) =>
-        Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
+        Guid.TryParse(user.FindFirstValue(ClubSpotClaims.Subject), out var id) ? id : null;
 
     internal sealed record BookingRequest(Guid CourtId, DateOnly Date, int StartMinute, int DurationMinutes, string CustomerName, string? CustomerPhone)
     {

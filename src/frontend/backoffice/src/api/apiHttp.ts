@@ -170,6 +170,7 @@ export async function fetchAgenda(deporte: Deporte, fecha: string): Promise<Agen
       precio: b.price,
       pagado: b.paidAmount,
       estado: b.status === 'cancelled' ? ('cancelada' as const) : ('abandonada' as const),
+      motivo: b.cancellationReason ?? null,
     })),
   };
 }
@@ -195,8 +196,8 @@ export async function crearReserva(input: NuevaReserva): Promise<{ id: string; p
   return { id: creada.id, precio: creada.price };
 }
 
-export async function cancelarReserva(id: string): Promise<void> {
-  await cancelBooking(id);
+export async function cancelarReserva(id: string, motivo: string): Promise<void> {
+  await cancelBooking(id, { reason: motivo });
 }
 
 /** Link de pago del saldo, para mostrar como QR o mandar por WhatsApp. Se puede reemitir. */

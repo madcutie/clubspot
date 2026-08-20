@@ -30,6 +30,7 @@ Leer antes de proponer cualquier cosa de dominio. Están en `docs/`:
 | [`docs/plan-disponibilidad-e2e.md`](docs/plan-disponibilidad-e2e.md) + su [bitácora](docs/plan-disponibilidad-e2e.bitacora.md) | **Plan aprobado (16/08/2026)**: disponibilidad de punta a punta —ADR-0013 en el backend, horarios/canchas del backoffice y portal de reservas contra la API real— con catálogo de 16 casos E2E por navegador + SQL. **F1 (backend) cerrada y verificada**; F2–F5 pendientes |
 | [`docs/plan-cobro-en-mostrador.md`](docs/plan-cobro-en-mostrador.md) + su [bitácora](docs/plan-cobro-en-mostrador.bitacora.md) | **Escrito 19/08/2026, esperando aprobación**: cobrar un turno con Mercado Pago desde el backoffice (QR en pantalla + link por WhatsApp), reusando Checkout Pro. **Sin arrancar** |
 | [`docs/plan-activity-log.md`](docs/plan-activity-log.md) + su [bitácora](docs/plan-activity-log.bitacora.md) | **En curso (19/08/2026)**: registro de actividad (ADR-0017) — una crónica append-only de qué pasó, quién lo hizo y por qué, que ve tanto el canchero como la auditoría. **F1 cerrada y verificada** (entidad, actor por ámbito, tipos de reservas y pagos cableados); F2–F7 pendientes |
+| [`docs/plan-cancelacion-con-motivo.md`](docs/plan-cancelacion-con-motivo.md) + su [bitácora](docs/plan-cancelacion-con-motivo.bitacora.md) | **Cerrado y verificado (20/08/2026)**: cancelar un turno exige motivo —guardado en la reserva, no en el registro de actividad— y el panel avisa la plata cobrada antes de hacerlo. Queda pendiente el mismo tratamiento al bloquear una ficha |
 | [`docs/plan-pagos-multiproveedor.md`](docs/plan-pagos-multiproveedor.md) + su [bitácora](docs/plan-pagos-multiproveedor.bitacora.md) | **Plan aprobado (18/08/2026)**: asiento de pago transparente al proveedor y al canal (ADR-0014/0015) — `payments.provider` + `payments.rail`, puerto `IPaymentProvider` con capacidades. **Cerrado y verificado (fake y Mercado Pago real)** |
 | [`docs/plan-reserva-online.md`](docs/plan-reserva-online.md) + su [bitácora](docs/plan-reserva-online.bitacora.md) | **Plan aprobado (17/08/2026)**: reserva online desde el portal en 3 etapas. **Etapas 1 y 2 cerradas**: reserva sin pago con vínculo a persona (email → celular → crear), y pago online (hold con TTL perezoso, webhook idempotente, tabla `payments`) verificado con el **gateway fake**; Mercado Pago escrito pero sin probar (faltan credenciales). Etapa 3 (login) pendiente |
 | [`docs/plan-contrato-api.md`](docs/plan-contrato-api.md) + su [bitácora](docs/plan-contrato-api.bitacora.md) | **Plan aprobado y ejecutado (19/08/2026)**: documento OpenAPI generado por el build de la Api y clientes TypeScript generados con Orval para los dos frontends (ADR-0016). **Cerrado y verificado**: F1–F5 |
@@ -261,6 +262,13 @@ con cobro o sin cobro y sin liquidaciones · otro con club + reservas + finanzas
 - **Lo provisional se marca.** Un stub que devuelve un valor fijo o incumple una regla del
   dominio lleva un comentario de una línea que diga que es provisional y qué lo reemplaza; si
   no, el que venga después lo lee como un error y lo "arregla".
+- **El registro de actividad no es la fuente de verdad de ningún dato de negocio** (decisión
+  del usuario, 20/08/2026). Es una crónica: se escribe siempre y se lee poco. Un dato que la
+  operación necesita vive en su agregado —el motivo de una cancelación es una columna de
+  `bookings`, no la columna `reason` de una entrada del log—; el registro guarda como mucho una
+  foto de ese dato, más lo único que aporta él: **quién** lo hizo y **cuándo**. Antes de mandar
+  algo al `activityLog`, preguntarse si alguien va a necesitar leerlo para operar: si la
+  respuesta es sí, va también —o sólo— en su tabla.
 - Movimientos de dinero **append-only**: no se editan, se anulan con contra-asiento.
 - Las invariantes del dominio se imponen en el agregado y en la base. El sistema de referencia
   las "valida" con carteles en pantalla y por eso tiene datos rotos: grupos familiares de un

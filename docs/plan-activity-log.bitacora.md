@@ -2,6 +2,59 @@
 
 Registro de avance del [plan](plan-activity-log.md). La entrada más nueva arriba.
 
+## 20/08/2026 — Auditoría de la frontera: se sacaron dos datos de negocio del registro
+
+Después de que el usuario fijara que **el registro de actividad no es fuente de verdad de
+ningún dato de negocio** (AGENTS.md §6), se auditaron las 11 llamadas a `activityLog.Record` que
+había en el backend, una por una, contra las tablas donde vive cada clave del payload. Cuatro
+resultaron huérfanas —un dato que la operación necesita y cuya única casa era el log—. Se
+corrigieron las dos que tocan plata:
+
+**1. Por qué un pago quedó huérfano.** `Payment.MarkOrphaned()` sólo dejaba
+`Status = ApprovedOrphan`; el motivo real viajaba como clave `why` del payload y no existía en
+ninguna columna. Es plata que el club tiene y que —según el comentario de
+`AvailabilityQueries.cs`— *"needs a person to decide what happens to it"*, con esa persona sin
+forma de leer por qué está marcada. Ahora hay un enum `PaymentOrphanReason` (`duplicate`,
+`bookingLost`, `wrongCurrency`, `short`, `slotLost`), `MarkOrphaned(reason)` lo exige, y la
+columna `orphanReason` lo guarda. La entrada del registro conserva su copia como foto.
+
+**2. El link de cobro emitido.** El propio contrato lo admitía por escrito: *"the only trace it
+leaves here is this entry"*. Peor todavía, la URL que devolvía el proveedor no se guardaba en
+ningún lado, ni siquiera en el log. Ahora hay una tabla `bookingCheckouts` —append-only, una
+fila por link emitido, con proveedor, URL, monto y vencimiento— y el mismo link se puede volver
+a mostrar en vez de pedirle otro al proveedor. **También se registra el link que emite el
+portal**, que antes no dejaba rastro de ninguna clase.
+
+Decisiones tomadas al hacerlo:
+
+- **No se agregó `issuedBy` ni `cancelledBy`.** *Quién* hizo algo es exactamente lo que el
+  registro aporta y la tabla no; duplicarlo sería el error simétrico al que se está corrigiendo.
+- **Sin check constraint `orphan ⇒ tiene motivo`.** Las filas huérfanas que ya existen no tienen
+  motivo, y rellenarlas sería inventar datos. La invariante la impone el agregado, que no deja
+  marcar un huérfano sin razón.
+- **Sin relleno hacia atrás**, igual que en el resto del registro (ADR-0017, decisión 10).
+
+**Las otras dos huérfanas quedan pendientes**, por decisión de alcance:
+
+- **El cobro de mostrador contra una ficha** (`personPaymentRegistered`): `RegisterPayment()`
+  pisa la deuda con cero y el monto no queda en ninguna tabla —`payments` no puede alojarlo
+  porque su `bookingId` es no nulable—. Ya estaba marcado como provisional en `Person.cs`,
+  esperando el módulo de finanzas.
+- **Abandono de checkout contra cancelación del club**: se cerró solo. Las dos dejaban el mismo
+  par `Cancelled` + `cancelledAt`; con `bookings.cancellationReason` ya se distinguen.
+
+**Un arreglo de rebote**: el FK nuevo de `bookingCheckouts` hacia `bookings` rompía los
+`ResetAsync` de cinco clases de test, que borraban reservas sin borrar antes lo que las
+referencia. Es el mismo tropiezo que apareció el 19/08 con `payments`.
+
+**Tests**: 154 verdes. Los cuatro escenarios de pago huérfano que ya existían ahora afirman el
+motivo, y hay dos nuevos sobre el link guardado —que reemitir deja dos filas, y que lo guardado
+coincide con lo que se le devolvió al operador—.
+
+**Verificación en vivo**: dos emisiones del link de cobro dejaron dos filas en
+`bookingCheckouts` con la URL real de Mercado Pago; un pago corto contra un hold del portal
+quedó `ApprovedOrphan` con `orphanReason = Short`.
+
 ## 19/08/2026 — F1 ejecutada: el registro existe y es confiable
 
 Se implementó la fase 1 del plan. Qué quedó en pie:

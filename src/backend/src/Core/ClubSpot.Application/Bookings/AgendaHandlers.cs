@@ -14,7 +14,7 @@ public sealed record AgendaCourt(Guid CourtId, string Name, string Detail, bool 
 
 public sealed record AgendaInactiveBooking(Guid Id, Guid CourtId, string CourtName, int StartMinute,
     int DurationMinutes, string CustomerName, string? CustomerPhone, decimal Price, decimal PaidAmount,
-    BookingStatus Status, DateTimeOffset? CancelledAt);
+    BookingStatus Status, DateTimeOffset? CancelledAt, string? CancellationReason);
 
 public sealed record Agenda(string Currency, IReadOnlyList<AgendaCourt> Courts,
     IReadOnlyList<AgendaInactiveBooking> Inactive);
@@ -60,7 +60,8 @@ public sealed class GetAgendaHandler(IAvailabilityQueries queries, IClubSettings
             .Select(booking => new AgendaInactiveBooking(booking.Id, booking.CourtId,
                 courtNames[booking.CourtId], booking.StartMinute, booking.DurationMinutes,
                 booking.CustomerName, booking.CustomerPhone, booking.Price.Amount,
-                paid.GetValueOrDefault(booking.Id), booking.Status, booking.CancelledAt))
+                paid.GetValueOrDefault(booking.Id), booking.Status, booking.CancelledAt,
+                booking.CancellationReason))
             .ToList();
         return new Agenda(club.Currency, courts, inactive);
     }

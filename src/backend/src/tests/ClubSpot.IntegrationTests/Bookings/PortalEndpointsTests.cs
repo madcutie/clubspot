@@ -276,6 +276,7 @@ public sealed class PortalEndpointsTests(PostgresFixture postgres)
         await using var db = postgres.CreateDbContext(tenantContext);
         using var scope = tenantContext.BeginScope(SeedTenant);
         db.Payments.RemoveRange(db.Payments);
+        db.BookingCheckouts.RemoveRange(db.BookingCheckouts);
         db.Bookings.RemoveRange(db.Bookings);
         db.AvailabilityOverrides.RemoveRange(db.AvailabilityOverrides);
         db.Courts.RemoveRange(db.Courts);

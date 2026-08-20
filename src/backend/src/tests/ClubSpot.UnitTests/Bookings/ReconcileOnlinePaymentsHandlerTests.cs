@@ -101,14 +101,14 @@ public sealed class ReconcileOnlinePaymentsHandlerTests
         public Task<BookingCreateResult> CreateAsync(BookingCreateInput input, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task<BookingCancelOutcome> CancelAsync(Guid id, CancellationToken cancellationToken) =>
+        public Task<BookingCancelOutcome> CancelAsync(Guid id, string reason, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
         public Task<HoldReleaseOutcome> ReleaseHoldAsync(Guid id, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task RecordCheckoutIssuedAsync(Guid bookingId, Money amount, DateTimeOffset expiresAt,
-            string provider, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task RecordCheckoutIssuedAsync(CheckoutIssued issued, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
 
         public Task<BookingSnapshot?> GetAsync(Guid id, CancellationToken cancellationToken) =>
             throw new NotSupportedException();

@@ -392,11 +392,25 @@ function Inactivas({ lista }: { lista: ReservaInactiva[] }) {
               title={
                 r.estado === 'abandonada'
                   ? 'Empezó a reservar con pago online y no completó el pago'
-                  : 'La canceló el club'
+                  : (r.motivo ?? 'La canceló el club')
               }
               style={{ font: `400 10.5px ${mono}`, color: c.textoGris, flex: 'none' }}
             >
               {r.estado}
+            </span>
+            <span
+              title={r.motivo ?? undefined}
+              style={{
+                font: `400 11.5px ${sans}`,
+                color: c.textoTenue,
+                flex: 2,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {r.motivo ?? ''}
             </span>
             <span
               style={{

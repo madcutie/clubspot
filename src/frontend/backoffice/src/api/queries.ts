@@ -181,7 +181,7 @@ export function useCancelarReserva() {
   const inv = useInvalidar();
   const avisar = useTostada();
   return useMutation({
-    mutationFn: (id: string) => cancelarReserva(id),
+    mutationFn: (v: { id: string; motivo: string }) => cancelarReserva(v.id, v.motivo),
     onSuccess: () => inv.agenda(),
     onError: () => avisar('No se pudo cancelar la reserva. Probá de nuevo.'),
   });

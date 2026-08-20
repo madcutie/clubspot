@@ -26,6 +26,10 @@ public sealed class Booking : ITenantOwned
     // Null for portal bookings: the customer books without an operator.
     public Guid? CreatedBy { get; private set; }
     public DateTimeOffset? CancelledAt { get; private set; }
+    // Business datum, not a log line: the counter reads it off the booking, never off the activity log.
+    public string? CancellationReason { get; private set; }
+
+    public const int CancellationReasonMaxLength = 300;
 
     public Booking(Guid id, TenantId tenantId, Guid courtId, DateOnly date, int startMinute, int durationMinutes,
         Money price, string customerName, string? customerPhone, Guid? personId, BookingOrigin origin,
@@ -105,13 +109,21 @@ public sealed class Booking : ITenantOwned
         Status = BookingStatus.Expired;
     }
 
-    public void Cancel(DateTimeOffset at)
+    public void Cancel(DateTimeOffset at, string reason)
     {
         if (Status == BookingStatus.Cancelled)
             throw new InvalidOperationException("The booking is already cancelled.");
 
+        var trimmedReason = reason?.Trim();
+        if (string.IsNullOrEmpty(trimmedReason))
+            throw new ArgumentException("Cancelling a booking requires a reason.", nameof(reason));
+        if (trimmedReason.Length > CancellationReasonMaxLength)
+            throw new ArgumentOutOfRangeException(nameof(reason),
+                $"Cancellation reason cannot exceed {CancellationReasonMaxLength} characters.");
+
         Status = BookingStatus.Cancelled;
         CancelledAt = at;
+        CancellationReason = trimmedReason;
     }
 
     private Booking()

@@ -17,6 +17,8 @@ public sealed class Payment : ITenantOwned
     public Money Amount { get; private set; }
     public PaymentKind Kind { get; private set; }
     public PaymentStatus Status { get; private set; }
+    // Why the club is holding money it did not agree to; null while the payment is not orphaned.
+    public PaymentOrphanReason? OrphanReason { get; private set; }
     // How the payment reached us: the provider's webhook or the reconciliation job (J2).
     public PaymentSource Source { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
@@ -43,8 +45,13 @@ public sealed class Payment : ITenantOwned
         CreatedAt = createdAt;
     }
 
-    // The slot was gone by the time the approved payment arrived; needs manual follow-up.
-    public void MarkOrphaned() => Status = PaymentStatus.ApprovedOrphan;
+    // Money the club did not agree to; needs manual follow-up, and the reason is what the person
+    // deciding reads first — so it is a column here, not only a line in the activity log.
+    public void MarkOrphaned(PaymentOrphanReason reason)
+    {
+        Status = PaymentStatus.ApprovedOrphan;
+        OrphanReason = reason;
+    }
 
     private Payment()
     {
@@ -78,4 +85,18 @@ public enum PaymentSource
 {
     Webhook,
     Reconciliation
+}
+
+public enum PaymentOrphanReason
+{
+    // Paid on top of an already settled balance.
+    Duplicate,
+    // The booking was cancelled while the buyer was paying.
+    BookingLost,
+    // Settled in a currency the club does not charge in.
+    WrongCurrency,
+    // Less than the deposit or the price the slot required.
+    Short,
+    // The hold had expired and someone else took the slot.
+    SlotLost
 }

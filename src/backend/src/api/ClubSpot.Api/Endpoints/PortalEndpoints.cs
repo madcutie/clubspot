@@ -77,11 +77,14 @@ public static class PortalEndpoints
                     result.Id, clubSlug, title, result.ChargeAmount, result.ExpiresAt!.Value, returnUrl),
                     cancellationToken);
                 checkoutUrl = session.Url;
+                await store.RecordCheckoutIssuedAsync(new CheckoutIssued(result.Id, checkout.Name, session.Url,
+                    result.ChargeAmount, result.ExpiresAt.Value), cancellationToken);
             }
             catch
             {
-                // No checkout, no hold: otherwise the slot stays blocked for the whole TTL.
-                await store.CancelAsync(result.Id, cancellationToken);
+                // No checkout, no hold: otherwise the slot stays blocked for the whole TTL. This is a
+                // release and not a cancellation: nobody decided anything, so there is no reason to give.
+                await store.ReleaseHoldAsync(result.Id, cancellationToken);
                 throw;
             }
         }

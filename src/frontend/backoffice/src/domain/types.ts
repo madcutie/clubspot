@@ -117,6 +117,8 @@ export interface ReservaInactiva {
   precio: number;
   pagado: number;
   estado: 'cancelada' | 'abandonada';
+  /** Por qué la canceló el club; null en una abandonada o en un hold vencido. */
+  motivo: string | null;
 }
 
 export interface AgendaDia {

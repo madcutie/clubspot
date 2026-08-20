@@ -212,6 +212,7 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         using var scope = tenantContext.BeginScope(SeedTenant);
         var payment = await db.Payments.SingleAsync(candidate => candidate.BookingId == created.Id);
         Assert.Equal(PaymentStatus.ApprovedOrphan, payment.Status);
+        Assert.Equal(PaymentOrphanReason.BookingLost, payment.OrphanReason);
         var booking = await db.Bookings.SingleAsync(candidate => candidate.Id == created.Id);
         Assert.Equal(BookingStatus.Cancelled, booking.Status);
     }
@@ -244,6 +245,7 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         Assert.Equal(2, payments.Count);
         Assert.Equal(PaymentStatus.Approved, payments[0].Status);
         Assert.Equal(PaymentStatus.ApprovedOrphan, payments[1].Status);
+        Assert.Equal(PaymentOrphanReason.Duplicate, payments[1].OrphanReason);
     }
 
     [Fact]
@@ -302,6 +304,7 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         using var scope = tenantContext.BeginScope(SeedTenant);
         var payment = await db.Payments.SingleAsync(candidate => candidate.BookingId == created.Id);
         Assert.Equal(PaymentStatus.ApprovedOrphan, payment.Status);
+        Assert.Equal(PaymentOrphanReason.Short, payment.OrphanReason);
     }
 
     [Fact]
@@ -326,6 +329,7 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         var payment = await db.Payments.SingleAsync(candidate => candidate.BookingId == created.Id);
         Assert.Equal("USD", payment.Amount.Currency);
         Assert.Equal(PaymentStatus.ApprovedOrphan, payment.Status);
+        Assert.Equal(PaymentOrphanReason.WrongCurrency, payment.OrphanReason);
         var booking = await db.Bookings.SingleAsync(candidate => candidate.Id == created.Id);
         Assert.Equal(BookingStatus.PendingPayment, booking.Status);
     }
@@ -498,6 +502,7 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         await using var db = postgres.CreateDbContext(tenantContext);
         using var scope = tenantContext.BeginScope(SeedTenant);
         db.Payments.RemoveRange(db.Payments);
+        db.BookingCheckouts.RemoveRange(db.BookingCheckouts);
         db.Bookings.RemoveRange(db.Bookings);
         db.AvailabilityOverrides.RemoveRange(db.AvailabilityOverrides);
         db.Courts.RemoveRange(db.Courts);

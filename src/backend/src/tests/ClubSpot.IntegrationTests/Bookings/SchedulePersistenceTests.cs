@@ -172,6 +172,7 @@ public sealed class SchedulePersistenceTests(PostgresFixture postgres)
         // Bookings first: a court cannot go while a booking points at it. Without this the reset
         // only worked while no earlier test in the collection had sold anything.
         db.Payments.RemoveRange(db.Payments);
+        db.BookingCheckouts.RemoveRange(db.BookingCheckouts);
         db.Bookings.RemoveRange(db.Bookings);
         db.AvailabilityOverrides.RemoveRange(db.AvailabilityOverrides);
         db.Courts.RemoveRange(db.Courts);

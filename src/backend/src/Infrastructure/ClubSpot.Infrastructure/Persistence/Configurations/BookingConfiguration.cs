@@ -32,6 +32,9 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(booking => booking.CreatedAt).HasColumnName("createdAt");
         builder.Property(booking => booking.CreatedBy).HasColumnName("createdBy");
         builder.Property(booking => booking.CancelledAt).HasColumnName("cancelledAt");
+        // Null on a released or expired hold: only an operator cancellation carries a reason.
+        builder.Property(booking => booking.CancellationReason).HasColumnName("cancellationReason")
+            .HasMaxLength(Booking.CancellationReasonMaxLength);
         builder.HasIndex(booking => new { booking.TenantId, booking.Date });
         builder.HasIndex(booking => new { booking.CourtId, booking.Date });
         builder.HasOne<Court>().WithMany().HasForeignKey(booking => booking.CourtId).OnDelete(DeleteBehavior.Restrict);

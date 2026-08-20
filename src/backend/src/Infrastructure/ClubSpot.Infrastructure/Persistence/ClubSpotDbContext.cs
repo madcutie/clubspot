@@ -26,6 +26,7 @@ public sealed class ClubSpotDbContext(DbContextOptions<ClubSpotDbContext> option
     public DbSet<Court> Courts => Set<Court>();
     public DbSet<AvailabilityOverride> AvailabilityOverrides => Set<AvailabilityOverride>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<BookingCheckout> BookingCheckouts => Set<BookingCheckout>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<ActivityLogEntry> ActivityLogEntries => Set<ActivityLogEntry>();
 
@@ -48,6 +49,7 @@ public sealed class ClubSpotDbContext(DbContextOptions<ClubSpotDbContext> option
         modelBuilder.ApplyConfiguration(new AvailabilityOverrideConfiguration());
         modelBuilder.ApplyConfiguration(new AvailabilityOverrideDateConfiguration());
         modelBuilder.ApplyConfiguration(new BookingConfiguration());
+        modelBuilder.ApplyConfiguration(new BookingCheckoutConfiguration());
         modelBuilder.ApplyConfiguration(new PaymentConfiguration());
         modelBuilder.ApplyConfiguration(new ActivityLogEntryConfiguration());
 

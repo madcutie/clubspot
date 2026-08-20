@@ -1,11 +1,14 @@
-import { QrCode } from 'lucide-react';
+import { AlertTriangle, QrCode } from 'lucide-react';
+import { useState } from 'react';
 import { useAgenda, useCancelarReserva } from '../../api/queries';
 import { pesos } from '../../domain/dinero';
 import { duracionTurno, etiquetaDia, hhmm, isoDe } from '../../domain/fechas';
 import type { Deporte, ReservaDia } from '../../domain/types';
 import { BotonCerrar, FilaDato, Panel } from '../../ui/Panel';
-import { c, mono, sans } from '../../ui/theme';
+import { c, campoPanel, mono, sans } from '../../ui/theme';
 import { useTostada } from '../../ui/Tostadas';
+
+const MOTIVO_MAX = 300;
 
 /**
  * Una reserva confirmada. Cancelar es real; cobrar, marcar ausencia y
@@ -28,6 +31,8 @@ export function ReservaPanel({
   const avisar = useTostada();
   const { data: agenda } = useAgenda(deporte, isoDe(dia));
   const cancelar = useCancelarReserva();
+  const [confirmando, setConfirmando] = useState(false);
+  const [motivo, setMotivo] = useState('');
 
   const hallada = agenda?.canchas
     .flatMap((cancha) => cancha.reservas.map((reserva) => ({ cancha, reserva })))
@@ -136,40 +141,105 @@ export function ReservaPanel({
         </div>
       </div>
 
-      <div
-        style={{
-          flex: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '13px 20px',
-          borderTop: `1px solid ${c.linea}`,
-        }}
-      >
-        <div style={{ flex: 1 }} />
-        <button
-          type="button"
-          disabled={cancelar.isPending}
-          onClick={() =>
-            cancelar.mutate(reserva.id, {
-              onSuccess: () => {
-                avisar('Reserva cancelada');
-                onCerrar();
-              },
-            })
-          }
-          style={{
-            minHeight: 34,
-            padding: '0 13px',
-            borderRadius: 8,
-            border: `1px solid ${c.naranjaBorde}`,
-            background: 'transparent',
-            color: c.naranja,
-            font: `500 12.5px ${sans}`,
-            cursor: 'pointer',
-          }}
-        >
-          Cancelar reserva
-        </button>
+      <div style={{ flex: 'none', padding: '13px 20px', borderTop: `1px solid ${c.linea}` }}>
+        {!confirmando ? (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ flex: 1 }} />
+            <button type="button" onClick={() => setConfirmando(true)} style={botonCancelar}>
+              Cancelar reserva
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {reserva.pagado > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 9,
+                  padding: '10px 12px',
+                  borderRadius: 9,
+                  border: `1px solid ${c.ambarBorde}`,
+                  background: c.ambarFondo,
+                }}
+              >
+                <AlertTriangle
+                  size={15}
+                  strokeWidth={2.2}
+                  aria-hidden
+                  color={c.ambarFuerte}
+                  style={{ flex: 'none', marginTop: 1 }}
+                />
+                <div style={{ font: `400 12px ${sans}`, color: c.ambarTexto, lineHeight: 1.45 }}>
+                  Esta reserva tiene <strong>{pesos(reserva.pagado)}</strong> cobrados. Cancelarla{' '}
+                  <strong>no devuelve la plata</strong>: la devolución se arregla aparte.
+                </div>
+              </div>
+            )}
+            <label style={{ font: `500 11px ${mono}`, color: c.textoGris, letterSpacing: '.04em' }}>
+              motivo de la cancelación
+              <textarea
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                maxLength={MOTIVO_MAX}
+                rows={2}
+                autoFocus
+                placeholder="Se suspendió por lluvia"
+                style={{
+                  ...campoPanel(),
+                  marginTop: 6,
+                  minHeight: 52,
+                  padding: '9px 12px',
+                  font: `400 13px ${sans}`,
+                  resize: 'none',
+                }}
+              />
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmando(false);
+                  setMotivo('');
+                }}
+                style={{
+                  minHeight: 34,
+                  padding: '0 13px',
+                  borderRadius: 8,
+                  border: `1px solid ${c.bordeFirme}`,
+                  background: 'transparent',
+                  color: c.texto,
+                  font: `500 12.5px ${sans}`,
+                  cursor: 'pointer',
+                }}
+              >
+                Volver
+              </button>
+              <div style={{ flex: 1 }} />
+              <button
+                type="button"
+                disabled={cancelar.isPending || motivo.trim().length === 0}
+                onClick={() =>
+                  cancelar.mutate(
+                    { id: reserva.id, motivo: motivo.trim() },
+                    {
+                      onSuccess: () => {
+                        avisar('Reserva cancelada');
+                        onCerrar();
+                      },
+                    },
+                  )
+                }
+                style={{
+                  ...botonCancelar,
+                  opacity: motivo.trim().length === 0 ? 0.45 : 1,
+                  cursor: motivo.trim().length === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Confirmar cancelación
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </Panel>
   );
@@ -186,4 +256,15 @@ const accion = {
   cursor: 'pointer',
   textAlign: 'left',
   padding: '0 13px',
+} as const;
+
+const botonCancelar = {
+  minHeight: 34,
+  padding: '0 13px',
+  borderRadius: 8,
+  border: `1px solid ${c.naranjaBorde}`,
+  background: 'transparent',
+  color: c.naranja,
+  font: `500 12.5px ${sans}`,
+  cursor: 'pointer',
 } as const;

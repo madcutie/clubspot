@@ -1,8 +1,11 @@
+using ClubSpot.Application.Bookings;
 using ClubSpot.Domain.Bookings;
+using ClubSpot.Domain.Core.Activity;
 using ClubSpot.IntegrationTests.Auth;
 using ClubSpot.IntegrationTests.Json;
 using ClubSpot.IntegrationTests.Persistence;
 using ClubSpot.SharedKernel.Tenancy;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Net.Http.Json;
 
@@ -122,7 +125,8 @@ public sealed class BookingEndpointsTests(PostgresFixture postgres)
         Assert.DoesNotContain(takenDay.Courts.Single(court => court.CourtId == courtOne.Id).Slots,
             slot => slot.StartMinute == 600 && slot.Duration == 60);
 
-        var cancel = await backoffice.PostAsync($"/api/bookings/{created!.Id}/cancel", null);
+        var cancel = await backoffice.PostAsJsonAsync($"/api/bookings/{created!.Id}/cancel",
+            new { reason = "Se suspendió por lluvia" });
 
         Assert.Equal(HttpStatusCode.NoContent, cancel.StatusCode);
         var freedDay = Assert.Single((await GetAvailabilityAsync(portal, date)).Days);
@@ -137,9 +141,69 @@ public sealed class BookingEndpointsTests(PostgresFixture postgres)
         using var client = factory.CreateClient();
         await AuthorizeAsync(client);
 
-        var response = await client.PostAsync($"/api/bookings/{Guid.NewGuid()}/cancel", null);
+        var response = await client.PostAsJsonAsync($"/api/bookings/{Guid.NewGuid()}/cancel",
+            new { reason = "Se suspendió por lluvia" });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Cancelling_without_a_reason_is_rejected_and_leaves_the_booking_alone()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var backoffice = factory.CreateClient();
+        await AuthorizeAsync(backoffice);
+        using var portal = factory.CreateClient();
+        var date = Today().AddDays(9);
+        var (courtOne, _) = await PadelCourtsAsync(portal);
+        var create = await backoffice.PostAsJsonAsync("/api/bookings", new
+        {
+            courtId = courtOne.Id, date, startMinute = 600, durationMinutes = 60, customerName = "Ana Suárez"
+        });
+        var created = await create.Content.ReadFromJsonAsync<BookingCreatedResponse>();
+
+        var blank = await backoffice.PostAsJsonAsync($"/api/bookings/{created!.Id}/cancel", new { reason = "   " });
+        var overlong = await backoffice.PostAsJsonAsync($"/api/bookings/{created.Id}/cancel",
+            new { reason = new string('a', 301) });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, blank.StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, overlong.StatusCode);
+        var day = Assert.Single((await GetAvailabilityAsync(portal, date)).Days);
+        Assert.DoesNotContain(day.Courts.Single(court => court.CourtId == courtOne.Id).Slots,
+            slot => slot.StartMinute == 600 && slot.Duration == 60);
+    }
+
+    [Fact]
+    public async Task The_cancellation_reason_is_kept_on_the_booking_and_cancelling_twice_is_idempotent()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var backoffice = factory.CreateClient();
+        await AuthorizeAsync(backoffice);
+        using var portal = factory.CreateClient();
+        var date = Today().AddDays(10);
+        var (courtOne, _) = await PadelCourtsAsync(portal);
+        var create = await backoffice.PostAsJsonAsync("/api/bookings", new
+        {
+            courtId = courtOne.Id, date, startMinute = 600, durationMinutes = 60, customerName = "Ana Suárez"
+        });
+        var created = await create.Content.ReadFromJsonAsync<BookingCreatedResponse>();
+
+        var first = await backoffice.PostAsJsonAsync($"/api/bookings/{created!.Id}/cancel",
+            new { reason = "  El cliente avisó que no viene  " });
+        var second = await backoffice.PostAsJsonAsync($"/api/bookings/{created.Id}/cancel",
+            new { reason = "Otro motivo distinto" });
+
+        Assert.Equal(HttpStatusCode.NoContent, first.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, second.StatusCode);
+        var agenda = await backoffice.GetFromJsonAsync<AgendaResponse>(
+            $"/api/agenda?sport=padel&date={date:yyyy-MM-dd}", TestJsonOptions.Default);
+        var cancelled = Assert.Single(agenda!.Inactive);
+        Assert.Equal("El cliente avisó que no viene", cancelled.CancellationReason);
+
+        var entry = Assert.Single(await CancellationEntriesAsync(created.Id));
+        Assert.Equal("El cliente avisó que no viene", entry.Reason);
     }
 
     [Fact]
@@ -219,11 +283,22 @@ public sealed class BookingEndpointsTests(PostgresFixture postgres)
         await using var db = postgres.CreateDbContext(tenantContext);
         using var scope = tenantContext.BeginScope(SeedTenant);
         db.Payments.RemoveRange(db.Payments);
+        db.BookingCheckouts.RemoveRange(db.BookingCheckouts);
         db.Bookings.RemoveRange(db.Bookings);
         db.AvailabilityOverrides.RemoveRange(db.AvailabilityOverrides);
         db.Courts.RemoveRange(db.Courts);
         db.Schedules.RemoveRange(db.Schedules);
         await db.SaveChangesAsync();
+    }
+
+    private async Task<IReadOnlyList<ActivityLogEntry>> CancellationEntriesAsync(Guid bookingId)
+    {
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        return await db.ActivityLogEntries.AsNoTracking()
+            .Where(entry => entry.BookingId == bookingId && entry.Type == BookingActivity.BookingCancelled)
+            .ToListAsync();
     }
 
     private sealed record SessionResponse(string AccessToken);
@@ -243,5 +318,8 @@ public sealed class BookingEndpointsTests(PostgresFixture postgres)
     private sealed record AgendaCourtResponse(Guid CourtId, string Name, string Detail, bool IsCovered,
         IReadOnlyList<AgendaWindowResponse> Windows, IReadOnlyList<AgendaSlotResponse> Slots,
         IReadOnlyList<AgendaBookingResponse> Bookings);
-    private sealed record AgendaResponse(string Currency, IReadOnlyList<AgendaCourtResponse> Courts);
+    private sealed record AgendaInactiveResponse(Guid Id, string CourtName, int StartMinute, decimal PaidAmount,
+        BookingStatus Status, DateTimeOffset? CancelledAt, string? CancellationReason);
+    private sealed record AgendaResponse(string Currency, IReadOnlyList<AgendaCourtResponse> Courts,
+        IReadOnlyList<AgendaInactiveResponse> Inactive);
 }

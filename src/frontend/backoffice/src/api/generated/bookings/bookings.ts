@@ -9,6 +9,7 @@ import type {
   BookingCheckoutResponse,
   BookingCreatedResponse,
   BookingRequest,
+  CancelBookingRequest,
   GetAgendaParams,
   PersonBookingResponse
 } from '../clubSpotApiV1.schemas';
@@ -70,14 +71,15 @@ export const getCancelBookingUrl = (id: string,) => {
   return `/api/bookings/${id}/cancel`
 }
 
-export const cancelBooking = async (id: string, options?: Parameters<typeof api>[1]): Promise<void> => {
+export const cancelBooking = async (id: string,
+    cancelBookingRequest: CancelBookingRequest, options?: Parameters<typeof api>[1]): Promise<void> => {
 
   return api<void>(getCancelBookingUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(cancelBookingRequest)
   }
 );}
 

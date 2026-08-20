@@ -69,6 +69,8 @@ export interface AgendaInactiveBooking {
   status: BookingStatus;
   /** @nullable */
   cancelledAt: string | null;
+  /** @nullable */
+  cancellationReason: string | null;
 }
 
 export interface Agenda {
@@ -138,6 +140,10 @@ export interface BookingSnapshot {
   paymentMode: PaymentMode;
   /** @nullable */
   expiresAt: string | null;
+}
+
+export interface CancelBookingRequest {
+  reason: string;
 }
 
 export interface ClubResponse {

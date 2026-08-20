@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ClubSpot.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ClubSpot.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ClubSpotDbContext))]
-    partial class ClubSpotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260820023005_BookingCancellationReason")]
+    partial class BookingCancellationReason
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -207,69 +210,6 @@ namespace ClubSpot.Infrastructure.Persistence.Migrations
                     b.ToTable("bookings", "public");
                 });
 
-            modelBuilder.Entity("ClubSpot.Domain.Bookings.BookingCheckout", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("BookingId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("bookingId");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expiresAt");
-
-                    b.Property<DateTimeOffset>("IssuedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("issuedAt");
-
-                    b.Property<string>("Provider")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("provider");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenantId");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("url");
-
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "ClubSpot.Domain.Bookings.BookingCheckout.Amount#Money", b1 =>
-                        {
-                            b1.IsRequired();
-
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(14, 2)
-                                .HasColumnType("numeric(14,2)")
-                                .HasColumnName("amount");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .HasMaxLength(3)
-                                .HasColumnType("character(3)")
-                                .HasColumnName("currency")
-                                .IsFixedLength();
-                        });
-
-                    b.HasKey("Id")
-                        .HasName("pkBookingCheckouts");
-
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ixBookingCheckoutsTenantId");
-
-                    b.HasIndex("BookingId", "IssuedAt")
-                        .HasDatabaseName("ixBookingCheckoutsBookingIdIssuedAt");
-
-                    b.ToTable("bookingCheckouts", "public");
-                });
-
             modelBuilder.Entity("ClubSpot.Domain.Bookings.Court", b =>
                 {
                     b.Property<Guid>("Id")
@@ -410,11 +350,6 @@ namespace ClubSpot.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("kind");
-
-                    b.Property<string>("OrphanReason")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("orphanReason");
 
                     b.Property<string>("Provider")
                         .IsRequired()
@@ -881,16 +816,6 @@ namespace ClubSpot.Infrastructure.Persistence.Migrations
                         .HasForeignKey("PersonId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fkBookingsPersonId");
-                });
-
-            modelBuilder.Entity("ClubSpot.Domain.Bookings.BookingCheckout", b =>
-                {
-                    b.HasOne("ClubSpot.Domain.Bookings.Booking", null)
-                        .WithMany()
-                        .HasForeignKey("BookingId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fkBookingCheckoutsBookingId");
                 });
 
             modelBuilder.Entity("ClubSpot.Domain.Bookings.Court", b =>

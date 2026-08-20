@@ -23,6 +23,8 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         });
         builder.Property(payment => payment.Kind).HasColumnName("kind").HasConversion<string>();
         builder.Property(payment => payment.Status).HasColumnName("status").HasConversion<string>();
+        builder.Property(payment => payment.OrphanReason).HasColumnName("orphanReason").HasConversion<string>()
+            .HasMaxLength(20);
         builder.Property(payment => payment.Source).HasColumnName("source").HasConversion<string>();
         builder.Property(payment => payment.CreatedAt).HasColumnName("createdAt");
         builder.HasIndex(payment => new { payment.Provider, payment.ExternalId }).IsUnique();

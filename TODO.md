@@ -9,7 +9,7 @@ todo tiene que ser https de local
 necesitamos logs de las cosas que van pasando facilmente accesible por llm entonces es facil el throubleshooting.
 necesitamos una base de datos de logs de trafico de usuario y quizas de sistema.
 refactoring de todo, promover el reuso. 
-cancelar reserva aun que este pagada, me lo quita sin consultar.
+[x] cancelar reserva aun que este pagada, me lo quita sin consultar.
 Se tiene que implementar el Canchero, la persona que es usuario del tenant y puede manejar las canchas
 Persistence tiene que ser un proyecto aparte dentro de Infraestructura
 necesitamos urls fijas

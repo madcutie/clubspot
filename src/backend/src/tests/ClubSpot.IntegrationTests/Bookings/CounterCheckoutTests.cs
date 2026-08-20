@@ -47,6 +47,27 @@ public sealed class CounterCheckoutTests(PostgresFixture postgres)
 
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        // Append-only: every link handed out stays, so the counter can tell one from the next.
+        Assert.Equal(2, (await CheckoutsAsync(booking.Id)).Count);
+    }
+
+    [Fact]
+    public async Task The_issued_link_is_kept_with_what_it_charges_and_when_it_dies()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        await AuthorizeAsync(client);
+        var booking = await CounterBookingAsync(client, daysAhead: 29, phone: "362 500-0109");
+
+        var response = await client.PostAsync($"/api/bookings/{booking.Id}/checkout", null);
+        var issued = await response.Content.ReadFromJsonAsync<CheckoutResponse>(TestJsonOptions.Default);
+
+        var stored = Assert.Single(await CheckoutsAsync(booking.Id));
+        Assert.Equal(issued!.Url, stored.Url);
+        Assert.Equal(issued.Amount, stored.Amount.Amount);
+        Assert.Equal(issued.ExpiresAt, stored.ExpiresAt);
+        Assert.Equal("fake", stored.Provider);
     }
 
     [Fact]
@@ -109,7 +130,7 @@ public sealed class CounterCheckoutTests(PostgresFixture postgres)
         using var client = factory.CreateClient();
         await AuthorizeAsync(client);
         var booking = await CounterBookingAsync(client, daysAhead: 25, phone: "362 500-0105");
-        await client.PostAsync($"/api/bookings/{booking.Id}/cancel", null);
+        await client.PostAsJsonAsync($"/api/bookings/{booking.Id}/cancel", new { reason = "El cliente avisó que no viene" });
 
         var response = await client.PostAsync($"/api/bookings/{booking.Id}/checkout", null);
 
@@ -170,12 +191,24 @@ public sealed class CounterCheckoutTests(PostgresFixture postgres)
         client.DefaultRequestHeaders.Authorization = new("Bearer", session!.AccessToken);
     }
 
+    private async Task<IReadOnlyList<BookingCheckout>> CheckoutsAsync(Guid bookingId)
+    {
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        return await db.BookingCheckouts.AsNoTracking()
+            .Where(checkout => checkout.BookingId == bookingId)
+            .OrderBy(checkout => checkout.IssuedAt)
+            .ToListAsync();
+    }
+
     private async Task ResetAsync()
     {
         var tenantContext = new AsyncLocalTenantContext();
         await using var db = postgres.CreateDbContext(tenantContext);
         using var scope = tenantContext.BeginScope(SeedTenant);
         db.Payments.RemoveRange(db.Payments);
+        db.BookingCheckouts.RemoveRange(db.BookingCheckouts);
         db.Bookings.RemoveRange(db.Bookings);
         db.AvailabilityOverrides.RemoveRange(db.AvailabilityOverrides);
         db.Courts.RemoveRange(db.Courts);

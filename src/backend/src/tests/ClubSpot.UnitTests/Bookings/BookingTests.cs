@@ -54,18 +54,40 @@ public sealed class BookingTests
         var booking = MakeBooking();
         var at = DateTimeOffset.UtcNow;
 
-        booking.Cancel(at);
+        booking.Cancel(at, "  Se cortó la luz  ");
 
         Assert.Equal(BookingStatus.Cancelled, booking.Status);
         Assert.Equal(at, booking.CancelledAt);
+        Assert.Equal("Se cortó la luz", booking.CancellationReason);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Cancelling_without_a_reason_throws(string reason)
+    {
+        var booking = MakeBooking();
+
+        Assert.Throws<ArgumentException>(() => booking.Cancel(DateTimeOffset.UtcNow, reason));
+        Assert.Equal(BookingStatus.Confirmed, booking.Status);
+    }
+
+    [Fact]
+    public void Cancelling_with_an_overlong_reason_throws()
+    {
+        var booking = MakeBooking();
+        var reason = new string('a', Booking.CancellationReasonMaxLength + 1);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => booking.Cancel(DateTimeOffset.UtcNow, reason));
+        Assert.Equal(BookingStatus.Confirmed, booking.Status);
     }
 
     [Fact]
     public void Cancelling_twice_throws()
     {
         var booking = MakeBooking();
-        booking.Cancel(DateTimeOffset.UtcNow);
+        booking.Cancel(DateTimeOffset.UtcNow, "Se cortó la luz");
 
-        Assert.Throws<InvalidOperationException>(() => booking.Cancel(DateTimeOffset.UtcNow));
+        Assert.Throws<InvalidOperationException>(() => booking.Cancel(DateTimeOffset.UtcNow, "Otra vez"));
     }
 }

@@ -98,14 +98,21 @@ internal sealed class BookingsStore(
             booking.Status, chargeAmount, booking.ExpiresAt);
     }
 
-    public async Task<BookingCancelOutcome> CancelAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<BookingCancelOutcome> CancelAsync(Guid id, string reason, CancellationToken cancellationToken)
     {
+        var trimmedReason = reason?.Trim();
+        if (string.IsNullOrEmpty(trimmedReason) || trimmedReason.Length > Booking.CancellationReasonMaxLength)
+            return BookingCancelOutcome.MissingReason;
+
         var booking = await db.Bookings.SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
         if (booking is null) return BookingCancelOutcome.NotFound;
 
+        // Cancelling twice answers the same and leaves a single line in the chronicle.
         if (booking.Status != BookingStatus.Cancelled)
         {
-            booking.Cancel(clock.UtcNow);
+            booking.Cancel(clock.UtcNow, trimmedReason);
+            activityLog.Record(new ActivityRecord(BookingActivity.BookingCancelled, BookingId: booking.Id,
+                PersonId: booking.PersonId, Reason: trimmedReason));
             await db.SaveChangesAsync(cancellationToken);
         }
         return BookingCancelOutcome.Cancelled;
@@ -182,7 +189,7 @@ internal sealed class BookingsStore(
             notification.Approved ? PaymentStatus.Approved : PaymentStatus.Rejected, source, clock.UtcNow);
         db.Payments.Add(payment);
 
-        void RecordPayment(string type, string? why = null) => activityLog.Record(new ActivityRecord(
+        void RecordPayment(string type, PaymentOrphanReason? why = null) => activityLog.Record(new ActivityRecord(
             type, BookingId: booking.Id, PersonId: booking.PersonId, PaymentId: payment.Id,
             Data: new Dictionary<string, object?>
             {
@@ -209,9 +216,9 @@ internal sealed class BookingsStore(
             // counter): only what arrives on top of a settled balance is duplicate money, and that
             // is flagged instead of being filed as one more ordinary payment.
             var duplicate = settled >= booking.Price.Amount;
-            if (duplicate) payment.MarkOrphaned();
+            if (duplicate) payment.MarkOrphaned(PaymentOrphanReason.Duplicate);
             RecordPayment(duplicate ? BookingActivity.PaymentOrphaned : BookingActivity.PaymentApproved,
-                duplicate ? "duplicate" : null);
+                duplicate ? PaymentOrphanReason.Duplicate : null);
             await db.SaveChangesAsync(cancellationToken);
             return duplicate ? PaymentApplyOutcome.Orphaned : PaymentApplyOutcome.Confirmed;
         }
@@ -219,8 +226,8 @@ internal sealed class BookingsStore(
         if (booking.Status == BookingStatus.Cancelled)
         {
             // The buyer paid while the hold was being released: keep the money recorded, flag it.
-            payment.MarkOrphaned();
-            RecordPayment(BookingActivity.PaymentOrphaned, "bookingLost");
+            payment.MarkOrphaned(PaymentOrphanReason.BookingLost);
+            RecordPayment(BookingActivity.PaymentOrphaned, PaymentOrphanReason.BookingLost);
             await db.SaveChangesAsync(cancellationToken);
             return PaymentApplyOutcome.Orphaned;
         }
@@ -232,8 +239,9 @@ internal sealed class BookingsStore(
             && !string.Equals(paidCurrency, booking.Price.Currency, StringComparison.OrdinalIgnoreCase);
         if (wrongCurrency || amount.Amount < expected.Amount)
         {
-            payment.MarkOrphaned();
-            RecordPayment(BookingActivity.PaymentOrphaned, wrongCurrency ? "wrongCurrency" : "short");
+            var reason = wrongCurrency ? PaymentOrphanReason.WrongCurrency : PaymentOrphanReason.Short;
+            payment.MarkOrphaned(reason);
+            RecordPayment(BookingActivity.PaymentOrphaned, reason);
             await db.SaveChangesAsync(cancellationToken);
             return PaymentApplyOutcome.Orphaned;
         }
@@ -250,26 +258,20 @@ internal sealed class BookingsStore(
         {
             // The hold had expired and someone else took the slot: keep the money recorded, flag it.
             await db.Entry(booking).ReloadAsync(cancellationToken);
-            payment.MarkOrphaned();
+            payment.MarkOrphaned(PaymentOrphanReason.SlotLost);
             // The confirmation entry describes a fact that did not happen: it goes, the orphan stays.
             activityLog.DiscardPending();
-            RecordPayment(BookingActivity.PaymentOrphaned, "slotLost");
+            RecordPayment(BookingActivity.PaymentOrphaned, PaymentOrphanReason.SlotLost);
             await db.SaveChangesAsync(cancellationToken);
             return PaymentApplyOutcome.Orphaned;
         }
     }
 
-    public async Task RecordCheckoutIssuedAsync(Guid bookingId, Money amount, DateTimeOffset expiresAt,
-        string provider, CancellationToken cancellationToken)
+    public async Task RecordCheckoutIssuedAsync(CheckoutIssued issued, CancellationToken cancellationToken)
     {
-        activityLog.Record(new ActivityRecord(BookingActivity.CheckoutIssued, BookingId: bookingId,
-            Data: new Dictionary<string, object?>
-            {
-                ["amount"] = amount.Amount,
-                ["currency"] = amount.Currency,
-                ["provider"] = provider,
-                ["expiresAt"] = expiresAt
-            }));
+        db.BookingCheckouts.Add(new BookingCheckout(Guid.NewGuid(), tenantContext.Current, issued.BookingId,
+            issued.Provider, issued.Url, issued.Amount, issued.ExpiresAt, clock.UtcNow));
+        activityLog.Record(new ActivityRecord(BookingActivity.CheckoutIssued, BookingId: issued.BookingId));
         await db.SaveChangesAsync(cancellationToken);
     }
 

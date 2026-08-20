@@ -163,6 +163,15 @@ backoffice, y leer con SQL las cinco entradas en orden.
 
 ### F2 — Motivo al cancelar
 
+> **20/08/2026 — esta fase se ejecuta desde un plan propio**:
+> [`plan-cancelacion-con-motivo.md`](plan-cancelacion-con-motivo.md). La mitad de la
+> cancelación está **cerrada y verificada**; falta la de bloquear una ficha.
+>
+> Con una corrección de fondo del usuario: **el motivo no vive acá**. Es un dato de negocio y
+> vive en su agregado (`bookings.cancellationReason`); la entrada del registro guarda una copia
+> como foto, más el actor. El registro se escribe siempre y se lee poco: nada que la operación
+> necesite leer puede tener su única casa acá. Está anotado en AGENTS.md §6.
+
 - La API de cancelación **exige motivo**; el panel del backoffice lo pide antes de cancelar.
 - Mismo tratamiento para bloquear una ficha.
 

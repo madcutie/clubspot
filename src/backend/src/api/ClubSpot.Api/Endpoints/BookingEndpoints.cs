@@ -77,8 +77,15 @@ public static class BookingEndpoints
         };
     }
 
-    private static async Task<Results<NoContent, NotFound>> CancelAsync(Guid id, IBookingsStore store, CancellationToken cancellationToken) =>
-        await store.CancelAsync(id, cancellationToken) == BookingCancelOutcome.Cancelled ? TypedResults.NoContent() : TypedResults.NotFound();
+    private static async Task<Results<NoContent, NotFound, UnprocessableEntity>> CancelAsync(Guid id,
+        CancelBookingRequest request, IBookingsStore store, CancellationToken cancellationToken) =>
+        await store.CancelAsync(id, request.Reason, cancellationToken) switch
+        {
+            BookingCancelOutcome.Cancelled => TypedResults.NoContent(),
+            BookingCancelOutcome.MissingReason => TypedResults.UnprocessableEntity(),
+            BookingCancelOutcome.NotFound => TypedResults.NotFound(),
+            _ => throw new ArgumentOutOfRangeException(nameof(store))
+        };
 
     private static Guid? UserId(ClaimsPrincipal user) =>
         Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
@@ -93,6 +100,7 @@ public static class BookingEndpoints
     internal sealed record PersonBookingResponse(Guid Id, DateOnly Date, int StartMinute, int DurationMinutes,
         string CourtName, Sport Sport, decimal Price, decimal Paid, BookingStatus Status);
     internal sealed record BookingCreatedResponse(Guid Id, decimal Price);
+    internal sealed record CancelBookingRequest(string Reason);
 
     internal sealed record BookingCheckoutResponse(string Url, decimal Amount, DateTimeOffset ExpiresAt);
 }

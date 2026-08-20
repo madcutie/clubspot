@@ -13,3 +13,4 @@ refactoring de todo, promover el reuso.
 Se tiene que implementar el Canchero, la persona que es usuario del tenant y puede manejar las canchas
 Persistence tiene que ser un proyecto aparte dentro de Infraestructura
 necesitamos urls fijas
+En reservas mostramos las que pasaron sin distincion.

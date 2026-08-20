@@ -36,6 +36,7 @@ Leer antes de proponer cualquier cosa de dominio. Están en `docs/`:
 | [`docs/plan-reserva-online.md`](docs/plan-reserva-online.md) + su [bitácora](docs/plan-reserva-online.bitacora.md) | **Plan aprobado (17/08/2026)**: reserva online desde el portal en 3 etapas. **Etapas 1 y 2 cerradas**: reserva sin pago con vínculo a persona (email → celular → crear), y pago online (hold con TTL perezoso, webhook idempotente, tabla `payments`) verificado con el **gateway fake**; Mercado Pago escrito pero sin probar (faltan credenciales). Etapa 3 (login) pendiente |
 | [`docs/plan-login-backoffice.md`](docs/plan-login-backoffice.md) + su [bitácora](docs/plan-login-backoffice.bitacora.md) | **En curso (20/08/2026)**: login del backoffice empezando por el canchero (ADR-0018) — login sólo con email, email único global, claims cortas, y consola dibujada según el rol. **F1–F5 escritas y verdes** (build, 79 unitarios y 72 de integración); falta la recorrida en el navegador |
 | [`docs/plan-contrato-api.md`](docs/plan-contrato-api.md) + su [bitácora](docs/plan-contrato-api.bitacora.md) | **Plan aprobado y ejecutado (19/08/2026)**: documento OpenAPI generado por el build de la Api y clientes TypeScript generados con Orval para los dos frontends (ADR-0016). **Cerrado y verificado**: F1–F5 |
+| [`docs/auditoria-codigo-vs-reglas.md`](docs/auditoria-codigo-vs-reglas.md) | **Auditoría del código contra sus propias reglas** (20/08/2026): qué desvíos había, qué parecía desvío y no lo era —anotado con su razón para no repetir la vuelta— y qué queda por chequear |
 | `src/frontend/backoffice/` | **El mock manda** (decisión del 14/08/2026): donde el prototipo y cualquier otra fuente difieran, gana el prototipo. Ver sección 10 |
 
 > **16/08/2026 — se eliminó `docs/referencia-ourclub/`** (relevamiento de OurClub, alcance del
@@ -241,7 +242,18 @@ con cobro o sin cobro y sin liquidaciones · otro con club + reservas + finanzas
   excepción es el *mutator* de cada app (`http.ts` y su equivalente del portal): un solo
   archivo, el único lugar donde vive `fetch`.
 - **Nunca un `decimal` suelto para plata**: se usa `Money`, que lleva la moneda. Esto incluye
-  tarifas y precios de canchas, no sólo deudas y pagos.
+  tarifas y precios de canchas, no sólo deudas y pagos. La regla vale **dentro** del sistema; tiene
+  tres bordes donde `decimal` es correcto y **no se "arreglan"** (auditado el 20/08/2026):
+  - **Lo que reporta un proveedor externo** (`PaymentNotification`): la moneda puede no venir, y por
+    eso viaja como campo aparte que se puede leer como ausente. Colapsarlo a `Money` obligaría al
+    adaptador a inventarla y volvería indetectable `wrongCurrency`.
+  - **Las agregaciones en SQL** (`SumAsync(payment => payment.Amount.Amount)`): la base suma
+    columnas, no tipos. La mezcla de monedas la impide el filtro `Approved` — un pago en otra
+    moneda queda `ApprovedOrphan` y no entra en la suma.
+  - **Los DTO de respuesta** (`AgendaSlot`, `BookingSnapshot`): la moneda viaja una sola vez por
+    payload, en `Agenda.Currency`, en vez de repetirse en cada importe.
+
+  Fuera de esos tres, un `decimal` con plata adentro es un defecto.
 - **Una tabla pertenece a un módulo.** Antes de agregar una columna, preguntarse de quién es el
   dato: si un vínculo entre una persona y algo de otro módulo, va en las tablas de ese módulo
   contra `personId` (ADR-0012). `people.debtAmount` es la violación que queda en pie, marcada
@@ -279,10 +291,42 @@ con cobro o sin cobro y sin liquidaciones · otro con club + reservas + finanzas
 ### Comandos
 
 ```powershell
-.\scripts\dev-up.ps1                # levanta todo: PostgreSQL, API y los dos frontends
+.\scripts\dev-up.ps1                # SÓLO EL USUARIO — levanta todo en ventanas sueltas
 .\scripts\db-sql.ps1 '<consulta>'   # consulta la base (psql dentro del contenedor)
 .\scripts\db-reset.ps1              # borra la base; la API la recrea al arrancar
 ```
+
+#### Cómo levanta un agente lo que necesita
+
+**`dev-up.ps1` no lo corre un agente** (decisión del usuario, 20/08/2026): abre una ventana de
+PowerShell por servicio, que el agente no puede ni ver ni frenar. Es la comodidad del usuario
+para levantar todo de una.
+
+Un agente levanta **sólo el servicio que toca** y lo hace **en background dentro de su propia
+sesión**, para poder leerle la salida, reiniciarlo y bajarlo cuando termina. Quien trabaja en el
+backend baja y sube la API a gusto sin tocar los frontends, y al revés.
+
+```powershell
+# PostgreSQL (lo comparte todo el mundo; no se baja porque sí)
+docker compose -f compose.yaml up -d postgres
+
+# API — :5037
+$env:ASPNETCORE_ENVIRONMENT='Development'; $env:ASPNETCORE_URLS='http://localhost:5037'
+dotnet run --project src/backend/src/Api/ClubSpot.Api --no-launch-profile
+
+# JobService (sin puerto)
+$env:DOTNET_ENVIRONMENT='Development'; dotnet run --project src/backend/src/Jobs/ClubSpot.JobService
+
+# Frontends — :5184 y :5183
+npm --prefix src/frontend/backoffice run dev
+npm --prefix src/frontend/reservas run dev
+```
+
+Para bajar uno: matar el proceso que escucha su puerto
+(`Get-NetTCPConnection -State Listen -LocalPort 5037`), no cerrar ventanas ajenas.
+
+**La API no expone `/health`**: para saber si arrancó, mirar el puerto `5037` escuchando o su
+salida, no una sonda a `/health`.
 
 ```bash
 cd src/backend && dotnet build      # compilar la solución (y reescribir docs/api/clubspot.openapi.json)

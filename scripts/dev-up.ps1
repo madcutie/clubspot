@@ -8,6 +8,10 @@
 
   La API migra y siembra la base sola al arrancar en Development.
 
+  ⚠️ ESTE SCRIPT ES PARA EL USUARIO, NO PARA LOS AGENTES. Abre ventanas sueltas que un
+  agente no puede manejar ni frenar. Un agente levanta y baja en background sólo el
+  servicio que necesita — ver "Cómo levanta un agente lo que necesita" en AGENTS.md.
+
 .EXAMPLE
   .\scripts\dev-up.ps1
 #>

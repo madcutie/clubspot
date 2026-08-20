@@ -4,11 +4,13 @@ using System.Net.Http.Json;
 using ClubSpot.Domain.Core;
 using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.SharedKernel.Tenancy;
+using ClubSpot.SharedKernel.Time;
 using ClubSpot.IntegrationTests.Json;
 using ClubSpot.IntegrationTests.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ClubSpot.IntegrationTests.Auth;
 
@@ -153,6 +155,30 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
         Assert.Contains("http://localhost:5184", cors.Headers.GetValues("Access-Control-Allow-Origin"));
     }
 
+    [Fact]
+    public async Task The_token_expires_twelve_hours_after_the_clock_says_it_was_issued()
+    {
+        var club = NewClub("club-expiry", "Club Expiry");
+        var user = NewUser(club.Id, "expiry@clubspot.test", "Expiry", Role.CourtReception);
+        await SaveAsync(club, user);
+
+        var frozen = new DateTimeOffset(2026, 3, 4, 9, 15, 0, TimeSpan.Zero);
+        using var factory = new ApiFactory(postgres).WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services => services.Replace(
+                ServiceDescriptor.Singleton<IClock>(new FrozenClock(frozen)))));
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/session", new
+        {
+            email = "expiry@clubspot.test",
+            password = "correct-password"
+        });
+        var session = await response.Content.ReadFromJsonAsync<SessionResponse>();
+        var token = new JwtSecurityTokenHandler().ReadJwtToken(session!.AccessToken);
+
+        Assert.Equal(frozen.UtcDateTime.AddHours(12), token.ValidTo);
+    }
+
     private static Club NewClub(string slug, string name) => new(
         TenantId.From(Guid.NewGuid()),
         slug,
@@ -205,4 +231,9 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
     private sealed record SessionResponse(string AccessToken);
     private sealed record ClubResponse(string Name, string? Venue);
     private sealed record ContextResponse(ClubResponse Club, IEnumerable<string> Modules);
+
+    private sealed class FrozenClock(DateTimeOffset utcNow) : IClock
+    {
+        public DateTimeOffset UtcNow { get; } = utcNow;
+    }
 }

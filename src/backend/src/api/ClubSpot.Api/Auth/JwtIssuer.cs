@@ -2,13 +2,16 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using ClubSpot.Domain.Core;
+using ClubSpot.SharedKernel.Time;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace ClubSpot.Api.Auth;
 
-public sealed class JwtIssuer(IOptions<JwtOptions> options)
+public sealed class JwtIssuer(IOptions<JwtOptions> options, IClock clock)
 {
+    private static readonly TimeSpan Lifetime = TimeSpan.FromHours(12);
+
     private readonly JwtOptions _options = options.Value;
 
     public string Issue(User user)
@@ -33,7 +36,7 @@ public sealed class JwtIssuer(IOptions<JwtOptions> options)
             _options.Issuer,
             _options.Audience,
             claims,
-            expires: DateTime.UtcNow.AddHours(12),
+            expires: clock.UtcNow.UtcDateTime.Add(Lifetime),
             signingCredentials: credentials));
     }
 }

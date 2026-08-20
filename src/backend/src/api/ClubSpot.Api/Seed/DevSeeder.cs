@@ -5,6 +5,7 @@ using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.SharedKernel.Modularity;
 using ClubSpot.SharedKernel.Primitives;
 using ClubSpot.SharedKernel.Tenancy;
+using ClubSpot.SharedKernel.Time;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClubSpot.Api.Seed;
@@ -12,11 +13,13 @@ namespace ClubSpot.Api.Seed;
 public sealed class DevSeeder(
     ClubSpotDbContext db,
     IPasswordHasher passwordHasher,
-    ITenantScopeFactory tenantScopeFactory)
+    ITenantScopeFactory tenantScopeFactory,
+    IClock clock)
 {
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
         const string slug = "chaco-for-ever";
+        var now = clock.UtcNow;
         var club = await db.Clubs.SingleOrDefaultAsync(candidate => candidate.Slug == slug, cancellationToken);
         if (club is null)
         {
@@ -28,7 +31,7 @@ public sealed class DevSeeder(
                 "America/Argentina/Buenos_Aires",
                 "ARS",
                 50,
-                DateTimeOffset.UtcNow);
+                now);
             db.Clubs.Add(club);
             await db.SaveChangesAsync(cancellationToken);
         }
@@ -38,7 +41,7 @@ public sealed class DevSeeder(
         ModuleId[] requiredModules = [ModuleId.Members, ModuleId.Bookings];
         db.ClubModules.AddRange(requiredModules
             .Except(contractedModules)
-            .Select(module => new ClubModule(club.Id, module, DateTimeOffset.UtcNow)));
+            .Select(module => new ClubModule(club.Id, module, now)));
 
         if (!await db.Users.AnyAsync(user => user.Email == "admin@chacoforever.test", cancellationToken))
         {
@@ -49,7 +52,7 @@ public sealed class DevSeeder(
                 "Administrador",
                 passwordHasher.Hash("clubspot-dev"),
                 [Role.Administrator],
-                DateTimeOffset.UtcNow));
+                now));
         }
 
         if (!await db.Users.AnyAsync(user => user.Email == "reception@chacoforever.test", cancellationToken))
@@ -61,7 +64,7 @@ public sealed class DevSeeder(
                 "Canchero",
                 passwordHasher.Hash("clubspot-dev"),
                 [Role.CourtReception],
-                DateTimeOffset.UtcNow));
+                now));
         }
 
         if (!await db.Schedules.AnyAsync(cancellationToken))

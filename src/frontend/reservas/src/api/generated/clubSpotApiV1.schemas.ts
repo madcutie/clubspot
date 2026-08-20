@@ -99,6 +99,35 @@ export interface BookingCreatedResponse {
   price: number;
 }
 
+export type PaymentKind = typeof PaymentKind[keyof typeof PaymentKind];
+
+
+export const PaymentKind = {
+  full: 'full',
+  deposit: 'deposit',
+  balance: 'balance',
+} as const;
+
+export type PaymentStatus = typeof PaymentStatus[keyof typeof PaymentStatus];
+
+
+export const PaymentStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  approvedOrphan: 'approvedOrphan',
+} as const;
+
+export interface BookingPaymentLine {
+  at: string;
+  provider: string;
+  externalId: string;
+  amount: number;
+  currency: string;
+  kind: PaymentKind;
+  status: PaymentStatus;
+}
+
 export interface BookingRequest {
   courtId: string;
   date: string;
@@ -140,6 +169,8 @@ export interface BookingSnapshot {
   paymentMode: PaymentMode;
   /** @nullable */
   expiresAt: string | null;
+  createdAt: string;
+  payments: BookingPaymentLine[];
 }
 
 export interface CancelBookingRequest {

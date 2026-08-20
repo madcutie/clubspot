@@ -7,7 +7,7 @@ export type CourtType = 'techada' | 'descubierta';
 /** Duración del turno en minutos; las opciones reales vienen del catálogo. */
 export type Duration = number;
 
-export type Screen = 'home' | 'avail' | 'confirm' | 'done' | 'retorno' | 'mine';
+export type Screen = 'home' | 'avail' | 'confirm' | 'done' | 'retorno' | 'mine' | 'detalle';
 
 /** Forma de pago elegida: en el club, total online, o seña online. */
 export type PayMode = 'club' | 'total' | 'sena';

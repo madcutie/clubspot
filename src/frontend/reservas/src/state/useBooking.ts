@@ -24,6 +24,8 @@ export interface BookingState {
   done: ConfirmedBooking | null;
   /** Reserva a la que volvió el checkout online (`?retorno={id}`). */
   retornoId: string | null;
+  /** Reserva abierta desde "Mis reservas". */
+  detalleId: string | null;
 }
 
 const INITIAL: BookingState = {
@@ -41,6 +43,7 @@ const INITIAL: BookingState = {
   pago: 'club',
   done: null,
   retornoId: null,
+  detalleId: null,
 };
 
 /** La vuelta del checkout entra por `?retorno={id}`; se limpia la URL al leerla. */
@@ -62,6 +65,7 @@ export function useBooking() {
   const restart = useCallback(() => {
     setSt((prev) => ({
       ...prev, screen: 'home', hour: null, courtIdx: null, sel: null, done: null, retornoId: null,
+      detalleId: null,
     }));
   }, []);
 

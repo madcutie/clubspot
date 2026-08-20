@@ -1357,6 +1357,43 @@
           }
         }
       },
+      "BookingPaymentLine": {
+        "required": [
+          "at",
+          "provider",
+          "externalId",
+          "amount",
+          "currency",
+          "kind",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "externalId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PaymentKind"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PaymentStatus"
+          }
+        }
+      },
       "BookingRequest": {
         "required": [
           "courtId",
@@ -1408,7 +1445,9 @@
           "paidAmount",
           "status",
           "paymentMode",
-          "expiresAt"
+          "expiresAt",
+          "createdAt",
+          "payments"
         ],
         "type": "object",
         "properties": {
@@ -1458,6 +1497,16 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookingPaymentLine"
+            }
           }
         }
       },
@@ -1909,6 +1958,14 @@
           }
         }
       },
+      "PaymentKind": {
+        "enum": [
+          "full",
+          "deposit",
+          "balance"
+        ],
+        "type": "string"
+      },
       "PaymentMode": {
         "enum": [
           "club",
@@ -1939,6 +1996,15 @@
             "format": "double"
           }
         }
+      },
+      "PaymentStatus": {
+        "enum": [
+          "pending",
+          "approved",
+          "rejected",
+          "approvedOrphan"
+        ],
+        "type": "string"
       },
       "PeoplePageResponse": {
         "required": [

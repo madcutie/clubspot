@@ -4,6 +4,7 @@ import { AvailabilityScreen } from './screens/AvailabilityScreen';
 import { ConfirmScreen } from './screens/ConfirmScreen';
 import { SuccessScreen } from './screens/SuccessScreen';
 import { ReturnScreen } from './screens/ReturnScreen';
+import { BookingDetailScreen } from './screens/BookingDetailScreen';
 import { MyBookingsScreen } from './screens/MyBookingsScreen';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
         {api.st.screen === 'done' && <SuccessScreen api={api} />}
         {api.st.screen === 'retorno' && <ReturnScreen api={api} />}
         {api.st.screen === 'mine' && <MyBookingsScreen api={api} />}
+        {api.st.screen === 'detalle' && <BookingDetailScreen api={api} />}
       </div>
     </div>
   );

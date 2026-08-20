@@ -26,9 +26,15 @@ public sealed record PaymentNotification(Guid BookingId, string Provider, Paymen
 public sealed record CheckoutIssued(Guid BookingId, string Provider, string Url, Money Amount,
     DateTimeOffset ExpiresAt);
 
+// One attempt the provider actually reported, as the payer would read it on a receipt: no internal
+// ids, no orphan reason — what that means to the club is the club's business, not the customer's.
+public sealed record BookingPaymentLine(DateTimeOffset At, string Provider, string ExternalId,
+    decimal Amount, string Currency, PaymentKind Kind, PaymentStatus Status);
+
 public sealed record BookingSnapshot(Guid Id, Guid CourtId, string CourtName, Sport Sport, DateOnly Date,
     int StartMinute, int DurationMinutes, decimal Price, decimal PaidAmount, BookingStatus Status,
-    PaymentMode PaymentMode, DateTimeOffset? ExpiresAt);
+    PaymentMode PaymentMode, DateTimeOffset? ExpiresAt, DateTimeOffset CreatedAt,
+    IReadOnlyList<BookingPaymentLine> Payments);
 
 public interface IBookingsStore
 {

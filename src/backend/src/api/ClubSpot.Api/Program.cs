@@ -89,6 +89,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<PaymentMode>(JsonNamingPolicy.CamelCase));
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<PaymentOutcome>(JsonNamingPolicy.CamelCase));
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<ClubSpot.Application.Bookings.PaymentApplyOutcome>(JsonNamingPolicy.CamelCase));
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<PaymentKind>(JsonNamingPolicy.CamelCase));
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<PaymentStatus>(JsonNamingPolicy.CamelCase));
 });
 // Behind a reverse proxy every request arrives from the proxy, so the rate limits below would all
 // fall into one partition and stop limiting anyone. Configured and never assumed: honouring

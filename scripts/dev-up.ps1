@@ -55,11 +55,23 @@ Start-Service-Window 'ClubSpot JobService' (Join-Path $repo 'src\backend') `
 Start-Service-Window 'ClubSpot Backoffice' (Join-Path $repo 'src\frontend\backoffice') 'npm run dev'
 Start-Service-Window 'ClubSpot Reservas' (Join-Path $repo 'src\frontend\reservas') 'npm run dev'
 
+# Sin el tunel, Mercado Pago falla en silencio: el comprador paga, la plata se cobra y la reserva
+# se queda en pendingPayment porque ni el webhook ni el rebote de vuelta llegan a la API.
+$tunnelUrl = 'noe-uncephalic-jerome.ngrok-free.dev'
+if (Get-Process -Name ngrok -ErrorAction SilentlyContinue) {
+    Write-Host '  ngrok ya estaba corriendo' -ForegroundColor DarkGray
+} elseif (Get-Command ngrok -ErrorAction SilentlyContinue) {
+    Start-Service-Window 'ClubSpot ngrok' $repo "ngrok http 5037 --url=$tunnelUrl"
+} else {
+    Write-Host '  ngrok NO esta instalado: Mercado Pago no va a funcionar' -ForegroundColor Red
+}
+
 Write-Host ''
 Write-Host 'Portal de reservas   http://localhost:5183' -ForegroundColor Green
 Write-Host 'Backoffice           http://localhost:5184' -ForegroundColor Green
 Write-Host 'API                  http://localhost:5037' -ForegroundColor Green
 Write-Host 'JobService           (sin puerto; concilia pagos cada 5 min)' -ForegroundColor Green
 Write-Host 'PostgreSQL           localhost:5432' -ForegroundColor Green
+Write-Host "Tunel Mercado Pago   https://$tunnelUrl  (webhook y vuelta del pago)" -ForegroundColor Green
 Write-Host ''
 Write-Host 'La API tarda unos segundos en migrar y sembrar la primera vez.' -ForegroundColor DarkGray

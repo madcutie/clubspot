@@ -9,6 +9,15 @@ TESTUSER290150638458885799
 Verificacion: 583899
 
 
+┌─────────────────────────────┬──────────────┬───────────────┐
+│            Email            │  Contraseña  │      Rol      │
+├─────────────────────────────┼──────────────┼───────────────┤
+│ admin@chacoforever.test     │ clubspot-dev │ Administrador │
+├─────────────────────────────┼──────────────┼───────────────┤
+│ reception@chacoforever.test │ clubspot-dev │ Canchero      │
+└─────────────────────────────┴──────────────┴───────────────┘
+
+
 ### Dudas
 
  binary_mode=true que es?

@@ -47,7 +47,7 @@ var host = builder.Build();
 using (var scope = host.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<IRecurringJobManager>().AddOrUpdate<PaymentsReconciliationDispatcher>(
-        "payments-reconciliation",
+        PaymentsReconciliationDispatcher.JobName,
         dispatcher => dispatcher.RunAsync(CancellationToken.None),
         "*/5 * * * *");
 }

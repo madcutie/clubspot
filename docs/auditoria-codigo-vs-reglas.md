@@ -3,6 +3,61 @@
 Cruce de lo que dicen los 18 ADR y las convenciones de AGENTS.md §6 contra lo que hace el código.
 La entrada más nueva arriba.
 
+## 20/08/2026 — J2 nunca pudo aplicar un pago, y el portal no contaba nada
+
+Salió de un caso real, no de una revisión: el usuario pagó una seña por Mercado Pago, el túnel de
+ngrok estaba caído, el webhook no llegó y el hold venció. El portal mostró *"El pago no se acreditó,
+si te cobraron comunicate con el club"* con $7.000 ya cobrados.
+
+### El bug: J2 se caía justo cuando había plata que recuperar
+
+`PaymentsReconciliationDispatcher.RunForTenantAsync` abría el ámbito de **tenant** pero nunca el de
+**actor**, y el registro de actividad se niega a escribir sin saber quién actúa —a propósito—. Así
+que en cuanto la conciliación encontraba un pago para aplicar, `ActivityLog.Record` lanzaba
+`MissingActivityActorException` y se perdía la corrida entera del club.
+
+**Nunca se había notado porque sólo falla cuando hay algo que aplicar.** Las corridas anteriores
+decían `2 candidates, 0 applied, 0 orphaned`: encontraban candidatos, el proveedor no devolvía
+pagos, y nunca se llegaba a escribir en el registro. La red de seguridad de la plata estaba rota y
+se veía sana.
+
+`ActivityActor.Job(...)` existía exactamente para esto. Arreglado, la conciliación recuperó el pago
+real: reserva **confirmada**, `174843380880`, $7.000, `source = Reconciliation`.
+
+### Lo que el caso dejó a la vista
+
+- **No hay crónica del vencimiento.** El registro de esa reserva tenía dos entradas —`holdCreated`,
+  `checkoutIssued`— y nada más. El vencimiento es perezoso, así que "el turno se liberó" lo
+  **infiere la pantalla** comparando `expiresAt` con el reloj: no hay ningún hecho registrado.
+  Consecuencia conocida de haber descartado J1; queda anotado, no resuelto.
+- **La pantalla de retorno deja de preguntar.** `ReturnScreen` llama a `settle` cada 5 s mientras la
+  reserva está pendiente, pero en cuanto el hold vence corta el poll. Una llamada más habría traído
+  el pago. Sin resolver.
+- **`dev-up.ps1` no levantaba ngrok**, y ni el script ni AGENTS.md decían que el JobService fuera
+  obligatorio. Los dos corregidos: ahora son **cinco ventanas** y las dos cosas están escritas con
+  su porqué.
+
+### El portal ahora cuenta lo que pasó
+
+`BookingSnapshot` suma `createdAt` y `payments[]`: cada intento que el proveedor reportó —los
+rechazados también— con fecha, medio, número de operación, concepto (seña/total/saldo), moneda y
+estado. Nada calculado en la pantalla, nada inventado.
+
+- **Mis reservas** dejó de ser una foto de `localStorage` y consulta el estado real de cada reserva
+  con su token. Cada fila lleva el chip de estado y **"Reservada el 20 ago, 19:10"**.
+- **Detalle de la reserva**, nuevo: total, pagado, saldo, y la lista de movimientos.
+- Los montos y el número de operación son los que devuelve el servidor. El motivo por el que un pago
+  quedó huérfano **no se expone**: eso es conversación del club, no del cliente.
+
+Test: `The_booking_carries_when_it_was_made_and_every_payment_attempt`. Al sumar `PaymentKind` y
+`PaymentStatus` al contrato hubo que registrarlos en `TestJsonOptions` —10 tests se rompieron por
+eso hasta hacerlo, que es la señal de que un enum nuevo viaja de verdad—.
+
+**184 tests verdes** (92 + 92), build sin warnings, clientes regenerados, `tsc` limpio, y verificado
+en el navegador contra la reserva real.
+
+---
+
 ## 20/08/2026 — Merge del PR #4: no compilaba y tenía un bug crítico
 
 El PR de seguridad e idempotencia se fusionó **directo en `main`** (`aa9001f`), no por GitHub. Antes

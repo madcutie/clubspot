@@ -356,9 +356,17 @@ internal sealed class BookingsStore(
         var paidAmount = await db.Payments.AsNoTracking()
             .Where(payment => payment.BookingId == id && payment.Status == PaymentStatus.Approved)
             .SumAsync(payment => payment.Amount.Amount, cancellationToken);
+        // Every attempt on record, rejected ones included: "no me anduvo la tarjeta y probé de nuevo"
+        // is the question this list exists to answer.
+        var payments = await db.Payments.AsNoTracking()
+            .Where(payment => payment.BookingId == id)
+            .OrderBy(payment => payment.CreatedAt)
+            .Select(payment => new BookingPaymentLine(payment.CreatedAt, payment.Provider, payment.ExternalId,
+                payment.Amount.Amount, payment.Amount.Currency, payment.Kind, payment.Status))
+            .ToListAsync(cancellationToken);
         return new BookingSnapshot(booking.Id, court.Id, court.Name, court.Sport, booking.Date,
             booking.StartMinute, booking.DurationMinutes, booking.Price.Amount, paidAmount,
-            booking.Status, booking.PaymentMode, booking.ExpiresAt);
+            booking.Status, booking.PaymentMode, booking.ExpiresAt, booking.CreatedAt, payments);
     }
 
     public async Task<IReadOnlyList<Guid>> GetUnsettledOnlineBookingIdsAsync(

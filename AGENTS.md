@@ -314,13 +314,36 @@ docker compose -f compose.yaml up -d postgres
 $env:ASPNETCORE_ENVIRONMENT='Development'; $env:ASPNETCORE_URLS='http://localhost:5037'
 dotnet run --project src/backend/src/Api/ClubSpot.Api --no-launch-profile
 
-# JobService (sin puerto)
+# JobService (sin puerto) — OBLIGATORIO, no es opcional
 $env:DOTNET_ENVIRONMENT='Development'; dotnet run --project src/backend/src/Jobs/ClubSpot.JobService
 
 # Frontends — :5184 y :5183
 npm --prefix src/frontend/backoffice run dev
 npm --prefix src/frontend/reservas run dev
+
+# ngrok — OBLIGATORIO si se va a tocar Mercado Pago
+ngrok http 5037 --url=noe-uncephalic-jerome.ngrok-free.dev
 ```
+
+**Sin ngrok, Mercado Pago no funciona y falla en silencio.** El túnel es el
+`Payments:PublicBaseUrl` de `appsettings.Development.json`, y por ahí van las dos cosas que MP
+necesita alcanzar: el **webhook** (`NotificationUrl`) y el **rebote de vuelta**
+(`/api/payments/return`, que existe porque `auto_return` sólo acepta https). Con el túnel caído el
+comprador paga, la plata se cobra, y **la reserva se queda en `pendingPayment`** porque la
+notificación no llega a ninguna parte — el navegador muestra `ERR_NGROK_3200` y nada más.
+
+El dominio es estático, así que levantarlo de nuevo recupera la misma URL y no hay que tocar ni la
+configuración ni el panel de Mercado Pago. Para saber si está arriba:
+`curl http://127.0.0.1:4040/api/tunnels`.
+
+**El JobService tampoco es opcional.** Corre **J2** cada 5 minutos (`*/5 * * * *`): por cada reserva
+online sin pagar de las últimas 48 h le pregunta a Mercado Pago si tiene un pago que no nos llegó, y
+lo aplica por el mismo camino idempotente que el webhook. Es **la única red que atrapa un webhook
+perdido** — un túnel caído, la API abajo, un corte de red—. Sin él, el comprador paga, el hold
+vence, el turno se libera y **nadie se entera nunca**: no queda ni una fila en `payments` ni una
+entrada en el registro de actividad. La única evidencia queda del lado de Mercado Pago.
+
+Con todo levantado son **cinco ventanas**: API, JobService, Backoffice, Reservas y ngrok.
 
 Para bajar uno: matar el proceso que escucha su puerto
 (`Get-NetTCPConnection -State Listen -LocalPort 5037`), no cerrar ventanas ajenas.

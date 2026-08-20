@@ -595,6 +595,43 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         return client.SendAsync(request);
     }
 
+    // The portal has to be able to answer "pero yo pagué" without anyone opening the backoffice:
+    // when it was booked, and every attempt the provider reported, rejected ones included.
+    [Fact]
+    public async Task The_booking_carries_when_it_was_made_and_every_payment_attempt()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 29);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineDeposit", "362 400-0119");
+
+        await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "history-rejected", approved = false,
+            amount = created.ChargeAmount, outcome = "rejected"
+        });
+        await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "history-approved", approved = true,
+            amount = created.ChargeAmount
+        });
+
+        var snapshot = await SnapshotAsync(client, created);
+
+        Assert.NotEqual(default, snapshot.CreatedAt);
+        Assert.Equal(2, snapshot.Payments.Count);
+        // Oldest first: the customer reads it as a story, not as a set.
+        Assert.Equal("history-rejected", snapshot.Payments[0].ExternalId);
+        Assert.Equal(PaymentStatus.Rejected, snapshot.Payments[0].Status);
+        Assert.Equal(PaymentStatus.Approved, snapshot.Payments[1].Status);
+        // A deposit is what was charged, and saying so is the difference between "pagaste" and
+        // "pagaste la seña" — the balance is still owed at the counter.
+        Assert.All(snapshot.Payments, payment => Assert.Equal(PaymentKind.Deposit, payment.Kind));
+        Assert.All(snapshot.Payments, payment => Assert.Equal("ARS", payment.Currency));
+        Assert.Equal(created.ChargeAmount, snapshot.PaidAmount);
+    }
+
     private static async Task<SnapshotResponse> SnapshotAsync(HttpClient client, CreatedResponse created)
     {
         var response = await SendWithTokenAsync(client, HttpMethod.Get,
@@ -646,7 +683,10 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         DateTimeOffset? ExpiresAt, string? CheckoutUrl, string Token);
     private sealed record SnapshotResponse(Guid Id, Guid CourtId, string CourtName, Sport Sport, DateOnly Date,
         int StartMinute, int DurationMinutes, decimal Price, decimal PaidAmount, BookingStatus Status,
-        PaymentMode PaymentMode, DateTimeOffset? ExpiresAt);
+        PaymentMode PaymentMode, DateTimeOffset? ExpiresAt, DateTimeOffset CreatedAt,
+        IReadOnlyList<PaymentLineResponse> Payments);
+    private sealed record PaymentLineResponse(DateTimeOffset At, string Provider, string ExternalId,
+        decimal Amount, string Currency, PaymentKind Kind, PaymentStatus Status);
     private sealed record CourtResponse(Guid Id, string Name, string Detail, bool IsCovered, int[] Durations);
     private sealed record SportResponse(Sport Sport, IReadOnlyList<CourtResponse> Courts);
     private sealed record ClubResponse(string Name, string? Venue, string Currency, int DepositPercent);

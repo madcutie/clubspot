@@ -43,3 +43,6 @@ Thumbs.db
 
 # Reviews locales (no versionados)
 code-reviews/
+
+# Configuración local de Claude Code y sus worktrees (no versionados)
+.claude/

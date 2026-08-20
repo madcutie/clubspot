@@ -181,6 +181,11 @@ internal sealed class BookingsStore(
         await db.Database.ExecuteSqlAsync(
             $"SELECT 1 FROM public.bookings WHERE id = {notification.BookingId} FOR UPDATE", cancellationToken);
 
+        // EF answers a query with the instance it already tracks, not the row just read. J2 walks
+        // many payments inside one scope, so without this the decision below could be made against
+        // a state the lock above was taken precisely to freeze.
+        db.ChangeTracker.Clear();
+
         // Idempotency anchor: (provider, externalId) is unique. A notification that repeats what is
         // already settled is a no-op, but one that carries a *newer* state for a payment still
         // undecided has to land — see Payment.Accepts.
@@ -225,6 +230,13 @@ internal sealed class BookingsStore(
             PaymentOutcome.Rejected => PaymentStatus.Rejected,
             _ => PaymentStatus.Pending
         };
+
+        // A repeat of "still undecided" says nothing new. It has to return before Settle, which
+        // refuses a status that is not a decision: Mercado Pago re-notifies an offline payment until
+        // it is paid, and J2 keeps finding it, so this is the common case and not an edge one.
+        // Not AlreadyProcessed, so callers looking for the payment that did settle keep looking.
+        if (existing is not null && notification.Outcome == PaymentOutcome.Pending)
+            return PaymentApplyOutcome.Pending;
 
         Payment payment;
         if (existing is not null)

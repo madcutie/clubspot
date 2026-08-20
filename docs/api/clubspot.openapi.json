@@ -1733,6 +1733,16 @@
               "null",
               "string"
             ]
+          },
+          "outcome": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PaymentOutcome"
+              }
+            ]
           }
         }
       },
@@ -1878,6 +1888,7 @@
         "enum": [
           "confirmed",
           "rejected",
+          "pending",
           "alreadyProcessed",
           "orphaned",
           "unknownBooking"
@@ -1905,6 +1916,17 @@
           "onlineDeposit"
         ],
         "type": "string"
+      },
+      "PaymentOutcome": {
+        "enum": [
+          "pending",
+          "approved",
+          "rejected"
+        ],
+        "type": [
+          "null",
+          "string"
+        ]
       },
       "PaymentResponse": {
         "required": [

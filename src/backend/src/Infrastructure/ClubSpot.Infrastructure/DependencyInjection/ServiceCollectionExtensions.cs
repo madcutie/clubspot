@@ -37,6 +37,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IActivityLog, ActivityLog>();
         services.AddScoped<IClubSettings, ClubSettings>();
         services.AddScoped<IClubDirectory, ClubDirectory>();
+        services.AddScoped<IDatabaseProbe, DatabaseProbe>();
         return services;
     }
 

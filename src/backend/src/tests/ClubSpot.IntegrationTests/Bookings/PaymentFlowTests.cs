@@ -140,6 +140,49 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         Assert.Equal(PaymentStatus.Approved, payments[0].Status);
     }
 
+    // Mercado Pago re-notifies an offline payment while it is still unpaid, and J2 finds it again
+    // every five minutes: repeating "undecided" is the common case, not an edge one. It used to
+    // reach Settle, which refuses a status that is not a decision, so the webhook answered 500 —
+    // and a provider that retries until 2xx would have looped on it, taking J2's batch down too.
+    [Fact]
+    public async Task A_payment_that_stays_undecided_can_be_reported_again()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 18);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineFull", "362 400-0113");
+
+        async Task<HttpResponseMessage> ReportPendingAsync() =>
+            await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+            {
+                bookingId = created.Id, externalId = "fake-pending-repeat", approved = false,
+                amount = created.ChargeAmount, outcome = "pending"
+            });
+
+        Assert.Equal(HttpStatusCode.OK, (await ReportPendingAsync()).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await ReportPendingAsync()).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await ReportPendingAsync()).StatusCode);
+
+        Assert.Equal(BookingStatus.PendingPayment, (await SnapshotAsync(client, created)).Status);
+
+        // And it still settles afterwards, on the same row.
+        var approved = await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "fake-pending-repeat", approved = true,
+            amount = created.ChargeAmount
+        });
+        Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
+        Assert.Equal(BookingStatus.Confirmed, (await SnapshotAsync(client, created)).Status);
+
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        var payments = await db.Payments.Where(payment => payment.BookingId == created.Id).ToListAsync();
+        Assert.Single(payments);
+        Assert.Equal(PaymentStatus.Approved, payments[0].Status);
+    }
+
     [Fact]
     public async Task A_payment_still_pending_is_not_money_the_booking_has()
     {

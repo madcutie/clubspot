@@ -9,6 +9,7 @@ using ClubSpot.Api.Errors;
 using ClubSpot.Api.OpenApi;
 using ClubSpot.Api.Seed;
 using ClubSpot.Api.Tenancy;
+using ClubSpot.Application.Core;
 using ClubSpot.Application.Modularity;
 using ClubSpot.Domain.Bookings;
 using ClubSpot.Domain.Core.People;
@@ -99,7 +100,7 @@ if (trustedProxies.Length > 0)
     {
         options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
         options.KnownProxies.Clear();
-        options.KnownNetworks.Clear();
+        options.KnownIPNetworks.Clear();
         options.ForwardLimit = trustedProxies.Length;
         foreach (var proxy in trustedProxies)
         {
@@ -108,8 +109,18 @@ if (trustedProxies.Length > 0)
         }
     });
 }
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+if (corsOrigins.Length == 0)
+{
+    // Production must name its own origins: inheriting the dev ports would mean the browser blocks
+    // every call from the real domain, and the failure would show up as an empty screen at the
+    // counter instead of a startup error.
+    if (builder.Environment.IsProduction())
+        throw new InvalidOperationException("Cors:AllowedOrigins is required outside development.");
+    corsOrigins = ["http://localhost:5184", "http://localhost:5183"];
+}
 builder.Services.AddCors(options => options.AddPolicy("backoffice", policy =>
-    policy.WithOrigins("http://localhost:5184", "http://localhost:5183").AllowAnyHeader().AllowAnyMethod()));
+    policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));
 // The portal is anonymous, so the only thing standing between a script and the club's whole agenda
 // is this: holding a slot must cost the caller something. Reads stay generous, taking a slot does not.
 // Partitioned by caller and club so one club's traffic never starves another's.
@@ -144,7 +155,16 @@ if (app.Environment.IsDevelopment())
 // Before anything that reads the caller's address, which is what the rate limits partition on.
 if (trustedProxies.Length > 0) app.UseForwardedHeaders();
 app.UseExceptionHandler();
-app.MapGet("/", () => "Hello World!").ExcludeFromDescription();
+// Liveness: the process answers. Deliberately touches nothing else, so a database blip never
+// makes the orchestrator kill a container that is perfectly able to serve.
+app.MapGet("/health", () => TypedResults.NoContent()).AllowAnonymous().ExcludeFromDescription();
+// Readiness: the database answers too. This is what tells a deploy it can take traffic, and what
+// catches a wrong connection string instead of letting every request 500 behind a green light.
+app.MapGet("/health/ready", async (IDatabaseProbe probe, CancellationToken cancellationToken) =>
+        await probe.CanConnectAsync(cancellationToken)
+            ? Results.NoContent()
+            : Results.StatusCode(StatusCodes.Status503ServiceUnavailable))
+    .AllowAnonymous().ExcludeFromDescription();
 app.UseCors("backoffice");
 // After CORS so a preflight never spends a permit, before the endpoints it protects.
 app.UseRateLimiter();
@@ -161,7 +181,9 @@ app.MapBookings();
 app.MapPortal();
 app.MapPayments();
 app.MapPeople();
-app.MapOpenApi();
+// The contract is a build output (ADR-0016). Serving it from production would publish the whole
+// map of the API, payment routes included, for nothing anyone needs at runtime.
+if (!app.Environment.IsProduction()) app.MapOpenApi();
 if (app.Environment.IsDevelopment()) app.MapDevCheckout();
 
 if (!string.IsNullOrWhiteSpace(exportOpenApiPath))

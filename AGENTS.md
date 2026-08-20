@@ -325,8 +325,10 @@ npm --prefix src/frontend/reservas run dev
 Para bajar uno: matar el proceso que escucha su puerto
 (`Get-NetTCPConnection -State Listen -LocalPort 5037`), no cerrar ventanas ajenas.
 
-**La API no expone `/health`**: para saber si arrancó, mirar el puerto `5037` escuchando o su
-salida, no una sonda a `/health`.
+**La API expone dos sondas** (20/08/2026, para poder desplegar): `GET /health` responde 204 si el
+proceso está vivo y **no toca nada más**, y `GET /health/ready` responde 204 si además la base
+contesta —o 503 si no—. Las dos son anónimas y están fuera del contrato OpenAPI. Para saber si la
+API arrancó, `/health` alcanza.
 
 ```bash
 cd src/backend && dotnet build      # compilar la solución (y reescribir docs/api/clubspot.openapi.json)

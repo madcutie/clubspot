@@ -201,6 +201,18 @@ export interface CreatePersonRequest {
   email: string;
 }
 
+/**
+ * @nullable
+ */
+export type PaymentOutcome = typeof PaymentOutcome[keyof typeof PaymentOutcome] | null;
+
+
+export const PaymentOutcome = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
 export interface FakeWebhookRequest {
   bookingId: string;
   externalId: string;
@@ -209,6 +221,7 @@ export interface FakeWebhookRequest {
   amount: number | null;
   /** @nullable */
   currency?: string | null;
+  outcome?: null | PaymentOutcome;
 }
 
 export interface IdResponse {
@@ -256,6 +269,7 @@ export type PaymentApplyOutcome = typeof PaymentApplyOutcome[keyof typeof Paymen
 export const PaymentApplyOutcome = {
   confirmed: 'confirmed',
   rejected: 'rejected',
+  pending: 'pending',
   alreadyProcessed: 'alreadyProcessed',
   orphaned: 'orphaned',
   unknownBooking: 'unknownBooking',

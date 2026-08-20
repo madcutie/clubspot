@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ClubSpot.Api.Modularity;
+using ClubSpot.Api.Payments;
 using ClubSpot.Application.Bookings;
 using ClubSpot.Domain.Bookings;
 using ClubSpot.Infrastructure.MercadoPago;

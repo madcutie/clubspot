@@ -519,7 +519,7 @@
 <div class="shell">
 
   <header class="titleblock">
-    <div class="stamp">ClubSpot · Informe técnico · 18 · 08 · 2026</div>
+    <div class="stamp">ClubSpot · Informe técnico · 19 · 08 · 2026</div>
     <h1>Infraestructura del MVP</h1>
     <p class="subtitle">Qué piezas hace falta contratar para poner ClubSpot en producción, cuánto sale en cada proveedor, y cuánto de eso vas a tener que administrar vos. Escrito para alguien que programa, no para un devops.</p>
     <dl class="meta-grid">
@@ -814,7 +814,410 @@
       <p>Se vuelve razonable el día que tengas varios clubes con despliegues independientes, necesites escalar la API por réplicas y ya tengas alguien que sepa operarlo. Mientras tanto, <span class="mono">docker compose</span> en un VPS te da el 90% del beneficio con el 5% de los conceptos. Y si querés la experiencia de Kubernetes sin el costo, Coolify sobre un VPS da deploys por git, TLS automático y rollback con un panel web.</p>
     </section>
 
-<!--PRICING-->
+    <section id="s5">
+      <div class="eyebrow">Comparación</div>
+      <h2><span class="num">05</span>Comparación de costos</h2>
+      <p class="lead">Todo lo que sigue es <strong>test + prod juntos</strong>, en dólares por mes, con la base de datos gestionada en todos los casos salvo donde se aclara. Son estimaciones armadas con los precios de lista de cada proveedor al 18 y 19 de agosto de 2026; la sección 11 dice qué se verificó y qué no.</p>
+
+      <div class="chart">
+        <div class="chart-h">Costo mensual estimado · los dos entornos</div>
+        <div class="chart-s">Cada barra incluye cómputo, base de datos gestionada, hosting de los dos frontends, DNS y registry. Sin Redis.</div>
+        <div class="bars">
+          <div class="bar-row"><div class="bl">VPS + Neon free<em>base gestionada aparte</em></div><div class="bar-track"><div class="bar-fill" style="width:8.3%"></div></div><div class="bv">15</div></div>
+          <div class="bar-row"><div class="bl">VPS + Neon Launch<em>con backups pagos</em></div><div class="bar-track"><div class="bar-fill" style="width:16.7%"></div></div><div class="bv">30</div></div>
+          <div class="bar-row"><div class="bl">DO droplet + PG<em>vos administrás el host</em></div><div class="bar-track"><div class="bar-fill" style="width:21.7%"></div></div><div class="bv">39</div></div>
+          <div class="bar-row pick"><div class="bl">DO App Platform + PG<em>todo gestionado</em></div><div class="bar-track"><div class="bar-fill" style="width:23.9%"></div></div><div class="bv">43</div></div>
+          <div class="bar-row"><div class="bl">Render<em>todo gestionado</em></div><div class="bar-track"><div class="bar-fill" style="width:26.1%"></div></div><div class="bv">47</div></div>
+          <div class="bar-row"><div class="bl">Fly.io<em>base compartida</em></div><div class="bar-track"><div class="bar-fill" style="width:32.2%"></div></div><div class="bv">58</div></div>
+          <div class="bar-row"><div class="bl">Azure App Service<em>B1 + PostgreSQL B1ms</em></div><div class="bar-track"><div class="bar-fill" style="width:35%"></div></div><div class="bv">63</div></div>
+          <div class="bar-row"><div class="bl">AWS App Runner<em>+ RDS db.t4g.micro</em></div><div class="bar-track"><div class="bar-fill" style="width:35.6%"></div></div><div class="bv">64</div></div>
+          <div class="bar-row"><div class="bl">Fly.io<em>una base por entorno</em></div><div class="bar-track"><div class="bar-fill" style="width:53.3%"></div></div><div class="bv">96</div></div>
+          <div class="bar-row"><div class="bl">AWS profesional<em>Fargate + ALB + RDS Multi-AZ</em></div><div class="bar-track"><div class="bar-fill" style="width:67.8%"></div></div><div class="bv">122</div></div>
+          <div class="bar-row"><div class="bl">Azure profesional<em>P0v3 + PostgreSQL B2s</em></div><div class="bar-track"><div class="bar-fill" style="width:90%"></div></div><div class="bv">162</div></div>
+          <div class="bar-row"><div class="bl">Google Cloud<em>Cloud Run + Cloud SQL</em></div><div class="bar-track"><div class="bar-fill" style="width:98.9%"></div></div><div class="bv">178</div></div>
+        </div>
+        <div class="axis"><div></div><div class="axis-scale"><span>0</span><span>45</span><span>90</span><span>135</span><span>180 USD</span></div><div></div></div>
+      </div>
+      <p class="t-note">Las barras son estimaciones. El renglón marcado es la recomendación de la sección 10. La opción más barata de todas —Hostinger con la base adentro del VPS, unos 15 USD— no aparece porque incumple tu requisito de base gestionada.</p>
+
+      <h3>Dónde se va la plata</h3>
+      <p>El mismo sistema, cinco facturas distintas. Lo que cambia no es el cómputo —que en todos lados es chico— sino cuánto cobra el proveedor por la base y cuánto por dejarte llegar a ella desde internet.</p>
+
+      <div class="chart">
+        <div class="chart-h">Composición del costo mensual</div>
+        <div class="chart-s">Los dos entornos juntos, en dólares</div>
+
+        <div style="display:grid; gap:16px; margin-top:6px">
+          <div>
+            <div class="stack-lab"><span><strong>VPS + Neon Launch</strong></span><span class="mono">30</span></div>
+            <div class="stack"><span style="width:50%;background:var(--s1)"></span><span style="width:50%;background:var(--s2)"></span></div>
+            <div class="stack-lab"><span>cómputo 15 · base 15</span><span></span></div>
+          </div>
+          <div>
+            <div class="stack-lab"><span><strong>Render</strong></span><span class="mono">47</span></div>
+            <div class="stack"><span style="width:59.6%;background:var(--s1)"></span><span style="width:40.4%;background:var(--s2)"></span></div>
+            <div class="stack-lab"><span>cómputo 28 · base 19</span><span></span></div>
+          </div>
+          <div>
+            <div class="stack-lab"><span><strong>AWS App Runner</strong></span><span class="mono">64</span></div>
+            <div class="stack"><span style="width:53.1%;background:var(--s1)"></span><span style="width:43.8%;background:var(--s2)"></span><span style="width:3.1%;background:var(--s4)"></span></div>
+            <div class="stack-lab"><span>cómputo 34 · base 28 · otros 2</span><span></span></div>
+          </div>
+          <div>
+            <div class="stack-lab"><span><strong>AWS profesional</strong></span><span class="mono">168</span></div>
+            <div class="stack"><span style="width:17.3%;background:var(--s1)"></span><span style="width:38.7%;background:var(--s2)"></span><span style="width:42.9%;background:var(--s3)"></span><span style="width:1.1%;background:var(--s4)"></span></div>
+            <div class="stack-lab"><span>cómputo 29 · base 65 · <strong>red y balanceo 72</strong> · otros 2</span><span></span></div>
+          </div>
+          <div>
+            <div class="stack-lab"><span><strong>Google Cloud</strong></span><span class="mono">178</span></div>
+            <div class="stack"><span style="width:36.5%;background:var(--s1)"></span><span style="width:62.9%;background:var(--s2)"></span><span style="width:0.6%;background:var(--s4)"></span></div>
+            <div class="stack-lab"><span>cómputo 65 · <strong>base 112</strong> · otros 1</span><span></span></div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span><i style="background:var(--s1)"></i>Cómputo</span>
+          <span><i style="background:var(--s2)"></i>Base de datos</span>
+          <span><i style="background:var(--s3)"></i>Red y balanceo</span>
+          <span><i style="background:var(--s4)"></i>DNS, registry y estáticos</span>
+        </div>
+      </div>
+      <p class="t-note">En la variante profesional de AWS, el balanceador y el NAT gateway cuestan más que los contenedores que hacen el trabajo. En Google Cloud, la base sola cuesta más que todo el sistema en Render.</p>
+
+      <h3>Costo contra esfuerzo</h3>
+      <p>El precio es sólo un eje. El otro es cuánto tiempo tuyo consume, y ahí no hay factura pero sí hay costo. Este es el mismo conjunto de opciones ubicado en los dos ejes a la vez.</p>
+
+      <figure>
+        <div class="quad-wrap">
+          <svg class="dg" viewBox="0 0 900 400" role="img" aria-label="Gráfico de costo mensual contra esfuerzo de operación. Las opciones de VPS son las más baratas pero las que más trabajo de administración exigen; Render y DigitalOcean App Platform quedan en la zona de bajo costo y bajo esfuerzo; AWS en su variante profesional y Google Cloud quedan caras, y AWS profesional además exige mucho trabajo.">
+            <rect x="70" y="230" width="228" height="110" fill="var(--accent-soft)" />
+            <text class="st" x="80" y="248" style="fill:var(--accent-ink)">barato y poco trabajo</text>
+
+            <line x1="70" y1="340" x2="870" y2="340" stroke="var(--rule-strong)" stroke-width="1.2" />
+            <line x1="70" y1="30" x2="70" y2="340" stroke="var(--rule-strong)" stroke-width="1.2" />
+            <text class="st" x="70" y="362">0</text>
+            <text class="st" x="257" y="362">45</text>
+            <text class="st" x="444" y="362">90</text>
+            <text class="st" x="631" y="362">135</text>
+            <text class="st" x="818" y="362">180</text>
+            <text class="lb" x="470" y="384" text-anchor="middle">costo mensual estimado, los dos entornos (USD)</text>
+            <text class="lb" x="-185" y="16" transform="rotate(-90)" text-anchor="middle">esfuerzo de operación</text>
+            <text class="st" x="62" y="46" text-anchor="end">alto</text>
+            <text class="st" x="62" y="336" text-anchor="end">bajo</text>
+
+            <g fill="var(--accent)">
+              <circle cx="162" cy="73" r="6" />
+              <circle cx="232" cy="107" r="6" />
+              <circle cx="249" cy="273" r="6" />
+              <circle cx="265" cy="307" r="6" />
+              <circle cx="311" cy="240" r="6" />
+              <circle cx="332" cy="207" r="6" />
+              <circle cx="336" cy="240" r="6" />
+              <circle cx="673" cy="107" r="6" />
+              <circle cx="810" cy="173" r="6" />
+            </g>
+            <g class="lb">
+              <text x="174" y="70">VPS + Neon</text>
+              <text x="244" y="104">DO droplet + PG</text>
+              <text x="261" y="277">DO App Platform</text>
+              <text x="277" y="311">Render</text>
+              <text x="311" y="226" text-anchor="middle">Fly.io</text>
+              <text x="344" y="204">Azure App Service</text>
+              <text x="348" y="252">AWS App Runner</text>
+              <text x="661" y="104" text-anchor="end">AWS profesional</text>
+              <text x="798" y="170" text-anchor="end">Google Cloud</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption><b>La zona sombreada es donde conviene estar si no sos devops.</b> Las dos opciones de VPS están arriba a la izquierda: pagás poco y trabajás mucho. AWS en su versión profesional está arriba a la derecha, que es el peor cuadrante para un MVP: caro <em>y</em> con mucho para administrar. El esfuerzo de operación es un juicio, no una medición: cuenta cuántas de las filas del diagrama de la sección 4 caen de tu lado.</figcaption>
+      </figure>
+    </section>
+
+    <section id="s6">
+      <div class="eyebrow">Zoom in · proveedores</div>
+      <h2><span class="num">06</span>Proveedor por proveedor</h2>
+      <p class="lead">Cada tarjeta dice cómo se vería <em>tu</em> stack ahí, qué se paga, y en qué caso conviene. Los precios son de lista al 18/08/2026 y los totales son estimaciones para los dos entornos.</p>
+
+      <h3>Las nubes grandes</h3>
+
+      <div class="pcard">
+        <div class="pcard-h"><h3>AWS</h3><span class="chip neutral"><span class="dot"></span>Modelo A o B</span><span class="chip warn"><span class="dot"></span>sin región en Argentina</span><span class="price">64 <small>· prof. 122–168</small></span></div>
+        <div class="pcard-b">
+          <p>La API y el JobService van en <strong>App Runner</strong>, que es lo más parecido a un PaaS que tiene AWS: le das la imagen y te devuelve una URL HTTPS con balanceo incluido. La base en <strong>RDS PostgreSQL</strong>, los frontends en S3 con CloudFront, y el DNS en Route 53.</p>
+          <div class="pc-cols">
+            <div>
+              <h4>Qué se paga</h4>
+              <ul>
+                <li>App Runner: 0,064 USD por vCPU-hora y 0,007 por GB-hora. Un servicio 0,25 vCPU / 0,5 GB activo todo el mes son <strong>14 USD</strong>; si está mayormente ocioso baja a ~2,6, porque la vCPU sólo se cobra cuando procesa.</li>
+                <li>RDS <span class="mono">db.t4g.micro</span> single-AZ: <strong>11,7 USD</strong> + 2,3 de storage. Multi-AZ en <span class="mono">db.t4g.small</span>: 46,7.</li>
+                <li>CloudFront tiene 1 TB al mes gratis para siempre: los dos frontends salen <strong>0</strong>.</li>
+                <li>Route 53: 0,50 por zona. ACM (certificados): gratis.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Lo que hay que saber</h4>
+              <ul>
+                <li>App Runner <strong>evita el ALB y el NAT gateway</strong>, que juntos son unos 50 USD al mes. Es la diferencia entre 64 y 168.</li>
+                <li>El JobService no expone HTTP y App Runner espera un puerto: hay que darle un <span class="mono">/health</span> mínimo, o correrlo en Fargate.</li>
+                <li>Si vas a Fargate: poné las tareas en subred pública con IP propia y evitás el NAT. Un solo ALB con reglas por host sirve a los dos entornos.</li>
+                <li>Sin región en Sudamérica cerca: São Paulo existe pero es caro; desde Argentina, us-east-1 son unos 140 ms.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="footnote"><strong>Cuándo elegirlo:</strong> si ya tenés algo en AWS, si el club o un tercero exige AWS, o si pensás usar RDS en serio más adelante. Para empezar de cero sin nada más en AWS, estás pagando complejidad que no usás.</p>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="pcard-h"><h3>Microsoft Azure</h3><span class="chip neutral"><span class="dot"></span>Modelo A</span><span class="chip warn"><span class="dot"></span>Brazil South duplica la base</span><span class="price">63 <small>· prof. 162</small></span></div>
+        <div class="pcard-b">
+          <p>Es la más ordenada de las tres grandes para este caso, por un detalle: <strong>un plan de App Service cobra por instancia, no por aplicación</strong>. La API y el JobService entran en el mismo plan B1 sin pagar dos veces. Los frontends van en Static Web Apps, que en plan gratis alcanza.</p>
+          <div class="pc-cols">
+            <div>
+              <h4>Qué se paga</h4>
+              <ul>
+                <li>App Service B1 Linux: <strong>12,41 USD/mes</strong> por entorno, con las dos aplicaciones adentro. B2: 24,82. P0v3: 56,58.</li>
+                <li>PostgreSQL Flexible B1ms: <strong>12,41</strong> + 3,68 de storage (32 GB). B2s: 49,64.</li>
+                <li>Static Web Apps: <strong>gratis</strong> (2 dominios propios por app). El plan Standard son 9 USD por app.</li>
+                <li>Container Registry Basic: 5,07. DNS: 0,50 por zona.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Lo que hay que saber</h4>
+              <ul>
+                <li><span class="chip bad"><span class="dot"></span>Ojo</span> <strong>Brazil South duplica el precio de PostgreSQL</strong> (+106% contra East US, tanto cómputo como storage). App Service sube 18%, pero la base se va al doble. Si la latencia no es crítica, quedate en East US.</li>
+                <li>Container Apps parece más moderno pero con dos procesos siempre vivos termina costando más que el B1 compartido, salvo que el uso real sea casi todo ocioso.</li>
+                <li>Static Web Apps no existe en East US ni en Brazil South: los frontends se anclan a East US 2. No es un problema, pero sorprende.</li>
+                <li>Hay un tramo gratis de 12 meses para PostgreSQL B1ms atado a la cuenta nueva. Sirve para arrancar, no para presupuestar.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="footnote"><strong>Cuándo elegirlo:</strong> si tenés créditos de Azure (Visual Studio, programas de startup) o si el club ya vive en Microsoft. El truco del plan compartido lo vuelve competitivo con cualquiera.</p>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="pcard-h"><h3>Google Cloud</h3><span class="chip neutral"><span class="dot"></span>Modelo B</span><span class="chip bad"><span class="dot"></span>el más caro para este caso</span><span class="price">178 <small>· con HA 229</small></span></div>
+        <div class="pcard-b">
+          <p>Cloud Run es excelente para servicios que escalan a cero, y ahí está el problema: <strong>tu worker no puede escalar a cero</strong>. Con la CPU siempre asignada, un servicio de 0,5 vCPU / 512 MiB cuesta unos 35 USD al mes, y son dos entornos. La base es la otra mitad del problema.</p>
+          <div class="pc-cols">
+            <div>
+              <h4>Qué se paga</h4>
+              <ul>
+                <li>Cloud Run: 0,000024 USD por vCPU-segundo. El worker 24/7 son <strong>~35 USD/mes</strong> por entorno; la API, escalando a cero, casi nada.</li>
+                <li>Cloud SQL: el tier más chico razonable con núcleo dedicado ronda los <strong>49 USD/mes</strong> más storage. Los shared-core baratos no tienen SLA.</li>
+                <li>Firebase Hosting cubre los dos frontends <strong>gratis</strong>.</li>
+                <li>Memorystore Redis: mínimo 1 GB, unos <strong>36 USD/mes</strong>. No hay nada más chico.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Lo que hay que saber</h4>
+              <ul>
+                <li>El <em>domain mapping</em> nativo de Cloud Run sigue sin ser recomendado para producción: para dominio propio Google te manda a un balanceador global, que son <strong>18 USD/mes fijos</strong> por entorno.</li>
+                <li>El tramo gratis de Cloud Run es por cuenta de facturación, no por servicio: con dos entornos se consume solo.</li>
+                <li>Los precios oficiales de GCP no se pueden leer sin ejecutar JavaScript, así que buena parte de estos números viene de fuentes secundarias. Verificalos en la calculadora antes de decidir.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="footnote"><strong>Cuándo elegirlo:</strong> si tenés los 300 USD de crédito inicial y querés estirarlos, o si algún día el sistema se vuelve muy variable en tráfico. Para dos procesos siempre vivos, es la peor relación precio-encaje de las tres.</p>
+        </div>
+      </div>
+
+      <h3>Las intermedias</h3>
+
+      <div class="pcard pick">
+        <div class="pcard-h"><h3>DigitalOcean</h3><span class="chip good"><span class="dot"></span>Recomendada</span><span class="chip neutral"><span class="dot"></span>Modelo A o C</span><span class="price">43 <small>· droplet 39</small></span></div>
+        <div class="pcard-b">
+          <p>Es el punto medio más limpio: precios fijos que entendés sin calculadora, PostgreSQL gestionado de verdad, y App Platform corre contenedores sin pedirte que armes una red. Los sitios estáticos son gratis hasta tres.</p>
+          <div class="pc-cols">
+            <div>
+              <h4>Qué se paga · App Platform</h4>
+              <ul>
+                <li>Contenedor 1 vCPU / 512 MiB: <strong>5 USD</strong>. Con 1 GiB: 10. Los workers cuestan igual que los servicios.</li>
+                <li>Prod: API de 1 GiB (10) + worker de 512 MiB (5) = 15. Test con los dos chicos = 10.</li>
+                <li><strong>3 sitios estáticos gratis</strong>, el cuarto 3 USD. Con dos frontends por dos entornos son cuatro: 3 USD.</li>
+                <li>PostgreSQL gestionado 1 GiB, un nodo: <strong>15,15 USD</strong>, con las dos bases adentro.</li>
+                <li>DNS gratis. Registry: el gratuito da 1 repo y necesitás dos, así que Basic 5 USD o GitHub Container Registry gratis.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Lo que hay que saber</h4>
+              <ul>
+                <li><span class="chip warn"><span class="dot"></span>Importante</span> El plan de base de 1 GiB <strong>no admite réplica de reserva</strong>. La alta disponibilidad arranca en el de 2 GiB y sale unos 61 USD. Para el MVP el de 15 está bien: tiene backups diarios y restauración a un punto en el tiempo.</li>
+                <li>La variante droplet sale casi lo mismo (24 USD un 4 GB/2 vCPU) pero te vuelve el administrador del sistema operativo. Sólo conviene si querés aprender eso.</li>
+                <li><strong>No hay datacenter en Sudamérica</strong>: el más cercano es Nueva York, unos 140 ms desde Argentina contra 30 desde São Paulo. Para una grilla de reservas se nota poco; para escribir en un formulario, nada.</li>
+                <li>Kubernetes gestionado existe y el control plane es gratis, pero el piso real son unos 48 USD por entorno. No para esto.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="footnote"><strong>Cuándo elegirlo:</strong> es el que recomiendo para arrancar. Un solo proveedor, una sola factura, precios fijos, y el día que quieras irte todo son contenedores y un <span class="mono">pg_dump</span>.</p>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="pcard-h"><h3>Render</h3><span class="chip good"><span class="dot"></span>La más simple</span><span class="chip neutral"><span class="dot"></span>Modelo A</span><span class="price">47</span></div>
+        <div class="pcard-b">
+          <p>El PaaS más directo de la lista: conectás el repo, declarás un servicio web, un <em>background worker</em> y una base, y listo. Los sitios estáticos son gratis y con dominio propio.</p>
+          <div class="pc-cols">
+            <div>
+              <h4>Qué se paga</h4>
+              <ul>
+                <li>Web Service Starter (0,5 vCPU / 512 MB): <strong>7 USD</strong>. Standard (1 vCPU / 2 GB): 25.</li>
+                <li>Background Worker: misma escala, <strong>7 USD</strong> el chico. Es exactamente lo que necesita el JobService — no hay que fingir un puerto HTTP.</li>
+                <li>Sitios estáticos: <strong>gratis</strong>.</li>
+                <li>PostgreSQL: desde <strong>6 USD</strong> el Basic de 256 MB; el de 1 GB ronda los 19.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Lo que hay que saber</h4>
+              <ul>
+                <li>Es el único proveedor de la lista con un tipo de servicio que <em>es</em> un worker. Encaja con la arquitectura sin adaptaciones.</li>
+                <li>El plan gratis de base <strong>expira a los 30 días</strong>. No lo uses ni para test.</li>
+                <li>Sin región en Sudamérica (Oregon, Ohio, Virginia, Frankfurt, Singapur). Verificalo si la latencia te importa.</li>
+                <li>4 servicios pagos (API y worker por dos entornos) son 28 USD antes de la base: es el precio de no pensar en infraestructura nunca más.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="footnote"><strong>Cuándo elegirlo:</strong> si querés la menor cantidad de decisiones posible y no te molesta pagar 4 USD más que en DigitalOcean. Es la opción con menos superficie para equivocarse.</p>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="pcard-h"><h3>Fly.io</h3><span class="chip good"><span class="dot"></span>Región São Paulo</span><span class="chip warn"><span class="dot"></span>la base es cara</span><span class="price">58 <small>· 96 con 2 bases</small></span></div>
+        <div class="pcard-b">
+          <p>Las máquinas de Fly son baratísimas —una de 256 MB siempre encendida cuesta menos de 2 USD al mes— y tiene región en São Paulo, que es la más cerca de Argentina de toda la lista. El problema está en la base.</p>
+          <div class="pc-cols">
+            <div>
+              <h4>Qué se paga</h4>
+              <ul>
+                <li>Máquina <span class="mono">shared-cpu-1x</span> 256 MB siempre encendida: <strong>~1,94 USD/mes</strong>. Con 512 MB o 1 GB, todavía barato.</li>
+                <li>Managed Postgres Basic (compartida, 1 GB): <strong>38 USD/mes</strong>. El siguiente escalón son 72.</li>
+                <li>Storage de base: 0,28 USD por GB provisionado.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Lo que hay que saber</h4>
+              <ul>
+                <li>La base gestionada cuesta más que todo el cómputo junto. Con una sola base para los dos entornos son ~58 USD; con una por entorno, 96.</li>
+                <li>El tramo gratis que Fly tenía ya no existe.</li>
+                <li>Tiene la mejor latencia posible desde Argentina con base gestionada, si eso pesa en la decisión.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="footnote"><strong>Cuándo elegirlo:</strong> si la latencia es un criterio duro y querés todo gestionado. Si no, DigitalOcean o Render dan lo mismo más barato.</p>
+        </div>
+      </div>
+
+      <h3>Los VPS</h3>
+
+      <div class="pcard">
+        <div class="pcard-h"><h3>Hostinger</h3><span class="chip good"><span class="dot"></span>Datacenter en São Paulo</span><span class="chip bad"><span class="dot"></span>sin PostgreSQL gestionado</span><span class="price">15 <small>· + base aparte</small></span></div>
+        <div class="pcard-b">
+          <p>El VPS más barato con un datacenter cerca. Un KVM 2 (2 vCPU, 8 GB, 100 GB NVMe) cuesta 8,99 USD/mes con el pago adelantado de dos años, y <strong>14,99 al renovar</strong> — ese es el número que hay que usar para presupuestar.</p>
+          <div class="pc-cols">
+            <div>
+              <h4>Qué se paga</h4>
+              <ul>
+                <li>KVM 1 (1 vCPU, 4 GB): 6,49 promo / <strong>11,99 renovación</strong>.</li>
+                <li>KVM 2 (2 vCPU, 8 GB): 8,99 promo / <strong>14,99 renovación</strong>. Alcanza para los dos entornos completos.</li>
+                <li>DNS y certificados: gratis.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Lo que hay que saber</h4>
+              <ul>
+                <li><span class="chip bad"><span class="dot"></span>Decisivo</span> <strong>Hostinger no ofrece PostgreSQL gestionado.</strong> Lo que ofrece es una plantilla para levantar Postgres en Docker dentro de tu VPS: los backups, las actualizaciones y el <em>restore</em> son tuyos. Eso incumple tu requisito, salvo que combines el VPS con una base gestionada de otro proveedor.</li>
+                <li>Tampoco hay PaaS: lo que dan son plantillas con Coolify, Easypanel o Docker puro. Coolify te da deploy por git y TLS automático, pero corre en tu máquina y lo mantenés vos.</li>
+                <li><strong>Tiene datacenter en São Paulo</strong> (~30 ms desde Argentina). Es la única opción barata con esa ventaja.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="footnote"><strong>Cuándo elegirlo:</strong> combinado con una base gestionada externa (ver abajo). Solo, no — la base adentro del VPS es exactamente lo que dijiste que no querías.</p>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="pcard-h"><h3>Hetzner</h3><span class="chip warn"><span class="dot"></span>subió mucho en 2026</span><span class="chip bad"><span class="dot"></span>sin Sudamérica</span><span class="price">~12 <small>· 2 servidores</small></span></div>
+        <div class="pcard-b">
+          <p>Era la referencia de precio en Europa y en 2026 dejó de serlo del todo. Hubo <strong>dos aumentos</strong>: en abril subieron las CX (un CX23 pasó de 3,99 a 5,49 €) y el 15 de junio las CPX subieron entre 2,4 y 2,75 veces (un CPX22 pasó de 7,99 a 19,49 €).</p>
+          <div class="pc-cols">
+            <div>
+              <h4>Qué se paga</h4>
+              <ul>
+                <li>CX23: <strong>5,49 €/mes</strong>. CX33: 8,49. CX43: 15,99.</li>
+                <li>Las CPX ya no son competitivas para este tamaño.</li>
+                <li>No ofrece PostgreSQL gestionado.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Lo que hay que saber</h4>
+              <ul>
+                <li>Ubicaciones: Alemania, Finlandia, Oregon, Virginia y Singapur. <strong>Nada en Sudamérica</strong>: desde Argentina a Alemania son unos 220 ms.</li>
+                <li>Sigue siendo de lo más barato del mundo por GB de RAM, pero la ventaja contra Hostinger o un droplet ya no justifica la latencia.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="footnote"><strong>Cuándo elegirlo:</strong> si el sistema fuera para Europa. Para un club en Chaco, no.</p>
+        </div>
+      </div>
+
+      <h3>Las dos que no estabas considerando</h3>
+      <p>Estas son las que pediste: alternativas fuera de la lista original que cambian la ecuación de precio.</p>
+
+      <div class="pcard">
+        <div class="pcard-h"><h3>1 · Desacoplar la base del hosting</h3><span class="chip good"><span class="dot"></span>Neon · Supabase</span><span class="chip good"><span class="dot"></span>São Paulo</span><span class="price">0 – 15</span></div>
+        <div class="pcard-b">
+          <p>La idea que rompe la comparación: <strong>la base gestionada no tiene por qué venir del mismo proveedor que el cómputo</strong>. Neon es PostgreSQL gestionado que se factura por uso, tiene un plan gratis permanente y —el dato que importa— <strong>una región en São Paulo</strong>. Combinado con un VPS barato, es la única forma de tener base gestionada, baja latencia y una factura de dos dígitos bajos.</p>
+          <div class="pc-cols">
+            <div>
+              <h4>Qué se paga</h4>
+              <ul>
+                <li><strong>Neon free</strong>: 0,5 GB de storage y 100 horas de cómputo por proyecto y por mes, permanente. Escala a cero a los 5 minutos de inactividad. Alcanza sobradamente para test, y para el prod de un club en sus primeros meses.</li>
+                <li><strong>Neon Launch</strong>: desde <strong>15 USD/mes</strong>, con storage a 0,35 USD por GB. Es el plan al que pasar cuando el club dependa del sistema.</li>
+                <li><strong>Supabase</strong>: gratis con 500 MB, pero <strong>pausa los proyectos tras una semana sin uso</strong>, lo que lo hace inservible para prod. El plan Pro son 25 USD por proyecto.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Lo que hay que saber</h4>
+              <ul>
+                <li><span class="chip warn"><span class="dot"></span>Ajuste de código</span> El JobService se conecta a una base llamada <span class="mono">postgres</span> y ejecuta <span class="mono">CREATE DATABASE</span>. En Neon la base por defecto se llama <span class="mono">neondb</span>. Neon <em>sí</em> admite varias bases por proyecto, pero ese arranque hay que tocarlo — o mover Hangfire a un esquema de la misma base, que es más simple.</li>
+                <li>Escalar a cero significa que la primera consulta después de un rato tarda más. Para el backoffice de un club es imperceptible; para el webhook de Mercado Pago, tenelo en cuenta.</li>
+                <li>Con Npgsql conviene usar la cadena con <em>pooler</em> y desactivar las sentencias preparadas automáticas, que es lo que suele romper contra un pgbouncer.</li>
+                <li>Supabase da <strong>una sola base</strong>: Hangfire iría a un esquema, sí o sí.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="footnote"><strong>La combinación concreta:</strong> Hostinger KVM 2 en São Paulo (15 USD) + Neon free o Launch (0 a 15) = <strong>entre 15 y 30 USD al mes</strong>, con base gestionada de verdad y 30 ms de latencia. Lo que pagás a cambio: sos el administrador del sistema operativo del VPS.</p>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="pcard-h"><h3>2 · Los servicios por uso para las piezas chicas</h3><span class="chip good"><span class="dot"></span>Upstash · Oracle</span><span class="price">0 – 2</span></div>
+        <div class="pcard-b">
+          <p>Para las piezas que todavía no existen —Redis, y más adelante el email— hay proveedores que cobran por petición y no por hora. A la escala de un club, eso es cero.</p>
+          <div class="pc-cols">
+            <div>
+              <h4>Upstash Redis</h4>
+              <ul>
+                <li>Plan gratis: <strong>256 MB y 500.000 comandos por mes</strong>. Un club no llega ni cerca.</li>
+                <li>Por uso: 0,20 USD cada 100.000 comandos. Una base ociosa cuesta <strong>0</strong>.</li>
+                <li>Contra los ~16 USD/mes de un Redis chico en Azure o los ~36 de Memorystore, la diferencia es el precio entero de tu infraestructura.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Oracle Cloud Always Free</h4>
+              <ul>
+                <li>Regala máquinas ARM permanentemente. <strong>Pero</strong> en 2026 recortaron la asignación de 4 OCPU / 24 GB a 2 OCPU / 12 GB, sin anuncio oficial.</li>
+                <li>La letra chica real: hay que conseguir capacidad —"out of capacity" es habitual—, los recursos gratis quedan atados a la región de origen que elegís una sola vez, y hay historial de cuentas suspendidas sin aviso.</li>
+                <li><span class="chip bad"><span class="dot"></span>No</span> Gratis y sin garantías no es donde va el sistema con el que un club cobra. Sirve para un entorno de test, no para prod.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="footnote"><strong>Cómo usarlas:</strong> Upstash el día que agregues Redis, en cualquiera de las opciones de arriba — no te ata a nada. Oracle, sólo si querés un test gratis y te da lo mismo perderlo.</p>
+        </div>
+      </div>
+    </section>
+
 
     <section id="s7">
       <div class="eyebrow">Zoom in · red</div>
@@ -904,7 +1307,7 @@
             <tr><td class="name">CORS fijo a localhost</td><td class="mono">Api/Program.cs:73</td><td><span class="mono">WithOrigins("http://localhost:5184", …)</span> está escrito en el código. Desde el dominio real, el navegador bloquea toda llamada. Tiene que salir de configuración.</td></tr>
             <tr><td class="name">Migraciones sólo en Development</td><td class="mono">Api/Program.cs:80-86</td><td>En prod nadie corre <span class="mono">MigrateAsync</span>. Hay que decidir quién: un paso del deploy, o el arranque de la API con un lock. Y en prod no se siembra.</td></tr>
             <tr><td class="name"><span class="mono">CREATE DATABASE</span> al arrancar</td><td class="mono">JobService/Program.cs:57-73</td><td>El JobService se conecta a la base <span class="mono">postgres</span> y crea <span class="mono">clubspot-hangfire</span> si falta. En varios Postgres gestionados eso no está permitido, o no existe una base llamada <span class="mono">postgres</span>. Alternativa: dejar Hangfire en un <em>esquema</em> aparte de la misma base.</td></tr>
-            <tr><td class="name">Secretos en configuración</td><td class="mono">Jwt:SigningKey</span>, MP</td><td>La clave de firma de ejemplo dice <span class="mono">development-only</span>. En prod van por variable de entorno del proveedor, nunca en un archivo del repo.</td></tr>
+            <tr><td class="name">Secretos en configuración</td><td><span class="mono">Jwt:SigningKey</span> y MP</td><td>La clave de firma de ejemplo dice <span class="mono">development-only</span>. En prod van por variable de entorno del proveedor, nunca en un archivo del repo.</td></tr>
             <tr><td class="name">Un build de frontend por entorno</td><td class="mono">frontend/*/src/api/config.ts</td><td><span class="mono">VITE_API_URL</span> se resuelve en tiempo de build. El pipeline tiene que compilar dos veces, con la variable de cada entorno.</td></tr>
           </tbody>
         </table>
@@ -980,6 +1383,121 @@ reservas.clubspot.com.ar { root * /srv/reservas;   try_files {path} /index.html;
       <p class="footnote">El <span class="mono">try_files … /index.html</span> no es decorativo: sin eso, recargar el navegador en <span class="mono">/reservas/canchas</span> da 404, porque el archivo no existe — la ruta la resuelve React en el cliente.</p>
     </section>
 
-<!--CLOSE-->
+    <section id="s10">
+      <div class="eyebrow">Decisión</div>
+      <h2><span class="num">10</span>Recomendación</h2>
+      <p class="lead">Con el requisito de base gestionada, dos entornos y alguien que programa pero no quiere ser administrador de sistemas, la respuesta es corta: <strong>DigitalOcean App Platform con su PostgreSQL gestionado</strong>, unos 43 dólares al mes por los dos entornos.</p>
+
+      <div class="tiles">
+        <div class="tile"><div class="lab">Recomendado</div><div class="val">43 <small>USD/mes</small></div><div class="sub">DO App Platform + Managed PostgreSQL, test y prod</div></div>
+        <div class="tile"><div class="lab">Si querés gastar menos</div><div class="val">15–30 <small>USD/mes</small></div><div class="sub">Hostinger São Paulo + Neon, a cambio de administrar el VPS</div></div>
+        <div class="tile"><div class="lab">Techo razonable</div><div class="val">122 <small>USD/mes</small></div><div class="sub">AWS bien configurado, si algo te obliga a estar ahí</div></div>
+        <div class="tile"><div class="lab">Lo que evitaría</div><div class="val">178 <small>USD/mes</small></div><div class="sub">Google Cloud: dos procesos siempre vivos es su peor caso</div></div>
+      </div>
+
+      <h3>Por qué esa y no otra</h3>
+      <ul>
+        <li><strong>Un solo proveedor y una sola factura.</strong> Contenedores, base, estáticos y DNS en el mismo panel. Con quince cosas por decidir en el producto, la infraestructura tiene que dejar de ser una de ellas.</li>
+        <li><strong>Precios fijos.</strong> Sabés lo que vas a pagar antes de encender nada. En AWS y Google el número final depende de decisiones de red que todavía no sabés que estás tomando.</li>
+        <li><strong>La base es gestionada de verdad</strong>, con backups diarios y restauración a un punto en el tiempo, en el plan de 15 dólares.</li>
+        <li><strong>No te ata.</strong> Todo son contenedores y un <span class="mono">pg_dump</span>. Mudarte a Render, a Fly o a un VPS es cuestión de horas, no de reescribir nada. Eso no es cierto si te apoyás en servicios propios de AWS o Azure.</li>
+      </ul>
+      <p>Render queda a cuatro dólares de distancia y es aún más simple —tiene un tipo de servicio que <em>es</em> un worker, que le calza exacto al JobService—. Si al probar los dos te resulta más cómodo, cambiá sin culpa: la diferencia de precio es ruido.</p>
+
+      <div class="callout">
+        <p class="ct">La alternativa barata, dicha con todas las letras</p>
+        <p>Hostinger en São Paulo más Neon te deja entre 15 y 30 dólares al mes, con base gestionada y una latencia cuatro veces mejor. Es una opción legítima y la ubicaría segunda. Lo que estás comprando con los 15 dólares de diferencia hacia DigitalOcean es no tener que aplicar parches de seguridad, no tener que arreglar Docker un domingo, y que cuando algo falle el problema esté del lado del proveedor. Si te divierte administrar un servidor, ahorrá; si te da lo mismo, no lo hagas.</p>
+      </div>
+
+      <h3>El camino, por etapas</h3>
+      <div class="tw">
+        <table>
+          <caption>Qué hacer y cuándo</caption>
+          <thead><tr><th>Etapa</th><th>Cuándo</th><th>Qué hacés</th><th class="num">Costo</th></tr></thead>
+          <tbody>
+            <tr><td class="name">0 · Preparar</td><td>Antes de contratar nada</td><td>Los seis puntos de la sección 9: Dockerfiles, CORS por configuración, migraciones en el deploy, Hangfire en esquema o base aparte, secretos por variable de entorno, dos builds de frontend.</td><td class="num">0</td></tr>
+            <tr><td class="name">1 · Primer deploy</td><td>Para mostrarle algo real al club</td><td>Sólo el entorno de test, con Neon free o el plan chico de base. Dominio comprado y apuntado. Sirve para probar el webhook de Mercado Pago contra una URL pública, que en <span class="mono">localhost</span> no se puede.</td><td class="num">~15</td></tr>
+            <tr><td class="name">2 · Producción</td><td>Cuando el club empiece a usarlo</td><td>Se agrega el entorno de prod con su propia base lógica, el monitoreo de <span class="mono">/health</span> y Sentry. Probás un restore de backup una vez, de verdad.</td><td class="num">~43</td></tr>
+            <tr><td class="name">3 · Cuando importe</td><td>Cuando el club cobre con esto</td><td>Base con réplica de reserva (el plan de 2 GiB), servidor de base separado para prod, y recién ahí Redis si la agenda lo pide.</td><td class="num">~90</td></tr>
+            <tr><td class="name">4 · Varios clubes</td><td>Si el producto se vende</td><td>Recién ahí tiene sentido revisar todo esto: subdominios por club, réplicas de la API, y quizás la conversación sobre Kubernetes.</td><td class="num">a revisar</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Lo primero que haría el lunes</h3>
+      <ol class="body-list">
+        <li>Comprar el dominio y poner la zona en Cloudflare. Es lo único con plazo de entrega real y no depende de ninguna otra decisión.</li>
+        <li>Escribir los dos Dockerfiles y verificar que la imagen arranca localmente con <span class="mono">ASPNETCORE_ENVIRONMENT=Production</span> — ahí van a saltar el CORS y las migraciones.</li>
+        <li>Sacar el CORS del código a configuración. Es un cambio de diez minutos que bloquea todo lo demás.</li>
+        <li>Decidir Hangfire: base aparte o esquema. Si elegís esquema, el <span class="mono">CREATE DATABASE</span> del arranque desaparece y te abrís la puerta a cualquier proveedor de base.</li>
+        <li>Crear la cuenta, levantar sólo test, y hacer que el webhook de Mercado Pago llegue de verdad. Ese es el hito que valida toda la infraestructura de una vez.</li>
+      </ol>
+    </section>
+
+    <section id="s11">
+      <div class="eyebrow">Anexo</div>
+      <h2><span class="num">11</span>Supuestos y fuentes</h2>
+
+      <h3>Supuestos de los números</h3>
+      <ul>
+        <li>Precios de lista publicados por cada proveedor, relevados el <strong>18 y 19 de agosto de 2026</strong>. Los precios de nube cambian; verificá antes de contratar.</li>
+        <li>Mes = 730 horas, que es la convención de todos los proveedores.</li>
+        <li>Tráfico de un club: decenas de usuarios concurrentes en el peor momento, transferencia muy por debajo de cualquier tramo gratuito.</li>
+        <li>Región: Estados Unidos (us-east-1, East US, us-east1) salvo donde se aclara. Sudamérica se menciona cuando existe y cuando el precio cambia.</li>
+        <li><strong>Redis no está sumado en ningún total</strong>, porque todavía no hay código que lo use.</li>
+        <li>Los totales incluyen: cómputo de los dos contenedores por dos entornos, base gestionada, hosting de los dos frontends por dos entornos, DNS y registry.</li>
+      </ul>
+
+      <div class="callout warn">
+        <p class="ct"><span class="chip warn"><span class="dot"></span>No olvidar</span> Estos precios son sin impuestos</p>
+        <p>Todo lo de arriba son precios de lista en dólares. Pagando desde Argentina con tarjeta, encima van las percepciones impositivas que correspondan a servicios digitales del exterior, que no son menores y cambian seguido. El número que le lleves al club tiene que salir de tu contador, no de esta tabla: acá está el costo del proveedor, no el costo para vos.</p>
+      </div>
+
+      <h3>Qué se verificó y qué no</h3>
+      <ul>
+        <li><strong>Bien verificado</strong>: precios de AWS (páginas oficiales), Azure (API de precios minoristas de Microsoft, consultada directamente), DigitalOcean y Hostinger (páginas de precios oficiales), Neon, Upstash y Fly (documentación propia).</li>
+        <li><strong>Verificado con reservas</strong>: los precios de Google Cloud. Sus páginas oficiales renderizan los números con JavaScript y no se pudieron leer directo, así que la mayoría viene de agregadores. La conclusión —que es la opción más cara para este caso— es robusta, porque depende de dos hechos verificados: el worker no puede escalar a cero, y el tier chico de Cloud SQL cuesta lo que cuesta. Los decimales, no.</li>
+        <li><strong>No verificado</strong>: los precios de los droplets premium de DigitalOcean, el ancho de banda incluido en Static Web Apps Standard, la lista exacta de regiones de Render, y si el tramo gratis de 12 meses de PostgreSQL en Azure aplica a dos entornos de la misma cuenta.</li>
+        <li><strong>Cambió hace poco</strong>: Hetzner aumentó precios dos veces en 2026 (abril y 15 de junio), con subas de hasta 2,75 veces en la línea CPX. Oracle recortó su tramo Always Free de 4 OCPU a 2 sin anuncio. Fly eliminó su tramo gratuito. Si estás leyendo esto meses después, esos tres son los primeros a rechequear.</li>
+      </ul>
+
+      <h3>Fuentes</h3>
+      <ul class="srcs">
+        <li><a href="https://aws.amazon.com/apprunner/pricing/">AWS App Runner</a></li>
+        <li><a href="https://aws.amazon.com/fargate/pricing/">AWS Fargate</a></li>
+        <li><a href="https://aws.amazon.com/elasticloadbalancing/pricing/">AWS Elastic Load Balancing</a></li>
+        <li><a href="https://aws.amazon.com/vpc/pricing/">AWS VPC y NAT Gateway</a></li>
+        <li><a href="https://aws.amazon.com/cloudfront/pricing/pay-as-you-go/">AWS CloudFront</a></li>
+        <li><a href="https://aws.amazon.com/route53/pricing/">AWS Route 53</a></li>
+        <li><a href="https://aws.amazon.com/elasticache/pricing/">AWS ElastiCache</a></li>
+        <li><a href="https://aws.amazon.com/certificate-manager/pricing/">AWS Certificate Manager</a></li>
+        <li><a href="https://prices.azure.com/api/retail/prices">API de precios minoristas de Azure</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/azure/app-service/overview-hosting-plans">Azure · planes de App Service</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/azure/static-web-apps/plans">Azure Static Web Apps</a></li>
+        <li><a href="https://cloud.google.com/run/pricing">Google Cloud Run</a></li>
+        <li><a href="https://cloud.google.com/sql/docs/postgres/pricing">Google Cloud SQL</a></li>
+        <li><a href="https://firebase.google.com/pricing">Firebase Hosting</a></li>
+        <li><a href="https://www.digitalocean.com/pricing/app-platform">DigitalOcean App Platform</a></li>
+        <li><a href="https://www.digitalocean.com/pricing/managed-databases">DigitalOcean Managed Databases</a></li>
+        <li><a href="https://www.digitalocean.com/pricing/droplets">DigitalOcean Droplets</a></li>
+        <li><a href="https://www.digitalocean.com/pricing/kubernetes">DigitalOcean Kubernetes</a></li>
+        <li><a href="https://www.hostinger.com/vps-hosting">Hostinger VPS</a></li>
+        <li><a href="https://www.hostinger.com/applications/postgresql">Hostinger · PostgreSQL en VPS</a></li>
+        <li><a href="https://www.hostinger.com/blog/brazilian-vps-data-center/">Hostinger · datacenter en Brasil</a></li>
+        <li><a href="https://www.hetzner.com/cloud/">Hetzner Cloud</a></li>
+        <li><a href="https://northflank.com/blog/hetzner-cloud-server-price-increases">Hetzner · aumentos de 2026</a></li>
+        <li><a href="https://render.com/pricing">Render</a></li>
+        <li><a href="https://fly.io/docs/about/pricing/">Fly.io · recursos</a></li>
+        <li><a href="https://fly.io/docs/mpg/">Fly.io · Managed Postgres</a></li>
+        <li><a href="https://neon.com/pricing">Neon</a></li>
+        <li><a href="https://neon.com/docs/introduction/regions">Neon · regiones</a></li>
+        <li><a href="https://supabase.com/pricing">Supabase</a></li>
+        <li><a href="https://upstash.com/pricing/redis">Upstash Redis</a></li>
+        <li><a href="https://terminalbytes.com/oracle-cloud-free-tier-changes-2026/">Oracle · recorte del tramo gratuito</a></li>
+        <li><a href="https://wondernetwork.com/pings/Buenos%20Aires">Latencias desde Buenos Aires</a></li>
+      </ul>
+
+      <p class="footnote" style="margin-top:26px; padding-top:16px; border-top:1px solid var(--rule)">Documento generado el 19 de agosto de 2026 a partir del estado del repositorio en la rama <span class="mono">main</span>. Las referencias a archivos y números de línea corresponden a ese estado. Las decisiones de arquitectura citadas están en <span class="mono">docs/adr/</span>.</p>
+    </section>
   </main>
 </div>

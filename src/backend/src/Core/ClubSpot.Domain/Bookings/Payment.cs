@@ -62,7 +62,9 @@ public enum PaymentRail
 public enum PaymentKind
 {
     Full,
-    Deposit
+    Deposit,
+    // What a booking still owed after a deposit, whatever channel settles it.
+    Balance
 }
 
 public enum PaymentStatus

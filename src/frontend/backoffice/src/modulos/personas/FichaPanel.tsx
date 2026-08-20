@@ -18,7 +18,7 @@ const PESTANIAS: { id: Pestania; label: string }[] = [
  * Ficha de una persona. Lo primero que se ve es si debe plata y si está
  * bloqueada, porque de eso depende si se le puede vender un turno.
  */
-export function FichaPanel({ id, onCerrar }: { id: number; onCerrar: () => void }) {
+export function FichaPanel({ id, onCerrar }: { id: string; onCerrar: () => void }) {
   const avisar = useTostada();
   const { data } = useFicha(id);
   const agregarNota = useAgregarNota();
@@ -167,7 +167,6 @@ export function FichaPanel({ id, onCerrar }: { id: number; onCerrar: () => void 
               {[
                 { k: 'TURNOS', v: String(persona.turnos) },
                 { k: 'ÚLTIMA VEZ', v: persona.ultima || '—' },
-                { k: 'AUSENCIAS', v: persona.bloqueado ? '2' : '0' },
                 { k: 'SALDO', v: persona.deuda > 0 ? pesos(persona.deuda) : 'al día' },
               ].map((s) => (
                 <div
@@ -202,11 +201,6 @@ export function FichaPanel({ id, onCerrar }: { id: number; onCerrar: () => void 
                 k="email"
                 v={persona.email || 'sin email'}
                 estilo={{ font: `400 12.5px ${sans}`, color: persona.email ? c.tinta : c.textoGris2 }}
-              />
-              <FilaDato
-                k="deporte"
-                v={persona.deporte === 'padel' ? 'Pádel' : 'Fútbol 5'}
-                estilo={{ font: `400 12.5px ${sans}`, color: c.tinta }}
               />
               <FilaDato
                 k="origen"
@@ -338,9 +332,13 @@ export function FichaPanel({ id, onCerrar }: { id: number; onCerrar: () => void 
         <button
           type="button"
           onClick={() =>
-            alternarBloqueo.mutate(persona.id, {
-              onSuccess: (bloqueado) => avisar(bloqueado ? 'Ficha bloqueada' : 'Ficha desbloqueada'),
-            })
+            alternarBloqueo.mutate(
+              { id: persona.id, bloqueado: !persona.bloqueado },
+              {
+                onSuccess: (bloqueado) =>
+                  avisar(bloqueado ? 'Ficha bloqueada' : 'Ficha desbloqueada'),
+              },
+            )
           }
           style={{
             minHeight: 34,

@@ -2,6 +2,69 @@
 
 Registro de avance del [plan](plan-reserva-online.md). Lo más nuevo arriba.
 
+## 19/08/2026 — la base de personas contra la API real; se borró el mock del backoffice
+
+Última pantalla del backoffice que quedaba contra `api/store.ts`. Se borraron `store.ts` y
+`mockApi.ts`: **la consola ya no tiene una sola línea de mock**.
+
+Lo que hubo que terminar en el backend para que la pantalla no mintiera:
+
+- **Los contadores de turnos de una persona estaban stubbeados en cero** desde que se escribió
+  `PeopleQueries` ("hasta que existan las reservas"), y el filtro "Sin turnos" daba verdadero
+  para todo el mundo. Ahora salen de un contrato nuevo, **`IPersonBookings`**, declarado en
+  `Application/Bookings/` e implementado en Infrastructure: cuántos turnos tiene, cuándo jugó
+  por última vez, quiénes reservaron alguna vez y el historial de una ficha.
+- **Se consulta sólo si el tenant contrató `bookings`** (`ITenantModules`). Sin el módulo nadie
+  tiene turnos, que es una configuración soportada y no una feature rota (ADR-0012, §5).
+- El **historial de la ficha** es un endpoint del módulo de reservas
+  (`GET /api/people/{id}/bookings`, `RequireModule(Bookings)`), no de core: si el club no lo
+  contrató da 404 y el portal de la ficha se dibuja igual, sin la pestaña con datos.
+- **Una definición de "turno"**: confirmado o con hold vivo. Cancelado y vencido no cuentan ni
+  en el contador ni en el historial, así que los dos números no pueden discrepar.
+- **Bug encontrado por un test nuevo**: `GET /api/people?filter=withoutBookings` devolvía
+  **400**. La validación comparaba el valor crudo contra una lista en minúsculas, o sea que la
+  API rechazaba la grafía que ella misma publica en `totals`.
+- `PeoplePage` ahora informa su `pageSize`, para que el frontend no repita el 14 del servidor.
+
+En el frontend: `Persona.id` pasó de `number` a `string` (los ids son `Guid`), el adaptador
+`personasHttp.ts` entrega las fechas ya escritas, y se sacó de la ficha el dato de **ausencias**,
+que el mock inventaba a partir de si la persona estaba bloqueada.
+
+Verificado contra la API real (log de tráfico completo: login, contexto, tabla, búsqueda por
+nombre y por teléfono, los cuatro filtros, ficha, historial, alta, nota, bloqueo individual y
+masivo, pago, 404 de ficha inexistente, 400 de filtro inventado, 401 sin token).
+
+Tests: 79 unit + 64 integración en verde.
+
+## 19/08/2026 — la seña es 50% o 100%, y otros cierres chicos del code review
+
+Decisiones del usuario tomadas hoy:
+
+- **La seña es media entrada o entrada completa: 50 % o 100 %, nada en el medio.** Antes
+  `depositPercent` admitía cualquier valor entre 0 y 100, y en 0 la reserva se confirmaba
+  cobrando cero. Ahora la regla la imponen el agregado `Club` y un check constraint
+  (`"depositPercent" IN (50, 100)`, migración `DepositPercentHalfOrFull`).
+- **El saldo de una seña se asienta como `PaymentKind.Balance`.** Antes el tipo salía del
+  `PaymentMode` de la reserva, así que el segundo pago de una seña también decía `Deposit`.
+  Ahora lo decide lo que la reserva ya tenía cobrado, que es la misma consulta que detecta
+  plata duplicada.
+
+Y tres correcciones chicas que quedaban del code review del 18/08:
+
+- **La fila de pago guarda la moneda con la que liquidó el proveedor**, no la del club: antes
+  un pago en otra moneda quedaba marcado huérfano pero la fila decía ARS.
+- **Rate limiting**: se sacó la rama `X-Forwarded-For`, que era código muerto (`RemoteIpAddress`
+  nunca es null) y además habría sido un bypass, porque la cabecera la pone el cliente. Detrás
+  de un proxy el camino correcto es `UseForwardedHeaders`.
+- **Mercado Pago**: un estado que no es `approved` ni `rejected` —un reembolso, un contracargo—
+  deja un `LogWarning`. No implementa reembolsos (F07 sigue diferido), pero deja rastro.
+
+En el backoffice se sacó el **deporte de la base de personas** (columna, alta y ficha):
+`Person` ya no tiene deporte preferido desde ADR-0008.
+
+Tests: 79 unit + 63 integración en verde. Nuevos: la regla 50/100 en el agregado, la moneda
+ajena que se asienta como tal y queda huérfana, y el tipo del saldo de una seña.
+
 ## 18/08/2026 — liberación del hold al abandonar y disponibilidad sin cache viejo
 
 El usuario detectó que tras bloquear un turno y volver atrás lo veía disponible. Diagnóstico:

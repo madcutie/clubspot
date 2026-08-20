@@ -47,7 +47,7 @@ public static class PaymentEndpoints
 
         var outcome = await store.ApplyPaymentAsync(new PaymentNotification(
             request.BookingId, FakePaymentProvider.ProviderName, PaymentRail.Checkout,
-            request.ExternalId, request.Approved, request.Amount),
+            request.ExternalId, request.Approved, request.Amount, request.Currency),
             PaymentSource.Webhook, cancellationToken);
         return Results.Ok(new { outcome });
     }
@@ -92,5 +92,6 @@ public static class PaymentEndpoints
         return Results.Ok();
     }
 
-    private sealed record FakeWebhookRequest(Guid BookingId, string ExternalId, bool Approved, decimal? Amount);
+    private sealed record FakeWebhookRequest(Guid BookingId, string ExternalId, bool Approved, decimal? Amount,
+        string? Currency = null);
 }

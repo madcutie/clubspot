@@ -14,12 +14,11 @@ export interface Nota {
 }
 
 export interface Persona {
-  id: number;
+  id: string;
   nombre: string;
   tel: string;
   email: string;
   origen: Origen;
-  deporte: Deporte;
   turnos: number;
   /** Texto relativo listo para mostrar: "hace 3 días". `null` si nunca jugó. */
   ultima: string | null;

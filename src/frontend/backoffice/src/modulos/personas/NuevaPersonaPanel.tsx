@@ -1,17 +1,8 @@
 import { useState } from 'react';
 import { useCrearPersona } from '../../api/queries';
 import { BotonCerrar, Panel } from '../../ui/Panel';
-import { c, campoPanel, chipFiltro, mono, primario, sans } from '../../ui/theme';
+import { c, campoPanel, mono, primario, sans } from '../../ui/theme';
 import { useTostada } from '../../ui/Tostadas';
-
-/** Deporte habitual. "Los dos" se guarda como pádel: es sólo un dato de contacto. */
-const DEPORTES = [
-  { id: 'padel', label: 'Pádel' },
-  { id: 'futbol', label: 'Fútbol 5' },
-  { id: 'ambos', label: 'Los dos' },
-] as const;
-
-type OpcionDeporte = (typeof DEPORTES)[number]['id'];
 
 /**
  * Alta de mostrador. Pide lo mínimo para poder reservar a su nombre; el resto
@@ -24,7 +15,6 @@ export function NuevaPersonaPanel({ onCerrar }: { onCerrar: () => void }) {
   const [nombre, setNombre] = useState('');
   const [tel, setTel] = useState('');
   const [email, setEmail] = useState('');
-  const [deporte, setDeporte] = useState<OpcionDeporte>('padel');
 
   const listo = nombre.trim().length > 0 && tel.trim().length > 0;
 
@@ -97,21 +87,6 @@ export function NuevaPersonaPanel({ onCerrar }: { onCerrar: () => void }) {
             style={campoPanel()}
           />
         </div>
-        <div>
-          <Rotulo>DEPORTE HABITUAL</Rotulo>
-          <div style={{ display: 'flex', gap: 7 }}>
-            {DEPORTES.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => setDeporte(d.id)}
-                style={{ ...chipFiltro(deporte === d.id), padding: '0 13px' }}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div
@@ -148,12 +123,7 @@ export function NuevaPersonaPanel({ onCerrar }: { onCerrar: () => void }) {
           onClick={() => {
             if (!listo) return;
             crear.mutate(
-              {
-                nombre,
-                tel,
-                email,
-                deporte: deporte === 'futbol' ? 'futbol' : 'padel',
-              },
+              { nombre, tel, email },
               {
                 onSuccess: () => {
                   avisar('Persona agregada');

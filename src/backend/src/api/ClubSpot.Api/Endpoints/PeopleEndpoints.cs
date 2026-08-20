@@ -27,7 +27,8 @@ public static class PeopleEndpoints
         if (!TryParseFilter(filter, out var peopleFilter)) return Results.BadRequest();
         var result = await queries.SearchAsync(new PeopleSearch(q ?? string.Empty, peopleFilter, page ?? 0), cancellationToken);
         return Results.Ok(new PeoplePageResponse(result.Items.Select(PersonResponse.From), result.Total, result.Page, result.Pages,
-            result.Census, result.NeedsAttention, result.TotalDebt.Amount, result.Totals.ToDictionary(pair => ToWireFilter(pair.Key), pair => pair.Value)));
+            result.PageSize, result.Census, result.NeedsAttention, result.TotalDebt.Amount,
+            result.Totals.ToDictionary(pair => ToWireFilter(pair.Key), pair => pair.Value)));
     }
 
     private static async Task<IResult> GetAsync(Guid id, IPeopleQueries queries, CancellationToken cancellationToken)
@@ -67,9 +68,12 @@ public static class PeopleEndpoints
 
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
 
+    // Both sides of the check read the same normalized value: comparing the raw one rejected
+    // "withoutBookings", which is the very spelling this endpoint publishes in Totals.
     private static bool TryParseFilter(string? value, out PeopleFilter filter)
     {
-        filter = value?.ToLowerInvariant() switch
+        var normalized = value?.ToLowerInvariant();
+        filter = normalized switch
         {
             null or "" or "all" => PeopleFilter.All,
             "withoutbookings" => PeopleFilter.WithoutBookings,
@@ -77,7 +81,7 @@ public static class PeopleEndpoints
             "debt" => PeopleFilter.Debt,
             _ => default
         };
-        return value is null or "" or "all" or "withoutbookings" or "counter" or "debt";
+        return normalized is null or "" or "all" or "withoutbookings" or "counter" or "debt";
     }
 
     private static string ToWireFilter(PeopleFilter filter) => filter switch
@@ -94,16 +98,16 @@ public static class PeopleEndpoints
     private sealed record SetBlockRequest(bool Blocked);
     private sealed record AddNoteRequest(string Text);
     private sealed record PersonResponse(Guid Id, string Name, string Phone, string Email, PersonOrigin Origin,
-        int Bookings, DateTimeOffset? LastBookingAt, decimal Debt, bool IsBlocked, DateTimeOffset CreatedAt)
+        int Bookings, DateOnly? LastBookingOn, decimal Debt, bool IsBlocked, DateTimeOffset CreatedAt)
     {
         public static PersonResponse From(PersonListItem person) => new(person.Id, person.Name, person.Phone, person.Email,
-            person.Origin, person.Bookings, person.LastBookingAt, person.Debt.Amount,
+            person.Origin, person.Bookings, person.LastBookingOn, person.Debt.Amount,
             person.IsBlocked, person.CreatedAt);
         public static PersonResponse From(ClubSpot.Domain.Core.People.Person person) => new(person.Id, person.Name, person.Phone, person.Email,
             person.Origin, 0, null, person.Debt.Amount, person.IsBlocked, person.CreatedAt);
     }
-    private sealed record PeoplePageResponse(IEnumerable<PersonResponse> Items, int Total, int Page, int Pages, int Census,
-        int NeedsAttention, decimal TotalDebt, IReadOnlyDictionary<string, int> Totals);
+    private sealed record PeoplePageResponse(IEnumerable<PersonResponse> Items, int Total, int Page, int Pages,
+        int PageSize, int Census, int NeedsAttention, decimal TotalDebt, IReadOnlyDictionary<string, int> Totals);
     private sealed record PersonDetailsResponse(PersonResponse Person, IEnumerable<NoteResponse> Notes);
     private sealed record NoteResponse(string Text, string AuthorName, DateTimeOffset CreatedAt);
     private sealed record AffectedResponse(int Affected);

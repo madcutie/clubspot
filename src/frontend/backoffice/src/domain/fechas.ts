@@ -87,3 +87,21 @@ export function duracionTurno(minutos: number): string {
   const resto = minutos % 60;
   return resto ? `${horas} h ${resto}` : `${horas} h`;
 }
+
+/** "2026-08-16" a "hace 3 días", como lo diría el mostrador. */
+export function haceCuanto(iso: string): string {
+  const p = iso.split('-').map((x) => parseInt(x, 10));
+  const dia = new Date(p[0], p[1] - 1, p[2]);
+  const hoy = new Date();
+  const dias = Math.round(
+    (new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()).getTime() - dia.getTime()) / 86400000,
+  );
+  if (dias <= 0) return 'hoy';
+  if (dias === 1) return 'ayer';
+  if (dias < 7) return `hace ${dias} días`;
+  if (dias < 14) return 'hace 1 semana';
+  if (dias < 31) return `hace ${Math.floor(dias / 7)} semanas`;
+  if (dias < 62) return 'hace 1 mes';
+  if (dias < 365) return `hace ${Math.floor(dias / 30)} meses`;
+  return fechaLarga(iso);
+}

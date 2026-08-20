@@ -7,6 +7,7 @@ using MercadoPago.Client.Common;
 using MercadoPago.Client.Payment;
 using MercadoPago.Client.Preference;
 using MercadoPago.Error;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ClubSpot.Infrastructure.MercadoPago;
@@ -14,7 +15,8 @@ namespace ClubSpot.Infrastructure.MercadoPago;
 // Checkout Pro: one preference per hold, redirect to its init point. The webhook is the only
 // source of truth — the payment is always fetched back by id, never trusted from the POST body.
 // Orders (in-person Point/QR) will be a second capability of this same provider (ADR-0015).
-public sealed class MercadoPagoProvider(IOptions<MercadoPagoOptions> options, IClock clock) : IHostedCheckout
+public sealed class MercadoPagoProvider(
+    IOptions<MercadoPagoOptions> options, IClock clock, ILogger<MercadoPagoProvider> logger) : IHostedCheckout
 {
     public const string ProviderName = "mercadopago";
 
@@ -70,7 +72,13 @@ public sealed class MercadoPagoProvider(IOptions<MercadoPagoOptions> options, IC
             if (payment.ExternalReference is null || !Guid.TryParse(payment.ExternalReference, out var bookingId))
                 return null;
             // Provisional (18/08/2026): every status other than approved collapses into rejected, so a
-            // refund or a chargeback leaves the booking confirmed. Replaced when refunds are modelled.
+            // refund or a chargeback leaves the booking confirmed. Replaced when refunds are modelled;
+            // until then the warning is the only trace that the money moved the other way.
+            if (payment.Status is not ("approved" or "rejected"))
+                logger.LogWarning(
+                    "Mercado Pago payment {PaymentId} for booking {BookingId} reports status {Status}, " +
+                    "which is recorded as rejected because refunds are not modelled yet.",
+                    paymentId, bookingId, payment.Status);
             return new PaymentNotification(bookingId, ProviderName, PaymentRail.Checkout,
                 payment.Id?.ToString(CultureInfo.InvariantCulture) ?? paymentId,
                 payment.Status == "approved", payment.TransactionAmount, payment.CurrencyId);
@@ -92,10 +100,19 @@ public sealed class MercadoPagoProvider(IOptions<MercadoPagoOptions> options, IC
 
         // The reference is checked on the way back too: a filter the API silently ignores would
         // otherwise settle this booking with somebody else's payments.
-        return (search.Results ?? [])
+        var mine = (search.Results ?? [])
             .Where(payment => payment.Id is not null
-                && string.Equals(payment.ExternalReference, reference, StringComparison.OrdinalIgnoreCase)
-                && payment.Status is "approved" or "rejected")
+                && string.Equals(payment.ExternalReference, reference, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        foreach (var payment in mine.Where(payment => payment.Status is not ("approved" or "rejected")))
+            logger.LogWarning(
+                "Mercado Pago payment {PaymentId} for booking {BookingId} reports status {Status}, " +
+                "which reconciliation ignores because refunds are not modelled yet.",
+                payment.Id, bookingId, payment.Status);
+
+        return mine
+            .Where(payment => payment.Status is "approved" or "rejected")
             .Select(payment => new PaymentNotification(bookingId, ProviderName, PaymentRail.Checkout,
                 payment.Id!.Value.ToString(CultureInfo.InvariantCulture),
                 payment.Status == "approved", payment.TransactionAmount, payment.CurrencyId))

@@ -21,7 +21,17 @@ public static class BookingEndpoints
         group.MapPost("/bookings", CreateAsync);
         group.MapPost("/bookings/{id:guid}/cancel", CancelAsync);
         group.MapPost("/bookings/{id:guid}/checkout", CreateCheckoutAsync);
+        group.MapGet("/people/{id:guid}/bookings", GetPersonBookingsAsync);
         return app;
+    }
+
+    private static async Task<IResult> GetPersonBookingsAsync(Guid id, IPersonBookings personBookings,
+        CancellationToken cancellationToken)
+    {
+        var bookings = await personBookings.HistoryAsync(id, take: 20, cancellationToken);
+        return Results.Ok(bookings.Select(booking => new PersonBookingResponse(booking.Id, booking.Date,
+            booking.StartMinute, booking.DurationMinutes, booking.CourtName, booking.Sport,
+            booking.Price.Amount, booking.Paid, booking.Status)));
     }
 
     // Counter charge: hands the operator a link (shown as a QR) for the outstanding balance.
@@ -77,6 +87,8 @@ public static class BookingEndpoints
                 BookingOrigin.Counter, PaymentMode.Club, createdBy);
     }
 
+    private sealed record PersonBookingResponse(Guid Id, DateOnly Date, int StartMinute, int DurationMinutes,
+        string CourtName, Sport Sport, decimal Price, decimal Paid, BookingStatus Status);
     private sealed record BookingCreatedResponse(Guid Id, decimal Price);
 
     private sealed record BookingCheckoutResponse(string Url, decimal Amount, DateTimeOffset ExpiresAt);

@@ -19,10 +19,9 @@ public static class PortalRateLimits
                 QueueLimit = 0
             });
 
-    // Behind a reverse proxy the connection address is the proxy's: honour a forwarded address when
-    // one is configured upstream, and fall back to a single shared bucket rather than to no limit.
+    // Deliberately the connection address and nothing else: X-Forwarded-For is caller-supplied, so
+    // reading it here would hand an attacker a fresh bucket per request. Behind a reverse proxy the
+    // fix is UseForwardedHeaders with the proxy whitelisted, which rewrites RemoteIpAddress itself.
     private static string Caller(HttpContext context) =>
-        context.Connection.RemoteIpAddress?.ToString()
-        ?? context.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-        ?? "unknown";
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 }

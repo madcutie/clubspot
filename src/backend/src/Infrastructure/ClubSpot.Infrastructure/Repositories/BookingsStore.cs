@@ -137,10 +137,22 @@ internal sealed class BookingsStore(
         if (booking is null) return PaymentApplyOutcome.UnknownBooking;
 
         var club = await clubSettings.GetAsync(cancellationToken);
-        var kind = booking.PaymentMode == PaymentMode.OnlineDeposit ? PaymentKind.Deposit : PaymentKind.Full;
         var expected = ChargeAmountFor(booking.PaymentMode, booking.Price, club.DepositPercent);
+
+        // What the booking already settled answers two questions at once: what this payment is —
+        // a first charge or the balance left by a deposit — and whether it is duplicate money.
+        var settled = await db.Payments.AsNoTracking()
+            .Where(candidate => candidate.BookingId == booking.Id && candidate.Status == PaymentStatus.Approved)
+            .SumAsync(candidate => candidate.Amount.Amount, cancellationToken);
+        var kind = settled > 0m
+            ? PaymentKind.Balance
+            : booking.PaymentMode == PaymentMode.OnlineDeposit ? PaymentKind.Deposit : PaymentKind.Full;
+
+        // The row records the currency the provider actually settled in, not the one the club asked
+        // for: written the other way round, a mismatch would be invisible on the payment itself.
+        var currency = notification.Currency is { Length: 3 } reported ? reported : booking.Price.Currency;
         var amount = notification.Amount is { } charged
-            ? Money.Of(charged, booking.Price.Currency)
+            ? Money.Of(charged, currency)
             : expected;
 
         var payment = new Payment(Guid.NewGuid(), tenantContext.Current, booking.Id, notification.Provider,
@@ -160,10 +172,7 @@ internal sealed class BookingsStore(
             // A confirmed booking can still owe money (a deposit paid online, the balance at the
             // counter): only what arrives on top of a settled balance is duplicate money, and that
             // is flagged instead of being filed as one more ordinary payment.
-            var paid = await db.Payments.AsNoTracking()
-                .Where(candidate => candidate.BookingId == booking.Id && candidate.Status == PaymentStatus.Approved)
-                .SumAsync(candidate => candidate.Amount.Amount, cancellationToken);
-            var duplicate = paid >= booking.Price.Amount;
+            var duplicate = settled >= booking.Price.Amount;
             if (duplicate) payment.MarkOrphaned();
             await db.SaveChangesAsync(cancellationToken);
             return duplicate ? PaymentApplyOutcome.Orphaned : PaymentApplyOutcome.Confirmed;

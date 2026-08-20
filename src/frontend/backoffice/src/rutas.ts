@@ -59,11 +59,11 @@ export interface ParamsPersonas {
   filtro: FiltroPersonas;
   pagina: number;
   /** Ficha abierta en el panel lateral. */
-  ficha: number | null;
+  ficha: string | null;
   setQ: (v: string) => void;
   setFiltro: (v: FiltroPersonas) => void;
   setPagina: (v: number) => void;
-  abrirFicha: (id: number | null) => void;
+  abrirFicha: (id: string | null) => void;
   limpiar: () => void;
 }
 
@@ -71,8 +71,7 @@ export function useParamsPersonas(): ParamsPersonas {
   const [sp, setSp] = useSearchParams();
   const crudo = sp.get('filtro');
   const filtro = (FILTROS.find((f) => f === crudo) ?? 'todas') as FiltroPersonas;
-  const fichaCruda = sp.get('ficha');
-  const ficha = fichaCruda ? parseInt(fichaCruda, 10) : null;
+  const ficha = sp.get('ficha');
 
   const escribir = useCallback(
     (patch: Record<string, string | null>) => {
@@ -100,7 +99,7 @@ export function useParamsPersonas(): ParamsPersonas {
       setFiltro: (v: FiltroPersonas) =>
         escribir({ filtro: v === 'todas' ? null : v, pagina: null }),
       setPagina: (v: number) => escribir({ pagina: v === 0 ? null : String(v) }),
-      abrirFicha: (id: number | null) => escribir({ ficha: id == null ? null : String(id) }),
+      abrirFicha: (id: string | null) => escribir({ ficha: id }),
       limpiar: () => escribir({ q: null, filtro: null, pagina: null }),
     }),
     [escribir],
@@ -110,7 +109,7 @@ export function useParamsPersonas(): ParamsPersonas {
     q: sp.get('q') ?? '',
     filtro,
     pagina: entero(sp.get('pagina'), 0, 9999, 0),
-    ficha: ficha != null && !Number.isNaN(ficha) ? ficha : null,
+    ficha: ficha || null,
     ...acciones,
   };
 }

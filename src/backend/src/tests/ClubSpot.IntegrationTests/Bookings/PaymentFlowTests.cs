@@ -274,6 +274,8 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         Assert.Equal(2, payments.Count);
         Assert.All(payments, payment => Assert.Equal(PaymentStatus.Approved, payment.Status));
         Assert.Equal(created.Price, payments.Sum(payment => payment.Amount.Amount));
+        Assert.Equal(PaymentKind.Deposit, payments.Single(payment => payment.ExternalId == "fake-deposit-1").Kind);
+        Assert.Equal(PaymentKind.Balance, payments.Single(payment => payment.ExternalId == "fake-deposit-2").Kind);
     }
 
     [Fact]
@@ -300,6 +302,32 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         using var scope = tenantContext.BeginScope(SeedTenant);
         var payment = await db.Payments.SingleAsync(candidate => candidate.BookingId == created.Id);
         Assert.Equal(PaymentStatus.ApprovedOrphan, payment.Status);
+    }
+
+    [Fact]
+    public async Task A_payment_settled_in_another_currency_is_recorded_in_that_currency()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 26);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineFull", "362 400-0116");
+
+        var webhook = await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "fake-currency-1", approved = true,
+            amount = created.ChargeAmount, currency = "USD"
+        });
+        Assert.Equal(HttpStatusCode.OK, webhook.StatusCode);
+
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        var payment = await db.Payments.SingleAsync(candidate => candidate.BookingId == created.Id);
+        Assert.Equal("USD", payment.Amount.Currency);
+        Assert.Equal(PaymentStatus.ApprovedOrphan, payment.Status);
+        var booking = await db.Bookings.SingleAsync(candidate => candidate.Id == created.Id);
+        Assert.Equal(BookingStatus.PendingPayment, booking.Status);
     }
 
     [Fact]

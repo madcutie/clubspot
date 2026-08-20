@@ -9,7 +9,7 @@ internal sealed class ClubConfiguration : IEntityTypeConfiguration<Club>
     public void Configure(EntityTypeBuilder<Club> builder)
     {
         builder.ToTable("clubs", table =>
-            table.HasCheckConstraint("ckClubsDepositPercent", "\"depositPercent\" BETWEEN 0 AND 100"));
+            table.HasCheckConstraint("ckClubsDepositPercent", "\"depositPercent\" IN (50, 100)"));
 
         builder.HasKey(c => c.Id);
         builder.Property(c => c.Id).HasColumnName("id").ValueGeneratedNever();

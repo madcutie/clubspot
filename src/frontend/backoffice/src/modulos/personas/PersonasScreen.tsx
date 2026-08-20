@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useBloquearPersonas, usePersonas } from '../../api/queries';
-import { POR_PAGINA } from '../../api/mockApi';
 import { pesos } from '../../domain/dinero';
 import type { FiltroPersonas } from '../../domain/types';
 import { useParamsPersonas } from '../../rutas';
@@ -48,7 +47,7 @@ export function PersonasScreen() {
   });
   const bloquear = useBloquearPersonas();
 
-  const [marcadas, setMarcadas] = useState<number[]>([]);
+  const [marcadas, setMarcadas] = useState<string[]>([]);
   const [panel, setPanel] = useState<'nueva' | 'import' | null>(null);
 
   // Lo tipeado se escribe en la URL con retardo. Si el input leyera la URL en
@@ -76,9 +75,9 @@ export function PersonasScreen() {
 
   if (!data) return isLoading ? <Cargando que="la base" /> : null;
 
-  const { items, total, pagina, paginas } = data;
-  const desde = pagina * POR_PAGINA + 1;
-  const hasta = pagina * POR_PAGINA + items.length;
+  const { items, total, pagina, paginas, porPagina } = data;
+  const desde = pagina * porPagina + 1;
+  const hasta = pagina * porPagina + items.length;
   const todasMarcadas = items.length > 0 && marcadas.length === items.length;
 
   return (

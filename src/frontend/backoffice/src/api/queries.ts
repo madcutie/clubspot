@@ -28,13 +28,13 @@ import {
   registrarPago,
   type ConsultaPersonas,
   type NuevaPersona,
-} from './mockApi';
+} from './personasHttp';
 
 export const qk = {
   club: () => ['club'] as const,
   personas: () => ['personas'] as const,
   personasPagina: (q: ConsultaPersonas) => ['personas', q.filtro, q.q, q.pagina] as const,
-  ficha: (id: number | null) => ['ficha', id] as const,
+  ficha: (id: string | null) => ['ficha', id] as const,
   agenda: () => ['agenda'] as const,
   agendaDia: (deporte: Deporte, fecha: string) => ['agenda', deporte, fecha] as const,
   cobro: (reservaId: string) => ['cobro', reservaId] as const,
@@ -77,10 +77,10 @@ export function usePersonas(q: ConsultaPersonas) {
   });
 }
 
-export function useFicha(id: number | null) {
+export function useFicha(id: string | null) {
   return useQuery({
     queryKey: qk.ficha(id),
-    queryFn: () => fetchFicha(id as number),
+    queryFn: () => fetchFicha(id as string),
     enabled: id != null,
   });
 }
@@ -96,7 +96,7 @@ export function useCrearPersona() {
 export function useBloquearPersonas() {
   const inv = useInvalidar();
   return useMutation({
-    mutationFn: (v: { ids: number[]; bloqueado: boolean }) => bloquearPersonas(v.ids, v.bloqueado),
+    mutationFn: (v: { ids: string[]; bloqueado: boolean }) => bloquearPersonas(v.ids, v.bloqueado),
     onSuccess: () => {
       inv.personas();
       inv.fichas();
@@ -107,7 +107,7 @@ export function useBloquearPersonas() {
 export function useAlternarBloqueo() {
   const inv = useInvalidar();
   return useMutation({
-    mutationFn: (id: number) => alternarBloqueo(id),
+    mutationFn: (v: { id: string; bloqueado: boolean }) => alternarBloqueo(v.id, v.bloqueado),
     onSuccess: () => {
       inv.personas();
       inv.fichas();
@@ -118,7 +118,7 @@ export function useAlternarBloqueo() {
 export function useAgregarNota() {
   const inv = useInvalidar();
   return useMutation({
-    mutationFn: (v: { id: number; txt: string }) => agregarNota(v.id, v.txt),
+    mutationFn: (v: { id: string; txt: string }) => agregarNota(v.id, v.txt),
     onSuccess: () => inv.fichas(),
   });
 }
@@ -126,7 +126,7 @@ export function useAgregarNota() {
 export function useRegistrarPago() {
   const inv = useInvalidar();
   return useMutation({
-    mutationFn: (id: number) => registrarPago(id),
+    mutationFn: (id: string) => registrarPago(id),
     onSuccess: () => {
       inv.personas();
       inv.fichas();

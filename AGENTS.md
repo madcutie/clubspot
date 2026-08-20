@@ -29,8 +29,10 @@ Leer antes de proponer cualquier cosa de dominio. Están en `docs/`:
 | [`docs/plan-backend-backoffice.md`](docs/plan-backend-backoffice.md) + su [bitácora](docs/plan-backend-backoffice.bitacora.md) | **Plan vigente del backend** y el registro de avance. La bitácora dice qué fase está en curso y dónde quedó |
 | [`docs/plan-disponibilidad-e2e.md`](docs/plan-disponibilidad-e2e.md) + su [bitácora](docs/plan-disponibilidad-e2e.bitacora.md) | **Plan aprobado (16/08/2026)**: disponibilidad de punta a punta —ADR-0013 en el backend, horarios/canchas del backoffice y portal de reservas contra la API real— con catálogo de 16 casos E2E por navegador + SQL. **F1 (backend) cerrada y verificada**; F2–F5 pendientes |
 | [`docs/plan-cobro-en-mostrador.md`](docs/plan-cobro-en-mostrador.md) + su [bitácora](docs/plan-cobro-en-mostrador.bitacora.md) | **Escrito 19/08/2026, esperando aprobación**: cobrar un turno con Mercado Pago desde el backoffice (QR en pantalla + link por WhatsApp), reusando Checkout Pro. **Sin arrancar** |
+| [`docs/plan-activity-log.md`](docs/plan-activity-log.md) + su [bitácora](docs/plan-activity-log.bitacora.md) | **Escrito 19/08/2026, esperando aprobación**: registro de actividad (ADR-0017) — una crónica append-only de qué pasó, quién lo hizo y por qué, que ve tanto el canchero como la auditoría. **Sin arrancar** |
 | [`docs/plan-pagos-multiproveedor.md`](docs/plan-pagos-multiproveedor.md) + su [bitácora](docs/plan-pagos-multiproveedor.bitacora.md) | **Plan aprobado (18/08/2026)**: asiento de pago transparente al proveedor y al canal (ADR-0014/0015) — `payments.provider` + `payments.rail`, puerto `IPaymentProvider` con capacidades. **Cerrado y verificado (fake y Mercado Pago real)** |
 | [`docs/plan-reserva-online.md`](docs/plan-reserva-online.md) + su [bitácora](docs/plan-reserva-online.bitacora.md) | **Plan aprobado (17/08/2026)**: reserva online desde el portal en 3 etapas. **Etapas 1 y 2 cerradas**: reserva sin pago con vínculo a persona (email → celular → crear), y pago online (hold con TTL perezoso, webhook idempotente, tabla `payments`) verificado con el **gateway fake**; Mercado Pago escrito pero sin probar (faltan credenciales). Etapa 3 (login) pendiente |
+| [`docs/plan-contrato-api.md`](docs/plan-contrato-api.md) + su [bitácora](docs/plan-contrato-api.bitacora.md) | **Escrito 19/08/2026, esperando aprobación**: documento OpenAPI generado desde la Api y clientes TypeScript generados con Orval para los dos frontends (ADR-0016). **Sin arrancar** |
 | `src/frontend/backoffice/` | **El mock manda** (decisión del 14/08/2026): donde el prototipo y cualquier otra fuente difieran, gana el prototipo. Ver sección 10 |
 
 > **16/08/2026 — se eliminó `docs/referencia-ourclub/`** (relevamiento de OurClub, alcance del
@@ -227,6 +229,8 @@ con cobro o sin cobro y sin liquidaciones · otro con club + reservas + finanzas
   dato: si un vínculo entre una persona y algo de otro módulo, va en las tablas de ese módulo
   contra `personId` (ADR-0012). `people.debtAmount` es la violación que queda en pie, marcada
   como provisional hasta que se defina la parte financiera.
+- **La seña es 50 % o 100 %** (decisión del usuario, 19/08/2026): no existe otro porcentaje. Lo
+  imponen el agregado `Club` y un check constraint, no la UI.
 - **La moneda la define `Club.Currency`**: `Money` no tiene moneda por defecto ni existe una
   constante "ARS" en el código. Todo importe nace con la moneda del club en curso.
 - **Nunca `DateTime.Now`**: se inyecta `IClock`. Todo lo que el negocio llama "día" se resuelve
@@ -316,12 +320,10 @@ y recalcular saldos (se actualizan en la misma transacción del movimiento).
 | ✅ | Plataforma (fase A): EF Core + PostgreSQL en esquema `public`, tenancy con filtro global, auth propia con JWT y roles, módulos por club con gating 404, seed de desarrollo |
 | 🚧 | Fase B: People completo (agregado, búsqueda, endpoints); Schedules y Courts persistidos con concurrencia optimista `xmin` — falta contrato final de configuración |
 | ✅ | Documentos en `docs/` y prototipo de reservas en `src/frontend/reservas/` |
-| ✅ | Cascarón del backoffice en `src/frontend/backoffice/` — 4 pantallas contra un mock (sección 10) |
+| ✅ | Backoffice en `src/frontend/backoffice/` — las 4 pantallas contra la API real, sin mock (sección 10) |
 | ⬜ | Todo lo demás — ver abajo y la bitácora del plan |
 
-**No hay todavía**: agenda ni reservas (fase C), jobs, outbox, auditoría ni observabilidad.
-Los dos frontends corren contra mocks en memoria: no hay una sola llamada HTTP real desde el
-frontend todavía.
+**No hay todavía**: jobs más allá de J2, outbox, auditoría ni observabilidad.
 
 ---
 
@@ -347,9 +349,9 @@ Leyenda: ✅ hecho · 🚧 bloqueado · ⬜ pendiente
 | ⬜ | **Configuración de módulos por club** | Persistir qué contrató cada tenant · endpoint de capacidades para el frontend · filtro que devuelve **404** en módulo apagado · gating del despachador de jobs |
 | ⬜ | **Infraestructura de jobs** | Hangfire sobre PostgreSQL · lock distribuido por (job, tenant) · despachador que encola una ejecución por tenant y aísla el fallo de uno · registro de resultado por corrida |
 | ⬜ | **Outbox de notificaciones** | Tabla + despachador (J4) + proveedor de email. La fila se escribe en la misma transacción que el hecho que la origina |
-| ⬜ | **Auditoría** | Quién, cuándo y por qué en cada transición de estado. Es requisito, no un extra |
+| ⬜ | **Registro de actividad (`activityLog`)** | Quién, cuándo y por qué en cada transición de estado — y también los eventos que llegan solos (webhook, job, vencimiento). Un solo registro append-only para el operador y para la auditoría ([ADR-0017](docs/adr/0017-registro-de-actividad-activitylog.md), [plan](docs/plan-activity-log.md)) |
 | ⬜ | **Observabilidad** | Métricas por job y **pantalla de operación** dentro del sistema: última corrida, pagos en revisión manual, outbox fallido, divergencias de habilitación |
-| ⬜ | **Contrato de API** | Decidir si se sigue el enfoque contract-first del repo anterior (OpenAPI escrito a mano, frontend generado desde ahí) |
+| ⬜ | **Contrato de API** | Decidido (ADR-0016, 19/08/2026): **code-first**, documento OpenAPI generado desde los endpoints y versionado, clientes TypeScript generados con Orval. Implementación en [`docs/plan-contrato-api.md`](docs/plan-contrato-api.md), sin arrancar |
 
 ### 9.2 Módulo `core`
 
@@ -418,7 +420,7 @@ Ya no existen módulos por deporte. Lo pendiente acá es **diseño con el usuari
 |---|---|
 | ✅ | **Backoffice del club** — cascarón implementado en `src/frontend/backoffice/`. Detalle y pendientes en la sección 10 |
 | ⬜ | **Portal del socio**: mi cuenta, deuda, pagar, credencial, mis reservas |
-| ⬜ | Conectar el prototipo `src/frontend/reservas/` a la API real (hoy corre contra un mock) |
+| ✅ | Portal de reservas `src/frontend/reservas/` contra la API real — sin mock (etapas 1 y 2 del plan de reserva online) |
 
 ### 9.8 Fase cero — migración del padrón
 
@@ -455,8 +457,8 @@ producto y no puede quedar improvisada.
 Consola de operación del club. Traducción a React del diseño **"Backoffice Consola"** del
 proyecto de Claude Design *Diseño Chaco Forever en blanco y negro*, importado el 14/08/2026.
 
-**Corre entero contra un mock en memoria.** No hay una llamada HTTP: es para mostrar, discutir
-y validar el flujo con el club antes de que exista la API.
+**Corre entero contra la API real** (19/08/2026): el mock en memoria se borró. Las cuatro
+pantallas hablan HTTP con `:5037`, autenticadas con el JWT que emite `/api/auth/session`.
 
 ```bash
 cd src/frontend/backoffice && npm i && npm run dev   # http://localhost:5184
@@ -476,14 +478,16 @@ cd src/frontend/backoffice && npm i && npm run dev   # http://localhost:5184
 ```
 src/
 ├─ domain/    tipos y lógica pura: horarios, agenda, fechas, dinero
-├─ api/       store.ts (estado del mock) · mockApi.ts (funciones async) · queries.ts (React Query)
+├─ api/       http.ts (fetch + sesión) · apiHttp.ts y personasHttp.ts (adaptadores) · queries.ts (React Query)
 ├─ ui/        theme.ts (paleta y controles) · Panel · Navegación · Tostadas · estados
 └─ modulos/   una carpeta por módulo: reservas, canchas, horarios, personas
 ```
 
 - **React Query es la única fuente de datos.** Nada de estado servidor en `useState`.
-- **`api/mockApi.ts` es el contrato.** Cuando exista la API se reemplaza ese archivo por
-  llamadas HTTP y las pantallas no cambian. `store.ts` desaparece.
+- **Los adaptadores son la frontera.** `apiHttp.ts` (horarios, canchas, agenda) y
+  `personasHttp.ts` (personas, contexto del club) traducen el JSON de la API a los tipos del
+  dominio y devuelven las fechas **ya escritas** ("hace 3 días"): la pantalla muestra, no
+  calcula. Los componentes no saben que existe HTTP.
 - **Lo que se está mirando vive en la URL** (`rutas.ts`): módulo, deporte, día, filtro,
   búsqueda, ficha abierta. Lo transitorio —qué panel está abierto, un borrador sin guardar—
   se queda en el componente.
@@ -500,10 +504,10 @@ src/
 
 | | Parte |
 |---|---|
-| ⬜ | Conectar contra la API real y borrar `api/store.ts` |
-| ⬜ | **Quitar el deporte de la base de personas** (columna de la tabla, alta y ficha): `Person` ya no tiene deporte preferido (ADR-0008). Se hace al conectar las pantallas |
 | ⬜ | **Gating por módulo contratado**: hoy los cuatro módulos se montan siempre; falta el endpoint de capacidades y que una ruta de módulo apagado dé 404 |
-| ⬜ | Autenticación, roles y las acciones que hoy son sólo un aviso: bloquear horario, reprogramar, WhatsApp, exportar, elegir archivo de importación |
+| ⬜ | **Login de verdad**: hoy `http.ts` inicia sesión solo con credenciales de desarrollo tomadas de `config.ts`. Falta pantalla de login, y que los roles apaguen acciones |
+| ⬜ | Acciones que todavía son sólo un aviso: bloquear horario, reprogramar, WhatsApp, exportar, elegir archivo de importación |
+| ⬜ | **Ausencias**: la ficha las mostraba inventadas y se sacó el dato. No están modeladas todavía |
 | ⬜ | Accesibilidad: foco visible, navegación por teclado en la grilla, atajo ⌘K que hoy es sólo el cartel |
 | ⬜ | Responsive: está pensado para un monitor de mostrador, abajo de ~1000 px no se acomoda |
 

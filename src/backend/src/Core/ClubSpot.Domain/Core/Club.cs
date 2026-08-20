@@ -38,8 +38,9 @@ public sealed class Club
         if (string.IsNullOrWhiteSpace(currency) || currency.Length != 3)
             throw new ArgumentException("Currency must be a 3-letter ISO code.", nameof(currency));
 
-        if (depositPercent is < 0 or > 100)
-            throw new ArgumentOutOfRangeException(nameof(depositPercent), "Deposit percent must be between 0 and 100.");
+        // Half the price or all of it: no other deposit is offered (user decision, 19/08/2026).
+        if (depositPercent is not (50 or 100))
+            throw new ArgumentOutOfRangeException(nameof(depositPercent), "Deposit percent must be 50 or 100.");
 
         Id = id;
         Slug = slug;

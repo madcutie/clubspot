@@ -53,7 +53,7 @@ public sealed class ClubPersistenceTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task The_database_enforces_the_deposit_percent_range()
+    public async Task The_database_enforces_that_a_deposit_is_half_or_all_of_the_price()
     {
         await using var db = postgres.CreateDbContext();
 
@@ -61,7 +61,7 @@ public sealed class ClubPersistenceTests(PostgresFixture postgres)
         // tracker to prove the database enforces it too.
         var club = NewClub("club-invalido");
         db.Clubs.Add(club);
-        db.Entry(club).Property(nameof(Club.DepositPercent)).CurrentValue = 150;
+        db.Entry(club).Property(nameof(Club.DepositPercent)).CurrentValue = 30;
 
         await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
     }

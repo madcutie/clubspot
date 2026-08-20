@@ -27,3 +27,5 @@ decisión, numerado, en español y en voz impersonal.
 | [0013](0013-disponibilidad-patron-semanal-mas-excepciones.md) | Disponibilidad: patrón semanal pisado por excepciones con fecha y alcance; gana la más específica | 16/08/2026 | Aceptada |
 | [0014](0014-asiento-de-pago-agnostico-del-proveedor.md) | El asiento del pago registra proveedor + canal + id externo; puerto por proveedor con canales como capacidades | 18/08/2026 | Aceptada |
 | [0015](0015-mercadopago-checkout-pro-online-orders-presencial.md) | Mercado Pago: online por Checkout Pro; Orders reservado al cobro presencial; reevaluar si la billetera llega a Orders | 18/08/2026 | Aceptada |
+| [0016](0016-contrato-de-api-generado-desde-el-codigo.md) | El contrato OpenAPI se genera desde el código y los clientes TypeScript desde el contrato (Orval) | 19/08/2026 | Aceptada |
+| [0017](0017-registro-de-actividad-activitylog.md) | Registro de actividad (`activityLog`): un solo registro append-only para el operador y para la auditoría; actor persona o sistema | 19/08/2026 | Aceptada |

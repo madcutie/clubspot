@@ -36,9 +36,10 @@ mano**.
    `Results<Ok<T>, NotFound, Conflict>` en vez de `IResult`; los DTO son tipos nombrados y
    accesibles, no anónimos ni privados; cada ruta lleva `WithName` y `WithTags`. `WithName` fija
    el nombre de la función generada en TypeScript, así que es parte del contrato, no decoración.
-3. **El documento se extrae del host de la Api**, no del build. Un test de integración lo pide
-   al host de prueba, lo compara con el archivo versionado y **falla si difieren**: el contrato
-   no puede quedar desactualizado sin que los tests lo digan.
+3. **La regeneración es parte del build, no un paso que alguien se acuerda de correr.** El
+   build de `ClubSpot.Api` reescribe `docs/api/clubspot.openapi.json`, y el build de cada
+   frontend regenera su cliente antes de compilar. Un endpoint tocado y no regenerado no existe
+   como estado posible: aparece como diff sin commitear.
 4. **Lo generado es capa de cable y vive por debajo de los adaptadores.** Reemplaza las
    interfaces escritas a mano y las llamadas `api<T>('/api/...')`. Los tipos de dominio en
    español, el formateo de fechas y las claves de React Query siguen escritos a mano: la regla
@@ -49,12 +50,24 @@ mano**.
    para que el diff del contrato se lea en la revisión.
 6. **El contrato es código, así que va en inglés** (ADR-0006): rutas, DTO, nombres de operación
    y tags. Los textos en español siguen siendo cosa del frontend.
+7. **Lo generado es el único camino a la API, y usarlo es obligatorio.** Ningún componente,
+   hook o adaptador arma una URL, un `fetch` o un tipo de request/response a mano. Si falta un
+   endpoint, se agrega en la Api y se regenera; **no se escribe un servicio "provisional" al
+   lado**. Un cliente escrito a mano no sólo duplica: deja **huérfano** al generado, y cuando el
+   contrato cambia el compilador no tiene de qué agarrarse — que es exactamente el problema que
+   este ADR viene a resolver. La única excepción es el *mutator* (`http.ts` y su equivalente del
+   portal): un solo archivo por app, el único lugar donde vive `fetch`.
 
 ## Consecuencias
 
-- Un cambio de forma en la Api aparece como diff en `clubspot.openapi.json` y, tras regenerar,
-  rompe el `typecheck` del frontend afectado. Hoy ese mismo cambio no rompe nada hasta que un
-  operador lo encuentra usando el sistema.
+- Un cambio de forma en la Api aparece como diff en `clubspot.openapi.json` —lo escribe el
+  propio build— y rompe el `typecheck` del frontend afectado. Hoy ese mismo cambio no rompe nada
+  hasta que un operador lo encuentra usando el sistema.
+- El build de la Api se hace un poco más lento: levanta el host en memoria para pedirle el
+  documento. Es el precio de que no exista la opción de olvidarse.
+- Como el documento se regenera solo, **meter la pata también se propaga solo**: un DTO mal
+  declarado llega al cliente generado en el siguiente build. El control está en la revisión del
+  diff del documento, que por eso se versiona.
 - Se paga una vez el costo de declarar los 31 endpoints, y después cada endpoint nuevo nace
   declarado. Es trabajo mecánico pero no trivial.
 - Desaparecen ~30 interfaces duplicadas del backend en los frontends.
@@ -72,10 +85,15 @@ mano**.
   segunda fuente de verdad que se desincroniza sin que nadie se entere. Si aparece un
   consumidor externo que necesite el contrato antes que la implementación, se revisa con un
   ADR nuevo.
-- **Generar el documento en el build** (`Microsoft.Extensions.ApiDescription.Server`): ejecuta
-  el host durante la compilación, y `Program.cs` lanza a propósito si faltan la connection
-  string o la configuración de JWT — que sólo están en `appsettings.Development.json`, que **no
-  se versiona** (decisión del 17/08/2026). Un clon fresco o un CI limpio no compilarían.
+- **Generar el documento con `Microsoft.Extensions.ApiDescription.Server`**, que es la vía
+  oficial: no deja elegir con qué entorno corre el host. Con `Development` el arranque migra y
+  siembra la base, o sea que haría falta Docker en cada compilación; sin un entorno propio, los
+  guardas de `Program.cs` lanzan porque la connection string y el JWT sólo están en
+  `appsettings.Development.json`, que **no se versiona** (decisión del 17/08/2026). Se resuelve
+  con un target propio y un entorno `OpenApi` versionado y sin secretos — el detalle está en el
+  plan.
+- **Exportar el documento desde un test en vez de desde el build**: funciona, pero deja abierta
+  la ventana de trabajar contra un contrato viejo hasta que alguien corre los tests.
 - **Sólo tipos, con `openapi-typescript`**: da los tipos pero no las funciones, así que las
   llamadas se seguirían escribiendo a mano. La diferencia con Orval es chica, pero el trabajo
   caro —declarar el contrato en el backend— es el mismo, y Orval además cubre el día que se

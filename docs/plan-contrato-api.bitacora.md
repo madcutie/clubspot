@@ -2,6 +2,24 @@
 
 Registro de avance del [plan](plan-contrato-api.md). La entrada más nueva arriba.
 
+## 19/08/2026 — Corrección del usuario: regenerar en el build y prohibir los servicios a mano
+
+Dos correcciones sobre el plan escrito hace un rato, las dos del usuario:
+
+- **La regeneración va en el build de la Api**, no en un test que alguien corre cuando se
+  acuerda. La objeción que había llevado a descartarla —`Program.cs` lanza sin connection string
+  ni JWT, y en Development el arranque migra y siembra— se resuelve con un entorno propio
+  `OpenApi`: `appsettings.OpenApi.json` versionado y sin secretos, una rama `--export-openapi` en
+  `Program.cs` y un target de MSBuild que reescribe el documento sólo si cambió. Se descarta
+  `Microsoft.Extensions.ApiDescription.Server` porque no deja elegir el entorno del host. Del
+  lado del frontend, `api:gen` queda enganchado a `predev`/`prebuild`.
+- **Hay que decir en alguna parte que siempre se usa lo generado**, porque si no van a aparecer
+  servicios escritos a mano y los generados por Orval van a quedar huérfanos. Es ADR-0016
+  punto 7, la sección 5 del diseño del plan (con las señales concretas a mirar en revisión) y
+  dos viñetas nuevas en AGENTS.md §6, más la aclaración en §10.
+
+Sigue sin arrancar la implementación.
+
 ## 19/08/2026 — ADR y plan escritos; implementación no arrancada
 
 - **Cómo salió el tema:** el usuario preguntó qué haría falta para integrar Orval y generar los

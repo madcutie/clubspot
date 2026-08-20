@@ -223,6 +223,20 @@ con cobro o sin cobro y sin liquidaciones · otro con club + reservas + finanzas
   vendor implementa el puerto que declara Application y se cablea por DI en la Api; el resto
   de la solución no referencia el SDK. Regla general para cualquier gateway o servicio
   externo que se integre.
+- **Todo endpoint declara su contrato** (ADR-0016): `TypedResults` y uniones
+  `Results<Ok<T>, NotFound, …>` en vez de `IResult`, DTO nombrados y accesibles (nada de
+  objetos anónimos ni de `private record` en la respuesta), y `WithName`/`WithTags` en cada
+  ruta. `WithName` es el nombre de la función que va a usar el frontend, así que es contrato,
+  no decoración. Un endpoint sin contrato declarado sale vacío en el documento OpenAPI, y eso
+  es un bug.
+- **Todo acceso a la API desde el frontend pasa por el cliente generado** (ADR-0016). El
+  documento `docs/api/clubspot.openapi.json` lo reescribe el build de la Api y los clientes los
+  genera Orval; **ni el documento ni lo generado se editan a mano**. No se escribe un servicio,
+  un `fetch` ni una `interface` con la forma de un DTO del backend "por ahora": si falta un
+  endpoint se agrega en la Api y se regenera. Un cliente escrito a mano deja **huérfano** al
+  generado —cuando el contrato cambia, ese camino no lo acompaña y nadie se entera—. La única
+  excepción es el *mutator* de cada app (`http.ts` y su equivalente del portal): un solo
+  archivo, el único lugar donde vive `fetch`.
 - **Nunca un `decimal` suelto para plata**: se usa `Money`, que lleva la moneda. Esto incluye
   tarifas y precios de canchas, no sólo deudas y pagos.
 - **Una tabla pertenece a un módulo.** Antes de agregar una columna, preguntarse de quién es el
@@ -488,6 +502,10 @@ src/
   `personasHttp.ts` (personas, contexto del club) traducen el JSON de la API a los tipos del
   dominio y devuelven las fechas **ya escritas** ("hace 3 días"): la pantalla muestra, no
   calcula. Los componentes no saben que existe HTTP.
+- **Debajo de los adaptadores va el cliente generado** (ADR-0016, pendiente de implementar): el
+  código que Orval genera desde el contrato OpenAPI es la capa de cable; los adaptadores lo
+  consumen y siguen siendo la frontera hacia el dominio. Nada de servicios escritos a mano al
+  lado de lo generado — ver la regla en la sección 6.
 - **Lo que se está mirando vive en la URL** (`rutas.ts`): módulo, deporte, día, filtro,
   búsqueda, ficha abierta. Lo transitorio —qué panel está abierto, un borrador sin guardar—
   se queda en el componente.

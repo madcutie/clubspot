@@ -33,6 +33,7 @@ Leer antes de proponer cualquier cosa de dominio. Están en `docs/`:
 | [`docs/plan-cancelacion-con-motivo.md`](docs/plan-cancelacion-con-motivo.md) + su [bitácora](docs/plan-cancelacion-con-motivo.bitacora.md) | **Cerrado y verificado (20/08/2026)**: cancelar un turno exige motivo —guardado en la reserva, no en el registro de actividad— y el panel avisa la plata cobrada antes de hacerlo. Queda pendiente el mismo tratamiento al bloquear una ficha |
 | [`docs/plan-pagos-multiproveedor.md`](docs/plan-pagos-multiproveedor.md) + su [bitácora](docs/plan-pagos-multiproveedor.bitacora.md) | **Plan aprobado (18/08/2026)**: asiento de pago transparente al proveedor y al canal (ADR-0014/0015) — `payments.provider` + `payments.rail`, puerto `IPaymentProvider` con capacidades. **Cerrado y verificado (fake y Mercado Pago real)** |
 | [`docs/plan-reserva-online.md`](docs/plan-reserva-online.md) + su [bitácora](docs/plan-reserva-online.bitacora.md) | **Plan aprobado (17/08/2026)**: reserva online desde el portal en 3 etapas. **Etapas 1 y 2 cerradas**: reserva sin pago con vínculo a persona (email → celular → crear), y pago online (hold con TTL perezoso, webhook idempotente, tabla `payments`) verificado con el **gateway fake**; Mercado Pago escrito pero sin probar (faltan credenciales). Etapa 3 (login) pendiente |
+| [`docs/plan-login-backoffice.md`](docs/plan-login-backoffice.md) + su [bitácora](docs/plan-login-backoffice.bitacora.md) | **En curso (20/08/2026)**: login del backoffice empezando por el canchero (ADR-0018) — login sólo con email, email único global, claims cortas, y consola dibujada según el rol. **F1–F5 escritas y verdes** (build, 79 unitarios y 72 de integración); falta la recorrida en el navegador |
 | [`docs/plan-contrato-api.md`](docs/plan-contrato-api.md) + su [bitácora](docs/plan-contrato-api.bitacora.md) | **Plan aprobado y ejecutado (19/08/2026)**: documento OpenAPI generado por el build de la Api y clientes TypeScript generados con Orval para los dos frontends (ADR-0016). **Cerrado y verificado**: F1–F5 |
 | `src/frontend/backoffice/` | **El mock manda** (decisión del 14/08/2026): donde el prototipo y cualquier otra fuente difieran, gana el prototipo. Ver sección 10 |
 
@@ -507,6 +508,13 @@ src/
 ```
 
 - **React Query es la única fuente de datos.** Nada de estado servidor en `useState`.
+- **La sesión es el token** ([ADR-0018](docs/adr/0018-sesion-del-backoffice-token-en-sessionstorage-y-rol-en-la-claim.md)):
+  el login pide sólo email y contraseña —el club sale de `users.tenantId`—, el token vive en
+  `sessionStorage` y `auth/sesion.ts` lo decodifica para saber quién entró. **No hay endpoint de
+  "quién soy"**: preguntarle al servidor algo que ya viaja firmado en el token es un round-trip de
+  más. `auth/permisos.ts` traduce rol → qué se dibuja, y es **de presentación**: apaga botones y
+  esconde módulos, no autoriza nada. Lo que un rol no puede usar no aparece en la navegación y su
+  URL redirige.
 - **Los adaptadores son la frontera.** `apiHttp.ts` (horarios, canchas, agenda) y
   `personasHttp.ts` (personas, contexto del club) traducen el JSON de la API a los tipos del
   dominio y devuelven las fechas **ya escritas** ("hace 3 días"): la pantalla muestra, no
@@ -532,7 +540,6 @@ src/
 | | Parte |
 |---|---|
 | ⬜ | **Gating por módulo contratado**: hoy los cuatro módulos se montan siempre; falta el endpoint de capacidades y que una ruta de módulo apagado dé 404 |
-| ⬜ | **Login de verdad**: hoy `http.ts` inicia sesión solo con credenciales de desarrollo tomadas de `config.ts`. Falta pantalla de login, y que los roles apaguen acciones |
 | ⬜ | Acciones que todavía son sólo un aviso: bloquear horario, reprogramar, WhatsApp, exportar, elegir archivo de importación |
 | ⬜ | **Ausencias**: la ficha las mostraba inventadas y se sacó el dato. No están modeladas todavía |
 | ⬜ | Accesibilidad: foco visible, navegación por teclado en la grilla, atajo ⌘K que hoy es sólo el cartel |

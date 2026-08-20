@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ClubSpot.Api.Auth;
 using ClubSpot.SharedKernel.Activity;
 
 namespace ClubSpot.Api.Activity;
@@ -16,9 +17,9 @@ public sealed class ActivityActorMiddleware(RequestDelegate next)
             return;
         }
 
-        var userId = Guid.TryParse(
-            context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.User.FindFirstValue("sub"),
-            out var parsed) ? parsed : (Guid?)null;
+        var userId = Guid.TryParse(context.User.FindFirstValue(ClubSpotClaims.Subject), out var parsed)
+            ? parsed
+            : (Guid?)null;
         var name = context.User.Identity.Name is { Length: > 0 } identity ? identity : ActivityActor.SystemName;
 
         using var actorScope = actorScopeFactory.BeginScope(

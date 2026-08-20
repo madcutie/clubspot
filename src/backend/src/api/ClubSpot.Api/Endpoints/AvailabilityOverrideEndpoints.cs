@@ -50,7 +50,7 @@ public static class AvailabilityOverrideEndpoints
         await store.DeleteAsync(id, cancellationToken) ? TypedResults.NoContent() : TypedResults.NotFound();
 
     private static Guid? UserId(ClaimsPrincipal user) =>
-        Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
+        Guid.TryParse(user.FindFirstValue(ClubSpotClaims.Subject), out var id) ? id : null;
 
     internal sealed record OverrideWindowRequest(int OpensAtMinute, int ClosesAtMinute)
     {

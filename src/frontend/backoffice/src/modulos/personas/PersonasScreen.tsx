@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useBloquearPersonas, usePersonas } from '../../api/queries';
+import { usePermisos } from '../../auth/permisos';
 import { pesos } from '../../domain/dinero';
 import type { FiltroPersonas } from '../../domain/types';
 import { useParamsPersonas } from '../../rutas';
@@ -39,6 +40,7 @@ const FILTROS: { id: FiltroPersonas; label: string }[] = [
  */
 export function PersonasScreen() {
   const params = useParamsPersonas();
+  const permisos = usePermisos();
   const avisar = useTostada();
   const { data, isLoading } = usePersonas({
     q: params.q,
@@ -111,24 +113,26 @@ export function PersonasScreen() {
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 7 }}>
-            <button
-              type="button"
-              onClick={() => setPanel('import')}
-              className="h-ghost"
-              style={secundario()}
-            >
-              Importar
-            </button>
-            <button
-              type="button"
-              onClick={() => setPanel('nueva')}
-              className="h-primario"
-              style={primario()}
-            >
-              Nueva persona
-            </button>
-          </div>
+          {permisos.gestionarPersonas && (
+            <div style={{ display: 'flex', gap: 7 }}>
+              <button
+                type="button"
+                onClick={() => setPanel('import')}
+                className="h-ghost"
+                style={secundario()}
+              >
+                Importar
+              </button>
+              <button
+                type="button"
+                onClick={() => setPanel('nueva')}
+                className="h-primario"
+                style={primario()}
+              >
+                Nueva persona
+              </button>
+            </div>
+          )}
         </div>
 
         <div
@@ -248,20 +252,22 @@ export function PersonasScreen() {
           >
             Exportar
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              const n = marcadas.length;
-              bloquear.mutate(
-                { ids: marcadas, bloqueado: true },
-                { onSuccess: () => avisar(n === 1 ? 'Ficha bloqueada' : n + ' fichas bloqueadas') },
-              );
-              setMarcadas([]);
-            }}
-            style={accionMasiva}
-          >
-            Bloquear
-          </button>
+          {permisos.gestionarPersonas && (
+            <button
+              type="button"
+              onClick={() => {
+                const n = marcadas.length;
+                bloquear.mutate(
+                  { ids: marcadas, bloqueado: true },
+                  { onSuccess: () => avisar(n === 1 ? 'Ficha bloqueada' : n + ' fichas bloqueadas') },
+                );
+                setMarcadas([]);
+              }}
+              style={accionMasiva}
+            >
+              Bloquear
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setMarcadas([])}

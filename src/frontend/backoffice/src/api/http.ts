@@ -1,4 +1,11 @@
-import { API_URL, DEV_CLUB, DEV_EMAIL, DEV_PASSWORD } from './config';
+import { cerrarSesion, tokenActual } from '../auth/sesion';
+import { API_URL } from './config';
+
+/**
+ * El único lugar donde vive `fetch` (ADR-0016): es el mutator del cliente generado.
+ * No inicia sesión ni sabe de credenciales — sólo adjunta el token que haya y, si la API
+ * contesta 401 con una sesión abierta, la cierra: la app vuelve al login sola.
+ */
 
 export class ApiError extends Error {
   status: number;
@@ -12,13 +19,6 @@ export class ApiError extends Error {
   }
 }
 
-interface SessionResponse {
-  accessToken: string;
-}
-
-let token: string | null = null;
-let sesionEnCurso: Promise<string> | null = null;
-
 async function leerCuerpo(res: Response): Promise<unknown> {
   const texto = await res.text();
   if (!texto) return undefined;
@@ -29,47 +29,17 @@ async function leerCuerpo(res: Response): Promise<unknown> {
   }
 }
 
-function iniciarSesion(): Promise<string> {
-  if (!sesionEnCurso) {
-    sesionEnCurso = fetch(`${API_URL}/api/auth/session`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ club: DEV_CLUB, email: DEV_EMAIL, password: DEV_PASSWORD }),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new ApiError(res.status, await leerCuerpo(res));
-        const data = (await res.json()) as SessionResponse;
-        token = data.accessToken;
-        return token;
-      })
-      .finally(() => {
-        sesionEnCurso = null;
-      });
-  }
-  return sesionEnCurso;
-}
-
-function asegurarToken(): Promise<string> {
-  return token ? Promise.resolve(token) : iniciarSesion();
-}
-
-function construirHeaders(base: HeadersInit | undefined, bearer: string): Headers {
-  const headers = new Headers(base);
-  headers.set('Authorization', `Bearer ${bearer}`);
-  headers.set('Content-Type', 'application/json');
-  return headers;
-}
-
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const pedir = (bearer: string) =>
-    fetch(`${API_URL}${path}`, { ...init, headers: construirHeaders(init.headers, bearer) });
+  const headers = new Headers(init.headers);
+  headers.set('Content-Type', 'application/json');
+  const token = tokenActual();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  let res = await pedir(await asegurarToken());
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
 
-  if (res.status === 401) {
-    token = null;
-    res = await pedir(await iniciarSesion());
-  }
+  // Con token, un 401 es sesión vencida o revocada. Sin token es el login que falló, y de eso
+  // se ocupa la pantalla.
+  if (res.status === 401 && token) cerrarSesion();
 
   if (!res.ok) throw new ApiError(res.status, await leerCuerpo(res));
   if (res.status === 204) return undefined as T;

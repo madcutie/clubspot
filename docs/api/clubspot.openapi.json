@@ -1502,16 +1502,12 @@
       "ContextResponse": {
         "required": [
           "club",
-          "operator",
           "modules"
         ],
         "type": "object",
         "properties": {
           "club": {
             "$ref": "#/components/schemas/ClubResponse"
-          },
-          "operator": {
-            "$ref": "#/components/schemas/OperatorResponse"
           },
           "modules": {
             "type": "array",
@@ -1769,24 +1765,6 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
-          }
-        }
-      },
-      "OperatorResponse": {
-        "required": [
-          "name",
-          "roles"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "roles": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Role"
-            }
           }
         }
       },
@@ -2426,18 +2404,6 @@
           }
         }
       },
-      "Role": {
-        "enum": [
-          "administrator",
-          "memberDesk",
-          "treasury",
-          "courtReception",
-          "accessControl",
-          "coach",
-          "member"
-        ],
-        "type": "string"
-      },
       "ScheduleRequest": {
         "required": [
           "id",
@@ -2530,15 +2496,11 @@
       },
       "SignInRequest": {
         "required": [
-          "club",
           "email",
           "password"
         ],
         "type": "object",
         "properties": {
-          "club": {
-            "type": "string"
-          },
           "email": {
             "type": "string"
           },

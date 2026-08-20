@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { ArrowUpDown, type LucideIcon } from 'lucide-react';
+import { ArrowUpDown, LogOut, type LucideIcon } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { cerrarSesion, NOMBRE_ROL, type Sesion } from '../auth/sesion';
 import type { Club } from '../domain/types';
 import { c, mono, sans } from './theme';
 import { useTostada } from './Tostadas';
@@ -80,14 +83,18 @@ function Rotulo({ children, primero }: { children: string; primero?: boolean }) 
 
 export function Navegacion({
   club,
+  sesion,
   operacion,
   base,
 }: {
   club: Club | undefined;
+  sesion: Sesion;
   operacion: ItemNav[];
   base: ItemNav[];
 }) {
   const avisar = useTostada();
+  const queryClient = useQueryClient();
+  const [menuAbierto, setMenuAbierto] = useState(false);
 
   return (
     <nav
@@ -156,26 +163,65 @@ export function Navegacion({
         <ArrowUpDown size={12} strokeWidth={1.8} style={{ flex: 'none', color: c.textoGris2 }} aria-hidden />
       </button>
 
-      <Rotulo primero>OPERACIÓN</Rotulo>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {operacion.map((n) => (
-          <Item key={n.a} item={n} />
-        ))}
-      </div>
+      {operacion.length > 0 && (
+        <>
+          <Rotulo primero>OPERACIÓN</Rotulo>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {operacion.map((n) => (
+              <Item key={n.a} item={n} />
+            ))}
+          </div>
+        </>
+      )}
 
-      <Rotulo>BASE</Rotulo>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {base.map((n) => (
-          <Item key={n.a} item={n} />
-        ))}
-      </div>
+      {base.length > 0 && (
+        <>
+          <Rotulo primero={operacion.length === 0}>BASE</Rotulo>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {base.map((n) => (
+              <Item key={n.a} item={n} />
+            ))}
+          </div>
+        </>
+      )}
 
       <div style={{ flex: 1 }} />
 
+      {menuAbierto && (
+        <button
+          type="button"
+          onClick={() => {
+            queryClient.clear();
+            cerrarSesion();
+          }}
+          className="h-quitar"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            width: '100%',
+            minHeight: 32,
+            padding: '0 9px',
+            marginBottom: 4,
+            borderRadius: 8,
+            border: `1px solid ${c.borde}`,
+            background: c.panel,
+            color: c.textoBoton,
+            font: `500 12px ${sans}`,
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <LogOut size={13} strokeWidth={1.8} style={{ flex: 'none' }} aria-hidden />
+          Salir
+        </button>
+      )}
+
       <button
         type="button"
-        onClick={() => avisar('Perfil y permisos')}
+        onClick={() => setMenuAbierto((abierto) => !abierto)}
         className="h-fondo"
+        aria-expanded={menuAbierto}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -184,7 +230,7 @@ export function Navegacion({
           padding: 8,
           borderRadius: 9,
           border: '1px solid transparent',
-          background: 'transparent',
+          background: menuAbierto ? c.hover : 'transparent',
           cursor: 'pointer',
           textAlign: 'left',
         }}
@@ -202,13 +248,13 @@ export function Navegacion({
             font: `500 10.5px ${sans}`,
           }}
         >
-          {club?.operadorIniciales ?? '··'}
+          {sesion.iniciales || '··'}
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ font: `500 11.5px ${sans}`, color: c.textoSuave }}>
-            {club?.operador ?? ''}
+          <div style={{ font: `500 11.5px ${sans}`, color: c.textoSuave }}>{sesion.nombre}</div>
+          <div style={{ font: `400 10px ${mono}`, color: c.textoTenue }}>
+            {sesion.roles.map((rol) => NOMBRE_ROL[rol]).join(' · ')}
           </div>
-          <div style={{ font: `400 10px ${mono}`, color: c.textoTenue }}>{club?.rol ?? ''}</div>
         </div>
       </button>
     </nav>

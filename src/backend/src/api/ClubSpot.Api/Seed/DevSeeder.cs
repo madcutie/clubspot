@@ -52,6 +52,18 @@ public sealed class DevSeeder(
                 DateTimeOffset.UtcNow));
         }
 
+        if (!await db.Users.AnyAsync(user => user.Email == "reception@chacoforever.test", cancellationToken))
+        {
+            db.Users.Add(new User(
+                Guid.Parse("6f2f0e2c-4a58-4d0b-9a2e-0f7c1d3b5a91"),
+                club.Id,
+                "reception@chacoforever.test",
+                "Canchero",
+                passwordHasher.Hash("clubspot-dev"),
+                [Role.CourtReception],
+                DateTimeOffset.UtcNow));
+        }
+
         if (!await db.Schedules.AnyAsync(cancellationToken))
         {
             var baseSchedule = new Schedule(

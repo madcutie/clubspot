@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAgregarNota, useAlternarBloqueo, useFicha, useRegistrarPago } from '../../api/queries';
+import { usePermisos } from '../../auth/permisos';
 import { pesos } from '../../domain/dinero';
 import { BotonCerrar, FilaDato, Panel } from '../../ui/Panel';
 import { chipStyle, colorTurnoHistorico, estadoPersona, puntoStyle } from '../../ui/estados';
@@ -21,6 +22,7 @@ const PESTANIAS: { id: Pestania; label: string }[] = [
 export function FichaPanel({ id, onCerrar }: { id: string; onCerrar: () => void }) {
   const avisar = useTostada();
   const { data } = useFicha(id);
+  const permisos = usePermisos();
   const agregarNota = useAgregarNota();
   const registrarPago = useRegistrarPago();
   const alternarBloqueo = useAlternarBloqueo();
@@ -144,15 +146,17 @@ export function FichaPanel({ id, onCerrar }: { id: string; onCerrar: () => void 
                     {pesos(persona.deuda)}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    registrarPago.mutate(persona.id, { onSuccess: () => avisar('Pago registrado') })
-                  }
-                  style={botonNaranja}
-                >
-                  Registrar pago
-                </button>
+                {permisos.gestionarPersonas && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      registrarPago.mutate(persona.id, { onSuccess: () => avisar('Pago registrado') })
+                    }
+                    style={botonNaranja}
+                  >
+                    Registrar pago
+                  </button>
+                )}
               </div>
             )}
 
@@ -292,68 +296,74 @@ export function FichaPanel({ id, onCerrar }: { id: string; onCerrar: () => void 
                 </div>
               )}
             </div>
-            <input
-              type="text"
-              value={nota}
-              onChange={(e) => setNota(e.target.value)}
-              placeholder="Nota interna, solo la ve el club"
-              className="f-borde"
-              style={{ ...campoPanel(), fontSize: 12.5 }}
-            />
-            <button
-              type="button"
-              className={nota.trim() ? 'h-primario' : undefined}
-              onClick={() => {
-                if (!nota.trim()) return;
-                agregarNota.mutate(
-                  { id: persona.id, txt: nota },
-                  { onSuccess: () => avisar('Nota agregada') },
-                );
-                setNota('');
-              }}
-              style={{ ...primario(nota.trim().length > 0), marginTop: 9, width: '100%' }}
-            >
-              Agregar nota
-            </button>
+            {permisos.gestionarPersonas && (
+              <>
+                <input
+                  type="text"
+                  value={nota}
+                  onChange={(e) => setNota(e.target.value)}
+                  placeholder="Nota interna, solo la ve el club"
+                  className="f-borde"
+                  style={{ ...campoPanel(), fontSize: 12.5 }}
+                />
+                <button
+                  type="button"
+                  className={nota.trim() ? 'h-primario' : undefined}
+                  onClick={() => {
+                    if (!nota.trim()) return;
+                    agregarNota.mutate(
+                      { id: persona.id, txt: nota },
+                      { onSuccess: () => avisar('Nota agregada') },
+                    );
+                    setNota('');
+                  }}
+                  style={{ ...primario(nota.trim().length > 0), marginTop: 9, width: '100%' }}
+                >
+                  Agregar nota
+                </button>
+              </>
+            )}
           </>
         )}
       </div>
 
-      <div
-        style={{
-          flex: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '13px 20px',
-          borderTop: `1px solid ${c.linea}`,
-        }}
-      >
-        <div style={{ flex: 1 }} />
-        <button
-          type="button"
-          onClick={() =>
-            alternarBloqueo.mutate(
-              { id: persona.id, bloqueado: !persona.bloqueado },
-              {
-                onSuccess: (bloqueado) =>
-                  avisar(bloqueado ? 'Ficha bloqueada' : 'Ficha desbloqueada'),
-              },
-            )
-          }
+      {permisos.gestionarPersonas && (
+        <div
           style={{
-            minHeight: 34,
-            padding: '0 13px',
-            borderRadius: 8,
-            cursor: 'pointer',
-            border: `1px solid ${persona.bloqueado ? c.acentoBordeSuave : c.naranjaBorde}`,
-            background: 'transparent',
-            color: persona.bloqueado ? c.acento : c.naranja,
-            font: `500 12.5px ${sans}`,
+            flex: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '13px 20px',
+            borderTop: `1px solid ${c.linea}`,
           }}
         >
-          {persona.bloqueado ? 'Desbloquear persona' : 'Bloquear persona'}
-        </button>
-      </div>
+          <div style={{ flex: 1 }} />
+          <button
+            type="button"
+            onClick={() =>
+              alternarBloqueo.mutate(
+                { id: persona.id, bloqueado: !persona.bloqueado },
+                {
+                  onSuccess: (bloqueado) =>
+                    avisar(bloqueado ? 'Ficha bloqueada' : 'Ficha desbloqueada'),
+                },
+              )
+            }
+            style={{
+              minHeight: 34,
+              padding: '0 13px',
+              borderRadius: 8,
+              cursor: 'pointer',
+              border: `1px solid ${persona.bloqueado ? c.acentoBordeSuave : c.naranjaBorde}`,
+              background: 'transparent',
+              color: persona.bloqueado ? c.acento : c.naranja,
+              font: `500 12.5px ${sans}`,
+            }}
+          >
+            {persona.bloqueado ? 'Desbloquear persona' : 'Bloquear persona'}
+          </button>
+        </div>
+      )}
     </Panel>
   );
 }

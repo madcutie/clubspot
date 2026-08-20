@@ -32,16 +32,6 @@ const FILTRO_API: Record<FiltroPersonas, string> = {
   deuda: 'debt',
 };
 
-const ROLES: Record<string, string> = {
-  administrator: 'administrador',
-  memberDesk: 'socios',
-  treasury: 'tesorería',
-  courtReception: 'encargado',
-  accessControl: 'control de acceso',
-  coach: 'profesor',
-  member: 'socio',
-};
-
 function aPersona(x: PersonResponse, notas: Nota[] = []): Persona {
   return {
     id: x.id,
@@ -82,19 +72,10 @@ function aTurno(x: PersonBookingResponse): TurnoHistorico {
 
 // ── Club ─────────────────────────────────────────────────────────────────────
 
+// Quién es el operador sale del token, no de acá (ADR-0018): esto es lo que sólo sabe el servidor.
 export async function fetchClub(): Promise<Club> {
   const ctx = await getContext();
-  const partes = ctx.operator.name.trim().split(/\s+/);
-  return {
-    nombre: ctx.club.name,
-    sede: ctx.club.venue ?? '',
-    operador: ctx.operator.name,
-    operadorIniciales: partes
-      .slice(0, 2)
-      .map((x) => x[0]?.toUpperCase() ?? '')
-      .join(''),
-    rol: ROLES[ctx.operator.roles[0]] ?? ctx.operator.roles[0] ?? '',
-  };
+  return { nombre: ctx.club.name, sede: ctx.club.venue ?? '' };
 }
 
 // ── Personas ─────────────────────────────────────────────────────────────────

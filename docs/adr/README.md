@@ -29,3 +29,4 @@ decisión, numerado, en español y en voz impersonal.
 | [0015](0015-mercadopago-checkout-pro-online-orders-presencial.md) | Mercado Pago: online por Checkout Pro; Orders reservado al cobro presencial; reevaluar si la billetera llega a Orders | 18/08/2026 | Aceptada |
 | [0016](0016-contrato-de-api-generado-desde-el-codigo.md) | El contrato OpenAPI se genera desde el código y los clientes TypeScript desde el contrato (Orval) | 19/08/2026 | Aceptada |
 | [0017](0017-registro-de-actividad-activitylog.md) | Registro de actividad (`activityLog`): un solo registro append-only para el operador y para la auditoría; actor persona o sistema | 19/08/2026 | Aceptada |
+| [0018](0018-sesion-del-backoffice-token-en-sessionstorage-y-rol-en-la-claim.md) | Sesión del backoffice: el login es sólo email (el club sale del usuario), el token vive en `sessionStorage` y el rol se lee de la claim | 20/08/2026 | Aceptada |

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -13,10 +14,12 @@ using ClubSpot.Domain.Bookings;
 using ClubSpot.Domain.Core.People;
 using ClubSpot.Infrastructure.DependencyInjection;
 using ClubSpot.Infrastructure.MercadoPago;
+using ClubSpot.Infrastructure.Payments;
 using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.SharedKernel.Modularity;
 using ClubSpot.SharedKernel.Time;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -35,6 +38,16 @@ builder.Services.AddClubSpotAuth();
 builder.Services.AddClubSpotPeople();
 builder.Services.AddClubSpotBookings();
 builder.Services.AddClubSpotPayments(builder.Configuration);
+// Fail here rather than at the first booking: with a gateway wired, the portal hands the provider a
+// return url and that url is now checked against this list. An empty list with a gateway configured
+// is not a safe default, it is online booking that refuses every request.
+if (builder.Configuration["Payments:Provider"] is { Length: > 0 } and not "none"
+    && builder.Configuration.GetSection($"{PaymentsOptions.SectionName}:{nameof(PaymentsOptions.AllowedReturnOrigins)}")
+        .Get<string[]>() is not { Length: > 0 })
+{
+    throw new InvalidOperationException(
+        "Payments:AllowedReturnOrigins must list the portal's origin when a payment provider is configured.");
+}
 if (builder.Configuration["Payments:Provider"] == MercadoPagoProvider.ProviderName)
     builder.Services.AddClubSpotMercadoPago(builder.Configuration);
 builder.Services.AddSingleton<IClock, SystemClock>();
@@ -44,6 +57,7 @@ builder.Services.AddSingleton(new ModuleCatalog([
 ]));
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.AddSingleton<JwtIssuer>();
+builder.Services.AddSingleton<SignInThrottle>();
 builder.Services.AddSingleton<ClubSpot.Api.Endpoints.PortalBookingToken>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -72,8 +86,28 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<Sport>(JsonNamingPolicy.CamelCase));
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<BookingStatus>(JsonNamingPolicy.CamelCase));
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<PaymentMode>(JsonNamingPolicy.CamelCase));
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<PaymentOutcome>(JsonNamingPolicy.CamelCase));
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<ClubSpot.Application.Bookings.PaymentApplyOutcome>(JsonNamingPolicy.CamelCase));
 });
+// Behind a reverse proxy every request arrives from the proxy, so the rate limits below would all
+// fall into one partition and stop limiting anyone. Configured and never assumed: honouring
+// X-Forwarded-For without naming who may set it hands an attacker a fresh partition per request.
+var trustedProxies = builder.Configuration.GetSection("Network:TrustedProxies").Get<string[]>() ?? [];
+if (trustedProxies.Length > 0)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownProxies.Clear();
+        options.KnownNetworks.Clear();
+        options.ForwardLimit = trustedProxies.Length;
+        foreach (var proxy in trustedProxies)
+        {
+            if (IPAddress.TryParse(proxy, out var address)) options.KnownProxies.Add(address);
+            else throw new InvalidOperationException($"Network:TrustedProxies has an invalid address: '{proxy}'.");
+        }
+    });
+}
 builder.Services.AddCors(options => options.AddPolicy("backoffice", policy =>
     policy.WithOrigins("http://localhost:5184", "http://localhost:5183").AllowAnyHeader().AllowAnyMethod()));
 // The portal is anonymous, so the only thing standing between a script and the club's whole agenda
@@ -107,6 +141,8 @@ if (app.Environment.IsDevelopment())
     await seeder.SeedAsync();
 }
 
+// Before anything that reads the caller's address, which is what the rate limits partition on.
+if (trustedProxies.Length > 0) app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.MapGet("/", () => "Hello World!").ExcludeFromDescription();
 app.UseCors("backoffice");

@@ -13,7 +13,7 @@ public sealed class SettleBookingHandlerTests
     {
         var store = new StoreFake();
         var provider = new ProviderFake(
-            [new PaymentNotification(Booking, "mercadopago", PaymentRail.Checkout, "111", Approved: true, 12000)]);
+            [new PaymentNotification(Booking, "mercadopago", PaymentRail.Checkout, "111", PaymentOutcome.Approved, 12000)]);
         var handler = new SettleBookingHandler(store, [provider]);
 
         var outcome = await handler.HandleAsync(Booking, CancellationToken.None);
@@ -36,8 +36,8 @@ public sealed class SettleBookingHandlerTests
         var store = new StoreFake();
         var provider = new ProviderFake(
         [
-            new PaymentNotification(Booking, "mercadopago", PaymentRail.Checkout, "222", Approved: false, 12000),
-            new PaymentNotification(Booking, "mercadopago", PaymentRail.Checkout, "333", Approved: true, 12000)
+            new PaymentNotification(Booking, "mercadopago", PaymentRail.Checkout, "222", PaymentOutcome.Rejected, 12000),
+            new PaymentNotification(Booking, "mercadopago", PaymentRail.Checkout, "333", PaymentOutcome.Approved, 12000)
         ]);
         var handler = new SettleBookingHandler(store, [provider]);
 
@@ -55,7 +55,12 @@ public sealed class SettleBookingHandlerTests
         {
             Assert.Equal(PaymentSource.Reconciliation, source);
             AppliedNotifications.Add(notification);
-            return Task.FromResult(notification.Approved ? PaymentApplyOutcome.Confirmed : PaymentApplyOutcome.Rejected);
+            return Task.FromResult(notification.Outcome switch
+            {
+                PaymentOutcome.Approved => PaymentApplyOutcome.Confirmed,
+                PaymentOutcome.Pending => PaymentApplyOutcome.Pending,
+                _ => PaymentApplyOutcome.Rejected
+            });
         }
 
         public Task<BookingCreateResult> CreateAsync(BookingCreateInput input, CancellationToken cancellationToken) =>

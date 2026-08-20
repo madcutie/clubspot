@@ -14,12 +14,14 @@ public sealed record BookingCreateInput(Guid CourtId, DateOnly Date, int StartMi
 public sealed record BookingCreateResult(BookingCreateOutcome Outcome, Guid Id, Money Price,
     BookingStatus Status = BookingStatus.Confirmed, Money ChargeAmount = default, DateTimeOffset? ExpiresAt = null);
 
-public enum PaymentApplyOutcome { Confirmed, Rejected, AlreadyProcessed, Orphaned, UnknownBooking }
+public enum PaymentApplyOutcome { Confirmed, Rejected, Pending, AlreadyProcessed, Orphaned, UnknownBooking }
 
 public enum HoldReleaseOutcome { Released, NotPending, NotFound }
 
+// Outcome, not a bool: a provider that has taken the payment but not decided it yet must not be
+// recorded as a rejection — that is what burned the idempotency key and lost the approval after it.
 public sealed record PaymentNotification(Guid BookingId, string Provider, PaymentRail Rail, string ExternalId,
-    bool Approved, decimal? Amount, string? Currency = null);
+    PaymentOutcome Outcome, decimal? Amount, string? Currency = null);
 
 public sealed record CheckoutIssued(Guid BookingId, string Provider, string Url, Money Amount,
     DateTimeOffset ExpiresAt);

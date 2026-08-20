@@ -2,8 +2,41 @@
 
 Fecha: 20/08/2026 · Alcance: backend (`src/backend/`), con foco en reservas y pagos.
 
-Es un relevamiento, no un plan aprobado ni una implementación. Cada hallazgo lleva la ruta y la
-línea donde se ve, qué pasa hoy, y qué haría falta para cerrarlo. Nada de esto está corregido.
+Es un relevamiento. Cada hallazgo lleva la ruta y la línea donde se ve, qué pasa hoy, y qué haría
+falta para cerrarlo.
+
+## Estado (20/08/2026)
+
+Las rutas y líneas de abajo son las del momento del relevamiento y **no se actualizaron**: sirven
+para entender el hallazgo, no para navegar el código de hoy.
+
+| | Estado |
+|---|---|
+| §1 webhook pendiente quema la clave | ✅ cerrado — `PaymentStatus.Pending` y transición en la misma fila |
+| §2 `returnUrl` esquiva la lista blanca | ✅ cerrado — validado donde entra el dato, y el arranque falla si no está configurada |
+| §3 login sin límite de intentos | ✅ cerrado — `SignInThrottle`, cuenta sólo fracasos. El side-channel de tiempo ya lo había cerrado el PR #3 |
+| §4 pagos concurrentes no detectados | ✅ cerrado — transacción + `SELECT … FOR UPDATE` sobre la reserva |
+| §5 identidad por mail sin verificar | 🚧 parcial — se agregó el índice; **qué significa "es la misma persona" sigue siendo decisión del usuario** |
+| §6 cancelar una reserva paga | 🚧 parcial — la plata queda asentada en el registro de actividad; **devolverla necesita el modelo de reembolsos** |
+| 7.1 `IsBlocked` no se consulta al reservar | ⬜ abierto — qué implica "bloqueado" no está definido en ningún ADR; es pregunta para el usuario |
+| 7.2 `expected` usa siempre la seña | ✅ cerrado — se calcula según el `kind` del pago |
+| 7.3 token del portal sin vencimiento | ✅ cerrado — firma el momento de emisión, vence a los 30 días |
+| 7.4 ámbito de tenant y el `IResult` | ✅ cerrado — el resultado se ejecuta dentro del ámbito |
+| 7.5 `RegisterPersonPayment` sin asiento | ⬜ abierto — entra al plan de finanzas (ADR-0012) |
+| 7.6 exclusión sin `tenantId` | ✅ cerrado — migración `SecurityHardening` |
+| 7.7 sin `UseForwardedHeaders` | ✅ cerrado — configurable por `Network:TrustedProxies`, nunca asumido |
+
+Se solapa con [`plan-reglas-de-plata-huerfana.md`](plan-reglas-de-plata-huerfana.md), que sigue
+**esperando decisiones**: sus puntos A (liberar deja `Expired`), B (congelar lo acordado en la
+reserva) y D (reusar el link vivo) **no se tocaron acá** a propósito.
+
+### Configuración que hace falta al desplegar
+
+- `Payments:AllowedReturnOrigins` tiene que incluir el origen real del portal. Con un proveedor de
+  pagos configurado y la lista vacía, la API **no arranca**: es deliberado, porque la alternativa
+  era que la reserva online devolviera 422 en silencio.
+- `Network:TrustedProxies` (opcional): las direcciones del proxy reverso. Sin esto no se leen los
+  encabezados `X-Forwarded-*`, que es lo correcto cuando no hay proxy.
 
 Lo que **no** se encontró, y conviene decirlo primero porque es lo que más suele fallar:
 

@@ -110,9 +110,22 @@ internal sealed class BookingsStore(
         // Cancelling twice answers the same and leaves a single line in the chronicle.
         if (booking.Status != BookingStatus.Cancelled)
         {
+            // What the booking had been paid, photographed into the entry. Cancelling does not move
+            // money — refunds are not modelled yet — so this is the only place that says out loud
+            // that the club is now holding money for a slot that will not be played.
+            var paid = await db.Payments.AsNoTracking()
+                .Where(payment => payment.BookingId == booking.Id && payment.Status == PaymentStatus.Approved)
+                .SumAsync(payment => payment.Amount.Amount, cancellationToken);
+
             booking.Cancel(clock.UtcNow, trimmedReason);
             activityLog.Record(new ActivityRecord(BookingActivity.BookingCancelled, BookingId: booking.Id,
-                PersonId: booking.PersonId, Reason: trimmedReason));
+                PersonId: booking.PersonId, Reason: trimmedReason,
+                Data: new Dictionary<string, object?>
+                {
+                    ["paidAmount"] = paid,
+                    ["currency"] = booking.Price.Currency,
+                    ["refundPending"] = paid > 0m ? true : (bool?)null
+                }));
             await db.SaveChangesAsync(cancellationToken);
         }
         return BookingCancelOutcome.Cancelled;
@@ -143,12 +156,15 @@ internal sealed class BookingsStore(
     {
         try
         {
-            return await ApplyPaymentCoreAsync(notification, source, cancellationToken);
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var outcome = await ApplyPaymentCoreAsync(notification, source, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return outcome;
         }
         catch (DbUpdateException exception)
             when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
-            // The webhook and the buyer's settle call raced past the check below: the unique index on
+            // Two notifications for the same payment raced past the lookup below: the unique index on
             // (provider, externalId) is what actually makes a replayed payment a no-op.
             return PaymentApplyOutcome.AlreadyProcessed;
         }
@@ -157,25 +173,44 @@ internal sealed class BookingsStore(
     private async Task<PaymentApplyOutcome> ApplyPaymentCoreAsync(PaymentNotification notification,
         PaymentSource source, CancellationToken cancellationToken)
     {
-        // Idempotency anchor: (provider, externalId) is unique, so a replayed webhook is a no-op.
-        if (await db.Payments.AnyAsync(payment => payment.Provider == notification.Provider
-            && payment.ExternalId == notification.ExternalId, cancellationToken))
+        // Serialization point for everything this booking's money depends on. Without it two approved
+        // payments arriving together both read a settled total of zero, neither looks like a duplicate,
+        // and the booking ends up charged twice with nothing flagged. Taken before the first read so
+        // the whole decision — what is already settled, what this payment is, whether it confirms —
+        // happens against a state no other payment can move underneath it.
+        await db.Database.ExecuteSqlAsync(
+            $"SELECT 1 FROM public.bookings WHERE id = {notification.BookingId} FOR UPDATE", cancellationToken);
+
+        // Idempotency anchor: (provider, externalId) is unique. A notification that repeats what is
+        // already settled is a no-op, but one that carries a *newer* state for a payment still
+        // undecided has to land — see Payment.Accepts.
+        var existing = await db.Payments.SingleOrDefaultAsync(payment => payment.Provider == notification.Provider
+            && payment.ExternalId == notification.ExternalId, cancellationToken);
+        if (existing is not null
+            && (existing.BookingId != notification.BookingId || !existing.Accepts(notification.Outcome)))
             return PaymentApplyOutcome.AlreadyProcessed;
 
         var booking = await db.Bookings.SingleOrDefaultAsync(candidate => candidate.Id == notification.BookingId, cancellationToken);
         if (booking is null) return PaymentApplyOutcome.UnknownBooking;
 
         var club = await clubSettings.GetAsync(cancellationToken);
-        var expected = ChargeAmountFor(booking.PaymentMode, booking.Price, club.DepositPercent);
 
         // What the booking already settled answers two questions at once: what this payment is —
         // a first charge or the balance left by a deposit — and whether it is duplicate money.
+        // A payment of our own that has not settled is not part of that sum.
         var settled = await db.Payments.AsNoTracking()
             .Where(candidate => candidate.BookingId == booking.Id && candidate.Status == PaymentStatus.Approved)
             .SumAsync(candidate => candidate.Amount.Amount, cancellationToken);
         var kind = settled > 0m
             ? PaymentKind.Balance
             : booking.PaymentMode == PaymentMode.OnlineDeposit ? PaymentKind.Deposit : PaymentKind.Full;
+
+        // What this particular payment was asked for: the first charge is the deposit or the whole
+        // price, the balance is whatever the deposit left owing. Reading the deposit for both is what
+        // made a correct balance payment look short whenever the deposit was not exactly half.
+        var expected = kind == PaymentKind.Balance
+            ? Money.Of(booking.Price.Amount - settled, booking.Price.Currency)
+            : ChargeAmountFor(booking.PaymentMode, booking.Price, club.DepositPercent);
 
         // The row records the currency the provider actually settled in, not the one the club asked
         // for: written the other way round, a mismatch would be invisible on the payment itself.
@@ -184,10 +219,25 @@ internal sealed class BookingsStore(
             ? Money.Of(charged, currency)
             : expected;
 
-        var payment = new Payment(Guid.NewGuid(), tenantContext.Current, booking.Id, notification.Provider,
-            notification.Rail, notification.ExternalId, amount, kind,
-            notification.Approved ? PaymentStatus.Approved : PaymentStatus.Rejected, source, clock.UtcNow);
-        db.Payments.Add(payment);
+        var status = notification.Outcome switch
+        {
+            PaymentOutcome.Approved => PaymentStatus.Approved,
+            PaymentOutcome.Rejected => PaymentStatus.Rejected,
+            _ => PaymentStatus.Pending
+        };
+
+        Payment payment;
+        if (existing is not null)
+        {
+            payment = existing;
+            payment.Settle(amount, kind, status, source);
+        }
+        else
+        {
+            payment = new Payment(Guid.NewGuid(), tenantContext.Current, booking.Id, notification.Provider,
+                notification.Rail, notification.ExternalId, amount, kind, status, source, clock.UtcNow);
+            db.Payments.Add(payment);
+        }
 
         void RecordPayment(string type, PaymentOrphanReason? why = null) => activityLog.Record(new ActivityRecord(
             type, BookingId: booking.Id, PersonId: booking.PersonId, PaymentId: payment.Id,
@@ -202,7 +252,16 @@ internal sealed class BookingsStore(
                 ["why"] = why
             }));
 
-        if (!notification.Approved)
+        if (notification.Outcome == PaymentOutcome.Pending)
+        {
+            // The provider has the money but has not decided it: the row is written so the payment is
+            // on record and reconciliation keeps watching it, and nothing about the booking moves yet.
+            RecordPayment(BookingActivity.PaymentPending);
+            await db.SaveChangesAsync(cancellationToken);
+            return PaymentApplyOutcome.Pending;
+        }
+
+        if (notification.Outcome == PaymentOutcome.Rejected)
         {
             // The customer can retry inside the hold's TTL; the hold stays as is.
             RecordPayment(BookingActivity.PaymentRejected);

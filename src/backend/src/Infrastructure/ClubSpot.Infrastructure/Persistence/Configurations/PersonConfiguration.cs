@@ -28,6 +28,9 @@ internal sealed class PersonConfiguration : IEntityTypeConfiguration<Person>
         });
         builder.HasIndex(person => new { person.TenantId, person.SearchName });
         builder.HasIndex(person => new { person.TenantId, person.PhoneDigits });
+        // The portal resolves an anonymous booker by email on every online booking; without this the
+        // lookup is a sequential scan over the table the padrón migration is going to fill.
+        builder.HasIndex(person => new { person.TenantId, person.Email });
         builder.HasMany(person => person.Notes).WithOne().HasForeignKey(note => note.PersonId).OnDelete(DeleteBehavior.Cascade);
     }
 }

@@ -71,17 +71,9 @@ public sealed class MercadoPagoProvider(
             var payment = await new PaymentClient().GetAsync(id, RequestOptions(), cancellationToken);
             if (payment.ExternalReference is null || !Guid.TryParse(payment.ExternalReference, out var bookingId))
                 return null;
-            // Provisional (18/08/2026): every status other than approved collapses into rejected, so a
-            // refund or a chargeback leaves the booking confirmed. Replaced when refunds are modelled;
-            // until then the warning is the only trace that the money moved the other way.
-            if (payment.Status is not ("approved" or "rejected"))
-                logger.LogWarning(
-                    "Mercado Pago payment {PaymentId} for booking {BookingId} reports status {Status}, " +
-                    "which is recorded as rejected because refunds are not modelled yet.",
-                    paymentId, bookingId, payment.Status);
             return new PaymentNotification(bookingId, ProviderName, PaymentRail.Checkout,
                 payment.Id?.ToString(CultureInfo.InvariantCulture) ?? paymentId,
-                payment.Status == "approved", payment.TransactionAmount, payment.CurrencyId);
+                OutcomeOf(payment.Status, paymentId, bookingId), payment.TransactionAmount, payment.CurrencyId);
         }
         catch (MercadoPagoApiException)
         {
@@ -105,18 +97,35 @@ public sealed class MercadoPagoProvider(
                 && string.Equals(payment.ExternalReference, reference, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        foreach (var payment in mine.Where(payment => payment.Status is not ("approved" or "rejected")))
-            logger.LogWarning(
-                "Mercado Pago payment {PaymentId} for booking {BookingId} reports status {Status}, " +
-                "which reconciliation ignores because refunds are not modelled yet.",
-                payment.Id, bookingId, payment.Status);
-
         return mine
-            .Where(payment => payment.Status is "approved" or "rejected")
             .Select(payment => new PaymentNotification(bookingId, ProviderName, PaymentRail.Checkout,
                 payment.Id!.Value.ToString(CultureInfo.InvariantCulture),
-                payment.Status == "approved", payment.TransactionAmount, payment.CurrencyId))
+                OutcomeOf(payment.Status, payment.Id!.Value.ToString(CultureInfo.InvariantCulture), bookingId),
+                payment.TransactionAmount, payment.CurrencyId))
             .ToList();
+    }
+
+    // Mercado Pago's terminal states are approved, rejected and cancelled; everything else — pending,
+    // in_process, authorized — means the payment exists and is not decided. Collapsing those into a
+    // rejection is what wrote a Rejected row under the payment's own id and made the approval that
+    // followed look like a replay, leaving the money taken and the booking unconfirmed.
+    //
+    // Provisional (18/08/2026, still open): refunded and charged_back are read as rejected, so a
+    // refund leaves an already confirmed booking confirmed. Replaced when refunds are modelled.
+    private PaymentOutcome OutcomeOf(string? status, string paymentId, Guid bookingId)
+    {
+        switch (status)
+        {
+            case "approved": return PaymentOutcome.Approved;
+            case "rejected" or "cancelled": return PaymentOutcome.Rejected;
+            case "pending" or "in_process" or "in_mediation" or "authorized": return PaymentOutcome.Pending;
+            default:
+                logger.LogWarning(
+                    "Mercado Pago payment {PaymentId} for booking {BookingId} reports status {Status}, " +
+                    "which is recorded as rejected because refunds are not modelled yet.",
+                    paymentId, bookingId, status);
+                return PaymentOutcome.Rejected;
+        }
     }
 
     public bool VerifyWebhookSignature(string? xSignature, string? xRequestId, string? dataId) =>

@@ -13,8 +13,9 @@ public sealed class SettleBookingHandler(IBookingsStore store, IEnumerable<IPaym
             foreach (var payment in await provider.FindPaymentsAsync(bookingId, cancellationToken))
             {
                 var outcome = await store.ApplyPaymentAsync(payment, PaymentSource.Reconciliation, cancellationToken);
-                // A rejected attempt is recorded but the buyer may have retried: keep looking.
-                if (outcome != PaymentApplyOutcome.Rejected) return outcome;
+                // A rejected attempt is recorded but the buyer may have retried, and one the provider
+                // has not decided settles nothing: either way, keep looking for the one that did.
+                if (outcome is not (PaymentApplyOutcome.Rejected or PaymentApplyOutcome.Pending)) return outcome;
             }
         return null;
     }

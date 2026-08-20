@@ -25,6 +25,13 @@ internal static class ClubScope
         using var tenantScope = tenantScopeFactory.BeginScope(clubId.Value);
         var actorScopeFactory = context.HttpContext.RequestServices.GetRequiredService<IActivityActorScopeFactory>();
         using var actorScope = actorScopeFactory.BeginScope(actor);
-        return await next(context);
+
+        // The result is executed here, not returned to be executed later: a filter returns before the
+        // response is written, and both scopes close on the way out. Anything the result still needs
+        // from persistence would then run with no tenant and throw far from the cause.
+        var result = await next(context);
+        if (result is not IResult produced) return result;
+        await produced.ExecuteAsync(context.HttpContext);
+        return Results.Empty;
     }
 }

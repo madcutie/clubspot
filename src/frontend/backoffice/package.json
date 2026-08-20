@@ -8,7 +8,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "api:gen": "orval",
+    "predev": "npm run api:gen",
+    "prebuild": "npm run api:gen"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
@@ -22,6 +25,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "orval": "^8.24.0",
     "typescript": "~5.9.3",
     "vite": "^7.1.7"
   }

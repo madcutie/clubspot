@@ -1,18 +1,31 @@
 /**
- * Adaptador HTTP de la base de personas y del contexto del club. Mismas firmas
- * que tenía el mock. Las fechas salen de acá ya escritas ("hace 3 días", "14 ago
- * 2026"): la pantalla muestra, no calcula.
+ * Adaptador de la base de personas y del contexto del club: traduce el contrato
+ * de la API a los tipos del dominio. Las llamadas y las formas del backend vienen
+ * del cliente generado (ADR-0016). Las fechas salen de acá ya escritas ("hace 3
+ * días", "14 ago 2026"): la pantalla muestra, no calcula.
  */
 
 import { DIA_CORTO, MESES, duracionTurno, fechaLarga, haceCuanto, hhmm } from '../domain/fechas';
 import type { Club, FiltroPersonas, Nota, Persona, TurnoHistorico } from '../domain/types';
-import { ApiError, api } from './http';
+import { ApiError } from './http';
+import { getContext } from './generated/context/context';
+import { getPersonBookings } from './generated/bookings/bookings';
+import {
+  addPersonNote,
+  blockPeople,
+  createPerson,
+  getPerson,
+  registerPersonPayment,
+  searchPeople,
+  setPersonBlock,
+} from './generated/people/people';
+import type {
+  NoteResponse,
+  PersonBookingResponse,
+  PersonResponse,
+} from './generated/clubSpotApiV1.schemas';
 
-type OrigenApi = 'app' | 'counter';
-type FiltroApi = 'all' | 'withoutBookings' | 'counter' | 'debt';
-type DeporteApi = 'padel' | 'football';
-
-const FILTRO_API: Record<FiltroPersonas, FiltroApi> = {
+const FILTRO_API: Record<FiltroPersonas, string> = {
   todas: 'all',
   sinturnos: 'withoutBookings',
   mostrador: 'counter',
@@ -28,59 +41,6 @@ const ROLES: Record<string, string> = {
   coach: 'profesor',
   member: 'socio',
 };
-
-interface PersonResponse {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  origin: OrigenApi;
-  bookings: number;
-  lastBookingOn: string | null;
-  debt: number;
-  isBlocked: boolean;
-  createdAt: string;
-}
-
-interface PeoplePageResponse {
-  items: PersonResponse[];
-  total: number;
-  page: number;
-  pages: number;
-  pageSize: number;
-  census: number;
-  needsAttention: number;
-  totalDebt: number;
-  totals: Record<FiltroApi, number>;
-}
-
-interface NoteResponse {
-  text: string;
-  authorName: string;
-  createdAt: string;
-}
-
-interface PersonDetailsResponse {
-  person: PersonResponse;
-  notes: NoteResponse[];
-}
-
-interface PersonBookingResponse {
-  id: string;
-  date: string;
-  startMinute: number;
-  durationMinutes: number;
-  courtName: string;
-  sport: DeporteApi;
-  price: number;
-  paid: number;
-}
-
-interface ContextResponse {
-  club: { name: string; venue: string | null };
-  operator: { name: string; roles: string[] };
-  modules: string[];
-}
 
 function aPersona(x: PersonResponse, notas: Nota[] = []): Persona {
   return {
@@ -123,7 +83,7 @@ function aTurno(x: PersonBookingResponse): TurnoHistorico {
 // ── Club ─────────────────────────────────────────────────────────────────────
 
 export async function fetchClub(): Promise<Club> {
-  const ctx = await api<ContextResponse>('/api/context');
+  const ctx = await getContext();
   const partes = ctx.operator.name.trim().split(/\s+/);
   return {
     nombre: ctx.club.name,
@@ -159,12 +119,7 @@ export interface PaginaPersonas {
 }
 
 export async function fetchPersonas(q: ConsultaPersonas): Promise<PaginaPersonas> {
-  const busqueda = new URLSearchParams({
-    q: q.q,
-    filter: FILTRO_API[q.filtro],
-    page: String(q.pagina),
-  });
-  const pagina = await api<PeoplePageResponse>(`/api/people?${busqueda}`);
+  const pagina = await searchPeople({ q: q.q, filter: FILTRO_API[q.filtro], page: q.pagina });
   return {
     items: pagina.items.map((x) => aPersona(x)),
     total: pagina.total,
@@ -190,10 +145,10 @@ export interface FichaPersona {
 
 export async function fetchFicha(id: string): Promise<FichaPersona | null> {
   const [detalle, turnos] = await Promise.all([
-    api<PersonDetailsResponse>(`/api/people/${id}`).catch(sinContenido),
+    getPerson(id).catch(sinContenido),
     // El historial es del módulo de reservas: si el club no lo contrató la ruta
     // no existe y la ficha se muestra igual, sin turnos (AGENTS.md §5).
-    api<PersonBookingResponse[]>(`/api/people/${id}/bookings`).catch(sinContenido),
+    getPersonBookings(id).catch(sinContenido),
   ]);
   if (!detalle) return null;
   return {
@@ -209,38 +164,26 @@ export interface NuevaPersona {
 }
 
 export async function crearPersona(input: NuevaPersona): Promise<Persona> {
-  const creada = await api<PersonResponse>('/api/people', {
-    method: 'POST',
-    body: JSON.stringify({ name: input.nombre, phone: input.tel, email: input.email }),
-  });
+  const creada = await createPerson({ name: input.nombre, phone: input.tel, email: input.email });
   return aPersona(creada);
 }
 
 export async function bloquearPersonas(ids: string[], bloqueado: boolean): Promise<number> {
-  const r = await api<{ affected: number }>('/api/people/blocks', {
-    method: 'POST',
-    body: JSON.stringify({ ids, blocked: bloqueado }),
-  });
+  const r = await blockPeople({ ids, blocked: bloqueado });
   return r.affected;
 }
 
 export async function alternarBloqueo(id: string, bloqueado: boolean): Promise<boolean> {
-  const r = await api<{ blocked: boolean }>(`/api/people/${id}/block`, {
-    method: 'PUT',
-    body: JSON.stringify({ blocked: bloqueado }),
-  });
+  const r = await setPersonBlock(id, { blocked: bloqueado });
   return r.blocked;
 }
 
 export async function agregarNota(id: string, txt: string): Promise<void> {
-  await api<NoteResponse>(`/api/people/${id}/notes`, {
-    method: 'POST',
-    body: JSON.stringify({ text: txt }),
-  });
+  await addPersonNote(id, { text: txt });
 }
 
 export async function registrarPago(id: string): Promise<number> {
-  const r = await api<{ paid: number }>(`/api/people/${id}/payments`, { method: 'POST' });
+  const r = await registerPersonPayment(id);
   return r.paid;
 }
 

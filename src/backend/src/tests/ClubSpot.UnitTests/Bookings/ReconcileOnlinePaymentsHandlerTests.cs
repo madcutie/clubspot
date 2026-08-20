@@ -1,3 +1,4 @@
+using ClubSpot.SharedKernel.Primitives;
 using ClubSpot.Application.Bookings;
 using ClubSpot.Domain.Bookings;
 using ClubSpot.SharedKernel.Time;
@@ -105,6 +106,9 @@ public sealed class ReconcileOnlinePaymentsHandlerTests
 
         public Task<HoldReleaseOutcome> ReleaseHoldAsync(Guid id, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
+
+        public Task RecordCheckoutIssuedAsync(Guid bookingId, Money amount, DateTimeOffset expiresAt,
+            string provider, CancellationToken cancellationToken) => Task.CompletedTask;
 
         public Task<BookingSnapshot?> GetAsync(Guid id, CancellationToken cancellationToken) =>
             throw new NotSupportedException();

@@ -9,7 +9,7 @@ public static class DevCheckoutEndpoints
 {
     public static IEndpointRouteBuilder MapDevCheckout(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/dev/checkout", Render).AllowAnonymous();
+        app.MapGet("/dev/checkout", Render).AllowAnonymous().ExcludeFromDescription();
         return app;
     }
 

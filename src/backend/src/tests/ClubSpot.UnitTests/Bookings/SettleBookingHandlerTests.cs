@@ -1,3 +1,4 @@
+using ClubSpot.SharedKernel.Primitives;
 using ClubSpot.Application.Bookings;
 using ClubSpot.Domain.Bookings;
 
@@ -65,6 +66,9 @@ public sealed class SettleBookingHandlerTests
 
         public Task<HoldReleaseOutcome> ReleaseHoldAsync(Guid id, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
+
+        public Task RecordCheckoutIssuedAsync(Guid bookingId, Money amount, DateTimeOffset expiresAt,
+            string provider, CancellationToken cancellationToken) => Task.CompletedTask;
 
         public Task<BookingSnapshot?> GetAsync(Guid id, CancellationToken cancellationToken) =>
             throw new NotSupportedException();

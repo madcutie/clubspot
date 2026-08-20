@@ -29,10 +29,10 @@ Leer antes de proponer cualquier cosa de dominio. Están en `docs/`:
 | [`docs/plan-backend-backoffice.md`](docs/plan-backend-backoffice.md) + su [bitácora](docs/plan-backend-backoffice.bitacora.md) | **Plan vigente del backend** y el registro de avance. La bitácora dice qué fase está en curso y dónde quedó |
 | [`docs/plan-disponibilidad-e2e.md`](docs/plan-disponibilidad-e2e.md) + su [bitácora](docs/plan-disponibilidad-e2e.bitacora.md) | **Plan aprobado (16/08/2026)**: disponibilidad de punta a punta —ADR-0013 en el backend, horarios/canchas del backoffice y portal de reservas contra la API real— con catálogo de 16 casos E2E por navegador + SQL. **F1 (backend) cerrada y verificada**; F2–F5 pendientes |
 | [`docs/plan-cobro-en-mostrador.md`](docs/plan-cobro-en-mostrador.md) + su [bitácora](docs/plan-cobro-en-mostrador.bitacora.md) | **Escrito 19/08/2026, esperando aprobación**: cobrar un turno con Mercado Pago desde el backoffice (QR en pantalla + link por WhatsApp), reusando Checkout Pro. **Sin arrancar** |
-| [`docs/plan-activity-log.md`](docs/plan-activity-log.md) + su [bitácora](docs/plan-activity-log.bitacora.md) | **Escrito 19/08/2026, esperando aprobación**: registro de actividad (ADR-0017) — una crónica append-only de qué pasó, quién lo hizo y por qué, que ve tanto el canchero como la auditoría. **Sin arrancar** |
+| [`docs/plan-activity-log.md`](docs/plan-activity-log.md) + su [bitácora](docs/plan-activity-log.bitacora.md) | **En curso (19/08/2026)**: registro de actividad (ADR-0017) — una crónica append-only de qué pasó, quién lo hizo y por qué, que ve tanto el canchero como la auditoría. **F1 cerrada y verificada** (entidad, actor por ámbito, tipos de reservas y pagos cableados); F2–F7 pendientes |
 | [`docs/plan-pagos-multiproveedor.md`](docs/plan-pagos-multiproveedor.md) + su [bitácora](docs/plan-pagos-multiproveedor.bitacora.md) | **Plan aprobado (18/08/2026)**: asiento de pago transparente al proveedor y al canal (ADR-0014/0015) — `payments.provider` + `payments.rail`, puerto `IPaymentProvider` con capacidades. **Cerrado y verificado (fake y Mercado Pago real)** |
 | [`docs/plan-reserva-online.md`](docs/plan-reserva-online.md) + su [bitácora](docs/plan-reserva-online.bitacora.md) | **Plan aprobado (17/08/2026)**: reserva online desde el portal en 3 etapas. **Etapas 1 y 2 cerradas**: reserva sin pago con vínculo a persona (email → celular → crear), y pago online (hold con TTL perezoso, webhook idempotente, tabla `payments`) verificado con el **gateway fake**; Mercado Pago escrito pero sin probar (faltan credenciales). Etapa 3 (login) pendiente |
-| [`docs/plan-contrato-api.md`](docs/plan-contrato-api.md) + su [bitácora](docs/plan-contrato-api.bitacora.md) | **Escrito 19/08/2026, esperando aprobación**: documento OpenAPI generado desde la Api y clientes TypeScript generados con Orval para los dos frontends (ADR-0016). **Sin arrancar** |
+| [`docs/plan-contrato-api.md`](docs/plan-contrato-api.md) + su [bitácora](docs/plan-contrato-api.bitacora.md) | **Plan aprobado y ejecutado (19/08/2026)**: documento OpenAPI generado por el build de la Api y clientes TypeScript generados con Orval para los dos frontends (ADR-0016). **Cerrado y verificado**: F1–F5 |
 | `src/frontend/backoffice/` | **El mock manda** (decisión del 14/08/2026): donde el prototipo y cualquier otra fuente difieran, gana el prototipo. Ver sección 10 |
 
 > **16/08/2026 — se eliminó `docs/referencia-ourclub/`** (relevamiento de OurClub, alcance del
@@ -275,10 +275,11 @@ con cobro o sin cobro y sin liquidaciones · otro con club + reservas + finanzas
 ```
 
 ```bash
-cd src/backend && dotnet build      # compilar la solución
+cd src/backend && dotnet build      # compilar la solución (y reescribir docs/api/clubspot.openapi.json)
 cd src/backend && dotnet test       # correr los tests (los de integración necesitan Docker)
 cd src/frontend/backoffice && npm i && npm run dev   # consola del club — :5184
 cd src/frontend/reservas && npm i && npm run dev     # portal de reservas — :5183
+npm run api:gen                                      # regenera el cliente (lo corre solo predev/prebuild)
 ```
 
 La API corre en `:5037` y **PostgreSQL en el `5432` estándar** (decisión del usuario,
@@ -363,9 +364,9 @@ Leyenda: ✅ hecho · 🚧 bloqueado · ⬜ pendiente
 | ⬜ | **Configuración de módulos por club** | Persistir qué contrató cada tenant · endpoint de capacidades para el frontend · filtro que devuelve **404** en módulo apagado · gating del despachador de jobs |
 | ⬜ | **Infraestructura de jobs** | Hangfire sobre PostgreSQL · lock distribuido por (job, tenant) · despachador que encola una ejecución por tenant y aísla el fallo de uno · registro de resultado por corrida |
 | ⬜ | **Outbox de notificaciones** | Tabla + despachador (J4) + proveedor de email. La fila se escribe en la misma transacción que el hecho que la origina |
-| ⬜ | **Registro de actividad (`activityLog`)** | Quién, cuándo y por qué en cada transición de estado — y también los eventos que llegan solos (webhook, job, vencimiento). Un solo registro append-only para el operador y para la auditoría ([ADR-0017](docs/adr/0017-registro-de-actividad-activitylog.md), [plan](docs/plan-activity-log.md)) |
+| 🚧 | **Registro de actividad (`activityLog`)** | Quién, cuándo y por qué en cada transición de estado — y también los eventos que llegan solos (webhook, job, vencimiento). Un solo registro append-only para el operador y para la auditoría ([ADR-0017](docs/adr/0017-registro-de-actividad-activitylog.md), [plan](docs/plan-activity-log.md)) |
 | ⬜ | **Observabilidad** | Métricas por job y **pantalla de operación** dentro del sistema: última corrida, pagos en revisión manual, outbox fallido, divergencias de habilitación |
-| ⬜ | **Contrato de API** | Decidido (ADR-0016, 19/08/2026): **code-first**, documento OpenAPI generado desde los endpoints y versionado, clientes TypeScript generados con Orval. Implementación en [`docs/plan-contrato-api.md`](docs/plan-contrato-api.md), sin arrancar |
+| ✅ | **Contrato de API** | ADR-0016 implementado (19/08/2026): el build de la Api reescribe `docs/api/clubspot.openapi.json` con los 29 endpoints, y los dos frontends hablan por clientes generados con Orval ([plan](docs/plan-contrato-api.md)) |
 
 ### 9.2 Módulo `core`
 
@@ -502,7 +503,7 @@ src/
   `personasHttp.ts` (personas, contexto del club) traducen el JSON de la API a los tipos del
   dominio y devuelven las fechas **ya escritas** ("hace 3 días"): la pantalla muestra, no
   calcula. Los componentes no saben que existe HTTP.
-- **Debajo de los adaptadores va el cliente generado** (ADR-0016, pendiente de implementar): el
+- **Debajo de los adaptadores va el cliente generado** (ADR-0016): el
   código que Orval genera desde el contrato OpenAPI es la capa de cable; los adaptadores lo
   consumen y siguen siendo la frontera hacia el dominio. Nada de servicios escritos a mano al
   lado de lo generado — ver la regla en la sección 6.

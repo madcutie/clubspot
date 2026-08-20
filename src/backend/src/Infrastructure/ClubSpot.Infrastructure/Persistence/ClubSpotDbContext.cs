@@ -1,6 +1,7 @@
 using System.Reflection;
 using ClubSpot.Domain.Bookings;
 using ClubSpot.Domain.Core;
+using ClubSpot.Domain.Core.Activity;
 using ClubSpot.Domain.Core.People;
 using ClubSpot.Infrastructure.Persistence.Configurations;
 using ClubSpot.SharedKernel.Tenancy;
@@ -26,6 +27,7 @@ public sealed class ClubSpotDbContext(DbContextOptions<ClubSpotDbContext> option
     public DbSet<AvailabilityOverride> AvailabilityOverrides => Set<AvailabilityOverride>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<ActivityLogEntry> ActivityLogEntries => Set<ActivityLogEntry>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -47,6 +49,7 @@ public sealed class ClubSpotDbContext(DbContextOptions<ClubSpotDbContext> option
         modelBuilder.ApplyConfiguration(new AvailabilityOverrideDateConfiguration());
         modelBuilder.ApplyConfiguration(new BookingConfiguration());
         modelBuilder.ApplyConfiguration(new PaymentConfiguration());
+        modelBuilder.ApplyConfiguration(new ActivityLogEntryConfiguration());
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {

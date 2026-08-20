@@ -8,6 +8,8 @@ using ClubSpot.Infrastructure.Payments;
 using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.Infrastructure.Repositories;
 using ClubSpot.SharedKernel.Modularity;
+using ClubSpot.Application.Core.Activity;
+using ClubSpot.SharedKernel.Activity;
 using ClubSpot.SharedKernel.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +23,9 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<AsyncLocalTenantContext>();
         services.AddSingleton<ITenantContext>(sp => sp.GetRequiredService<AsyncLocalTenantContext>());
+        services.AddSingleton<AsyncLocalActivityActor>();
+        services.AddSingleton<IActivityActor>(sp => sp.GetRequiredService<AsyncLocalActivityActor>());
+        services.AddSingleton<IActivityActorScopeFactory>(sp => sp.GetRequiredService<AsyncLocalActivityActor>());
         services.AddSingleton<ITenantScopeFactory>(sp => sp.GetRequiredService<AsyncLocalTenantContext>());
         return services;
     }
@@ -29,6 +34,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services, string connectionString)
     {
         services.AddDbContext<ClubSpotDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddScoped<IActivityLog, ActivityLog>();
         services.AddScoped<IClubSettings, ClubSettings>();
         services.AddScoped<IClubDirectory, ClubDirectory>();
         return services;

@@ -6,6 +6,7 @@ using ClubSpot.Application.Bookings;
 using ClubSpot.Domain.Bookings;
 using ClubSpot.Infrastructure.Payments;
 using ClubSpot.SharedKernel.Modularity;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Options;
 
 namespace ClubSpot.Api.Endpoints;
@@ -16,80 +17,82 @@ public static class BookingEndpoints
     {
         var group = app.MapGroup("/api")
             .RequireAuthorization(AuthorizationPolicies.AgendaOperate)
-            .RequireModule(ModuleId.Bookings);
-        group.MapGet("/agenda", GetAgendaAsync);
-        group.MapPost("/bookings", CreateAsync);
-        group.MapPost("/bookings/{id:guid}/cancel", CancelAsync);
-        group.MapPost("/bookings/{id:guid}/checkout", CreateCheckoutAsync);
-        group.MapGet("/people/{id:guid}/bookings", GetPersonBookingsAsync);
+            .RequireModule(ModuleId.Bookings)
+            .WithTags("bookings");
+        group.MapGet("/agenda", GetAgendaAsync).WithName("GetAgenda");
+        group.MapPost("/bookings", CreateAsync).WithName("CreateBooking");
+        group.MapPost("/bookings/{id:guid}/cancel", CancelAsync).WithName("CancelBooking");
+        group.MapPost("/bookings/{id:guid}/checkout", CreateCheckoutAsync).WithName("CreateBookingCheckout");
+        group.MapGet("/people/{id:guid}/bookings", GetPersonBookingsAsync).WithName("GetPersonBookings");
         return app;
     }
 
-    private static async Task<IResult> GetPersonBookingsAsync(Guid id, IPersonBookings personBookings,
+    private static async Task<Ok<IReadOnlyList<PersonBookingResponse>>> GetPersonBookingsAsync(Guid id, IPersonBookings personBookings,
         CancellationToken cancellationToken)
     {
         var bookings = await personBookings.HistoryAsync(id, take: 20, cancellationToken);
-        return Results.Ok(bookings.Select(booking => new PersonBookingResponse(booking.Id, booking.Date,
+        return TypedResults.Ok<IReadOnlyList<PersonBookingResponse>>([.. bookings.Select(booking => new PersonBookingResponse(booking.Id, booking.Date,
             booking.StartMinute, booking.DurationMinutes, booking.CourtName, booking.Sport,
-            booking.Price.Amount, booking.Paid, booking.Status)));
+            booking.Price.Amount, booking.Paid, booking.Status))]);
     }
 
     // Counter charge: hands the operator a link (shown as a QR) for the outstanding balance.
     // Reissuing is free — the slot is already the customer's, so nothing is being held.
-    private static async Task<IResult> CreateCheckoutAsync(Guid id, CreateBookingCheckoutHandler handler,
+    private static async Task<Results<Ok<BookingCheckoutResponse>, NotFound, Conflict, UnprocessableEntity>> CreateCheckoutAsync(Guid id, CreateBookingCheckoutHandler handler,
         IOptions<PaymentsOptions> paymentsOptions, CancellationToken cancellationToken)
     {
         var returnUrl = CheckoutReturnUrl.For(paymentsOptions.Value, paymentsOptions.Value.PortalBaseUrl, id);
         var result = await handler.HandleAsync(id, returnUrl, cancellationToken);
         return result.Outcome switch
         {
-            BookingCheckoutOutcome.Created => Results.Ok(
+            BookingCheckoutOutcome.Created => TypedResults.Ok(
                 new BookingCheckoutResponse(result.Url!, result.Amount, result.ExpiresAt!.Value)),
-            BookingCheckoutOutcome.NotFound => Results.NotFound(),
-            BookingCheckoutOutcome.NotChargeable => Results.Conflict(),
-            BookingCheckoutOutcome.NoProvider => Results.UnprocessableEntity(),
+            BookingCheckoutOutcome.NotFound => TypedResults.NotFound(),
+            BookingCheckoutOutcome.NotChargeable => TypedResults.Conflict(),
+            BookingCheckoutOutcome.NoProvider => TypedResults.UnprocessableEntity(),
             _ => throw new ArgumentOutOfRangeException(nameof(result.Outcome))
         };
     }
 
-    private static async Task<IResult> GetAgendaAsync(string sport, DateOnly date, GetAgendaHandler handler, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<Agenda>, BadRequest>> GetAgendaAsync(string sport, DateOnly date, GetAgendaHandler handler, CancellationToken cancellationToken)
     {
-        if (!Enum.TryParse<Sport>(sport, ignoreCase: true, out var parsedSport)) return Results.BadRequest();
-        return Results.Ok(await handler.HandleAsync(parsedSport, date, cancellationToken));
+        if (!Enum.TryParse<Sport>(sport, ignoreCase: true, out var parsedSport)) return TypedResults.BadRequest();
+        return TypedResults.Ok(await handler.HandleAsync(parsedSport, date, cancellationToken));
     }
 
-    private static async Task<IResult> CreateAsync(BookingRequest request, HttpContext context, IBookingsStore store, CancellationToken cancellationToken)
+    private static async Task<Results<Created<BookingCreatedResponse>, NotFound, UnprocessableEntity, Conflict, UnauthorizedHttpResult>> CreateAsync(
+        BookingRequest request, HttpContext context, IBookingsStore store, CancellationToken cancellationToken)
     {
         var createdBy = UserId(context.User);
-        if (createdBy is null) return Results.Unauthorized();
+        if (createdBy is null) return TypedResults.Unauthorized();
 
         var result = await store.CreateAsync(request.ToInput(createdBy.Value), cancellationToken);
         return result.Outcome switch
         {
-            BookingCreateOutcome.Created => Results.Created($"/api/bookings/{result.Id}", new BookingCreatedResponse(result.Id, result.Price.Amount)),
-            BookingCreateOutcome.UnknownCourt => Results.NotFound(),
-            BookingCreateOutcome.InvalidSlot => Results.UnprocessableEntity(),
-            BookingCreateOutcome.SlotTaken => Results.Conflict(),
+            BookingCreateOutcome.Created => TypedResults.Created($"/api/bookings/{result.Id}", new BookingCreatedResponse(result.Id, result.Price.Amount)),
+            BookingCreateOutcome.UnknownCourt => TypedResults.NotFound(),
+            BookingCreateOutcome.InvalidSlot => TypedResults.UnprocessableEntity(),
+            BookingCreateOutcome.SlotTaken => TypedResults.Conflict(),
             _ => throw new ArgumentOutOfRangeException(nameof(result.Outcome))
         };
     }
 
-    private static async Task<IResult> CancelAsync(Guid id, IBookingsStore store, CancellationToken cancellationToken) =>
-        await store.CancelAsync(id, cancellationToken) == BookingCancelOutcome.Cancelled ? Results.NoContent() : Results.NotFound();
+    private static async Task<Results<NoContent, NotFound>> CancelAsync(Guid id, IBookingsStore store, CancellationToken cancellationToken) =>
+        await store.CancelAsync(id, cancellationToken) == BookingCancelOutcome.Cancelled ? TypedResults.NoContent() : TypedResults.NotFound();
 
     private static Guid? UserId(ClaimsPrincipal user) =>
         Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
 
-    private sealed record BookingRequest(Guid CourtId, DateOnly Date, int StartMinute, int DurationMinutes, string CustomerName, string? CustomerPhone)
+    internal sealed record BookingRequest(Guid CourtId, DateOnly Date, int StartMinute, int DurationMinutes, string CustomerName, string? CustomerPhone)
     {
         public BookingCreateInput ToInput(Guid createdBy) =>
             new(CourtId, Date, StartMinute, DurationMinutes, CustomerName, CustomerPhone, CustomerEmail: null,
                 BookingOrigin.Counter, PaymentMode.Club, createdBy);
     }
 
-    private sealed record PersonBookingResponse(Guid Id, DateOnly Date, int StartMinute, int DurationMinutes,
+    internal sealed record PersonBookingResponse(Guid Id, DateOnly Date, int StartMinute, int DurationMinutes,
         string CourtName, Sport Sport, decimal Price, decimal Paid, BookingStatus Status);
-    private sealed record BookingCreatedResponse(Guid Id, decimal Price);
+    internal sealed record BookingCreatedResponse(Guid Id, decimal Price);
 
-    private sealed record BookingCheckoutResponse(string Url, decimal Amount, DateTimeOffset ExpiresAt);
+    internal sealed record BookingCheckoutResponse(string Url, decimal Amount, DateTimeOffset ExpiresAt);
 }

@@ -1,4 +1,5 @@
 using ClubSpot.Application.Core;
+using ClubSpot.Application.Core.Activity;
 using ClubSpot.Application.Core.People;
 using ClubSpot.Domain.Core.People;
 using ClubSpot.Infrastructure.Persistence;
@@ -10,7 +11,8 @@ using Microsoft.EntityFrameworkCore;
 namespace ClubSpot.Infrastructure.Repositories;
 
 internal sealed class PeopleLink(
-    ClubSpotDbContext db, ITenantContext tenantContext, IClubSettings clubSettings, IClock clock) : IPeopleLink
+    ClubSpotDbContext db, ITenantContext tenantContext, IClubSettings clubSettings, IClock clock,
+    IActivityLog activityLog) : IPeopleLink
 {
     public async Task<Guid> EnsurePersonAsync(string name, string phone, string? email, CancellationToken cancellationToken)
     {
@@ -38,6 +40,8 @@ internal sealed class PeopleLink(
         var person = new Person(Guid.NewGuid(), tenantContext.Current, name, phone, normalizedEmail ?? "",
             PersonOrigin.App, Money.Zero(club.Currency), null, clock);
         db.People.Add(person);
+        activityLog.Record(new ActivityRecord(CoreActivity.PersonCreated, PersonId: person.Id,
+            Data: new Dictionary<string, object?> { ["origin"] = PersonOrigin.App }));
         return person.Id;
     }
 }

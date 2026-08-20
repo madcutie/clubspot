@@ -437,6 +437,81 @@ namespace ClubSpot.Infrastructure.Persistence.Migrations
                     b.ToTable("schedules", "public");
                 });
 
+            modelBuilder.Entity("ClubSpot.Domain.Core.Activity.ActivityLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("actorName");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actorUserId");
+
+                    b.Property<Guid?>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bookingId");
+
+                    b.Property<string>("Data")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("data");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurredAt");
+
+                    b.Property<Guid?>("PaymentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paymentId");
+
+                    b.Property<Guid?>("PersonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("personId");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenantId");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pkActivityLogEntries");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ixActivityLogEntriesTenantId");
+
+                    b.HasIndex("TenantId", "BookingId")
+                        .HasDatabaseName("ixActivityLogEntriesTenantIdBookingId");
+
+                    b.HasIndex("TenantId", "OccurredAt")
+                        .HasDatabaseName("ixActivityLogEntriesTenantIdOccurredAt");
+
+                    b.HasIndex("TenantId", "PersonId")
+                        .HasDatabaseName("ixActivityLogEntriesTenantIdPersonId");
+
+                    b.ToTable("activityLogEntries", "public");
+                });
+
             modelBuilder.Entity("ClubSpot.Domain.Core.Club", b =>
                 {
                     b.Property<Guid>("Id")

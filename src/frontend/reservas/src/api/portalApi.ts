@@ -1,75 +1,54 @@
 import { addDays, dayChipOf, dayLabelOf, hhmm, isoDate, parseDate } from '../domain/dates';
 import type { CourtFilter, CourtType, Duration, Sport } from '../domain/types';
-import { API_URL, CLUB_SLUG } from './config';
+import { CLUB_SLUG } from './config';
 import { queryClient } from './queryClient';
+import {
+  createPortalBooking,
+  getPortalAvailability,
+  getPortalBooking,
+  getPortalCatalog,
+  releasePortalBooking,
+  settlePortalBooking,
+} from './generated/portal/portal';
+import type {
+  BookingSnapshot,
+  PortalAvailability,
+  PortalBookingCreatedResponse,
+  PortalBookingRequest,
+  PortalCatalogResponse,
+  PortalDay,
+  PortalSlot,
+  Sport as ApiSport,
+} from './generated/clubSpotApiV1.schemas';
 
 /**
- * Adaptador del portal contra la API real. Dos fuentes cacheadas por React
- * Query —el catálogo y la disponibilidad de 14 días por deporte— y todo lo
- * demás se deriva de esos payloads.
+ * Adaptador del portal contra la API real. Las llamadas y las formas del backend
+ * vienen del cliente generado (ADR-0016); acá queda la traducción al dominio en
+ * castellano. Dos fuentes cacheadas por React Query —el catálogo y la
+ * disponibilidad de 14 días por deporte— y todo lo demás se deriva de esos payloads.
  */
 
 /** Días hacia adelante que se pueden reservar (constante de UI). */
 export const DIAS_VISIBLES = 14;
 
-// ── Contrato de la API (camelCase, deporte en inglés) ────────────────────────
-
-type ApiSport = 'padel' | 'football';
-
-interface ApiCatalog {
-  club: { name: string; venue: string | null; currency: string; depositPercent: number };
-  sports: { sport: ApiSport; courts: ApiCourt[] }[];
-  onlinePayments: boolean;
-}
-
-interface ApiCourt {
-  id: string;
-  name: string;
-  detail: string;
-  isCovered: boolean;
-  durations: number[];
-}
-
-interface ApiAvailability {
-  currency: string;
-  days: { date: string; courts: { courtId: string; slots: ApiSlot[] }[] }[];
-}
-
-interface ApiSlot {
-  startMinute: number;
-  duration: number;
-  price: number;
-}
-
 const API_SPORT: Record<Sport, ApiSport> = { padel: 'padel', futbol: 'football' };
 
-export class ApiError extends Error {
-  constructor(public readonly status: number, path: string) {
-    super(`La API respondió ${status} en ${path}`);
-  }
-}
+export { ApiError } from './http';
 
-async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_URL}/api/portal/${CLUB_SLUG}${path}`);
-  if (!res.ok) throw new ApiError(res.status, path);
-  return res.json() as Promise<T>;
-}
-
-function fetchCatalog(): Promise<ApiCatalog> {
+function fetchCatalog(): Promise<PortalCatalogResponse> {
   return queryClient.fetchQuery({
     queryKey: ['portal', 'catalog'],
-    queryFn: () => getJson<ApiCatalog>('/catalog'),
+    queryFn: () => getPortalCatalog(CLUB_SLUG),
   });
 }
 
-function fetchRange(sport: Sport): Promise<ApiAvailability> {
+function fetchRange(sport: Sport): Promise<PortalAvailability> {
   const hoy = new Date();
   const from = isoDate(hoy);
   const to = isoDate(addDays(hoy, DIAS_VISIBLES - 1));
   return queryClient.fetchQuery({
     queryKey: ['portal', 'availability', sport, from],
-    queryFn: () =>
-      getJson<ApiAvailability>(`/availability?sport=${API_SPORT[sport]}&from=${from}&to=${to}`),
+    queryFn: () => getPortalAvailability(CLUB_SLUG, { sport: API_SPORT[sport], from, to }),
   });
 }
 
@@ -83,7 +62,7 @@ interface CatalogCourt {
   durations: number[];
 }
 
-function courtsOf(cat: ApiCatalog, sport: Sport): CatalogCourt[] {
+function courtsOf(cat: PortalCatalogResponse, sport: Sport): CatalogCourt[] {
   const grupo = cat.sports.find((s) => s.sport === API_SPORT[sport]);
   return (grupo?.courts ?? []).map((c) => ({
     id: c.id,
@@ -94,7 +73,7 @@ function courtsOf(cat: ApiCatalog, sport: Sport): CatalogCourt[] {
   }));
 }
 
-function startsOf(day: ApiAvailability['days'][number] | undefined): Set<number> {
+function startsOf(day: PortalDay | undefined): Set<number> {
   const starts = new Set<number>();
   for (const c of day?.courts ?? []) for (const s of c.slots) starts.add(s.startMinute);
   return starts;
@@ -227,10 +206,13 @@ export async function fetchAvailability(q: AvailabilityQuery): Promise<Availabil
   const durations = [...new Set(allCourts.flatMap((c) => c.durations))].sort((a, b) => a - b);
 
   const slotsFor = (
-    d: ApiAvailability['days'][number] | undefined,
+    d: PortalDay | undefined,
     filter: CourtFilter,
-  ): Map<number, { court: CatalogCourt; courtIdx: number; slot: ApiSlot }[]> => {
-    const porInicio = new Map<number, { court: CatalogCourt; courtIdx: number; slot: ApiSlot }[]>();
+  ): Map<number, { court: CatalogCourt; courtIdx: number; slot: PortalSlot }[]> => {
+    const porInicio = new Map<
+      number,
+      { court: CatalogCourt; courtIdx: number; slot: PortalSlot }[]
+    >();
     for (const dc of d?.courts ?? []) {
       const courtIdx = allCourts.findIndex((c) => c.id === dc.courtId);
       if (courtIdx < 0) continue;
@@ -308,83 +290,33 @@ export async function fetchAvailability(q: AvailabilityQuery): Promise<Availabil
 
 // ── Reserva ──────────────────────────────────────────────────────────────────
 
-export type ApiPaymentMode = 'club' | 'onlineFull' | 'onlineDeposit';
-export type BookingStatus = 'confirmed' | 'cancelled' | 'pendingPayment' | 'expired';
-
-export interface BookingRequest {
-  courtId: string;
-  date: string;
-  startMinute: number;
-  durationMinutes: number;
-  customerName: string;
-  customerPhone: string;
-  customerEmail: string | null;
-  paymentMode: ApiPaymentMode;
-  /** Adónde vuelve el checkout; el servidor le agrega `retorno={id}`. */
-  returnUrl: string | null;
-}
-
-export interface BookingCreated {
-  id: string;
-  price: number;
-  /** Lo que se cobra online (la seña o el total); igual al precio en modo club. */
-  chargeAmount: number;
-  status: BookingStatus;
-  expiresAt: string | null;
-  checkoutUrl: string | null;
-  /** Prueba de propiedad: sin esto el servidor no deja ver, liberar ni conciliar la reserva. */
-  token: string;
-}
+export type ApiPaymentMode = NonNullable<PortalBookingRequest['paymentMode']>;
+export type { BookingSnapshot };
+export type BookingCreated = PortalBookingCreatedResponse;
 
 const TOKEN_HEADER = 'X-Booking-Token';
 
-export async function createBooking(request: BookingRequest): Promise<BookingCreated> {
-  const res = await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-  if (!res.ok) throw new ApiError(res.status, '/bookings');
-  return res.json() as Promise<BookingCreated>;
+function proofOfOwnership(token: string | null): RequestInit {
+  return token ? { headers: { [TOKEN_HEADER]: token } } : {};
 }
 
-export interface BookingSnapshot {
-  id: string;
-  courtId: string;
-  courtName: string;
-  sport: ApiSport;
-  date: string;
-  startMinute: number;
-  durationMinutes: number;
-  price: number;
-  paidAmount: number;
-  status: BookingStatus;
-  paymentMode: ApiPaymentMode;
-  expiresAt: string | null;
+export function createBooking(request: PortalBookingRequest): Promise<BookingCreated> {
+  return createPortalBooking(CLUB_SLUG, request);
 }
 
-export async function fetchBooking(id: string, token: string | null): Promise<BookingSnapshot> {
-  const res = await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings/${id}`, {
-    headers: token ? { [TOKEN_HEADER]: token } : {},
-  });
-  if (!res.ok) throw new ApiError(res.status, `/bookings/${id}`);
-  return res.json() as Promise<BookingSnapshot>;
+export function fetchBooking(id: string, token: string | null): Promise<BookingSnapshot> {
+  return getPortalBooking(CLUB_SLUG, id, proofOfOwnership(token));
 }
 
 /** Abandono del checkout: libera el hold ya, sin esperar el TTL. Idempotente. */
 export async function releaseBooking(id: string, token: string | null): Promise<void> {
-  await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings/${id}/release`, {
-    method: 'POST',
-    headers: token ? { [TOKEN_HEADER]: token } : {},
-  });
+  // Se llama al salir de la pantalla: que el hold siga vivo hasta el TTL no es un error a mostrar.
+  await releasePortalBooking(CLUB_SLUG, id, proofOfOwnership(token)).catch(() => undefined);
 }
 
 /** El webhook no llegó todavía: pide conciliar esta reserva ya, sin esperar el job. */
 export async function settleBooking(id: string, token: string | null): Promise<void> {
-  await fetch(`${API_URL}/api/portal/${CLUB_SLUG}/bookings/${id}/settle`, {
-    method: 'POST',
-    headers: token ? { [TOKEN_HEADER]: token } : {},
-  });
+  await settlePortalBooking(CLUB_SLUG, id, proofOfOwnership(token)).catch(() => undefined);
 }
 
 /**

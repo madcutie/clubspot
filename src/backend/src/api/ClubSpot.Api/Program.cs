@@ -1,9 +1,11 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ClubSpot.Api.Activity;
 using ClubSpot.Api.Auth;
 using ClubSpot.Api.Endpoints;
 using ClubSpot.Api.Errors;
+using ClubSpot.Api.OpenApi;
 using ClubSpot.Api.Seed;
 using ClubSpot.Api.Tenancy;
 using ClubSpot.Application.Modularity;
@@ -81,6 +83,13 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy(PortalRateLimits.Reads, PortalRateLimits.PerCallerAndClub(permitPerMinute: 120));
     options.AddPolicy(PortalRateLimits.Bookings, PortalRateLimits.PerCallerAndClub(permitPerMinute: 10));
 });
+builder.Services.AddOpenApi(OpenApiExport.DocumentName, options =>
+{
+    options.OpenApiVersion = OpenApiExport.SpecVersion;
+    OpenApiSchemaNormalizer.Apply(options);
+});
+var exportOpenApiPath = builder.Configuration[OpenApiExport.ArgumentName];
+if (!string.IsNullOrWhiteSpace(exportOpenApiPath)) OpenApiExport.UseSilentServer(builder.Services);
 builder.Services.AddExceptionHandler<ModuleDisabledExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<DevSeeder>();
@@ -97,12 +106,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
-app.MapGet("/", () => "Hello World!");
+app.MapGet("/", () => "Hello World!").ExcludeFromDescription();
 app.UseCors("backoffice");
 // After CORS so a preflight never spends a permit, before the endpoints it protects.
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<TenantResolutionMiddleware>();
+app.UseMiddleware<ActivityActorMiddleware>();
 app.UseAuthorization();
 app.MapAuth();
 app.MapContext();
@@ -113,7 +123,14 @@ app.MapBookings();
 app.MapPortal();
 app.MapPayments();
 app.MapPeople();
+app.MapOpenApi();
 if (app.Environment.IsDevelopment()) app.MapDevCheckout();
+
+if (!string.IsNullOrWhiteSpace(exportOpenApiPath))
+{
+    await OpenApiExport.WriteAsync(app, exportOpenApiPath);
+    return;
+}
 
 app.Run();
 

@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -19,5 +20,19 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>clubspot-api-development</UserSecretsId>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <OpenApiDocumentPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\..\..\docs\api\clubspot.openapi.json'))</OpenApiDocumentPath>
+  </PropertyGroup>
+
+  <!-- El contrato es una salida del build: si el documento versionado queda viejo, el diff aparece
+       al compilar, no como pantalla en blanco en el mostrador (ADR-0016). El entorno OpenApi no es
+       Development a proposito, asi que el arranque no migra ni siembra y no hace falta la base. -->
+  <Target Name="ExportOpenApiDocument" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true' AND '$(ExportOpenApiDocument)' != 'false'">
+    <Exec Command="dotnet exec &quot;$(TargetPath)&quot; --export-openapi &quot;$(OpenApiDocumentPath)&quot;"
+          WorkingDirectory="$(MSBuildProjectDirectory)"
+          EnvironmentVariables="ASPNETCORE_ENVIRONMENT=OpenApi"
+          StandardOutputImportance="normal" />
+  </Target>
 
 </Project>

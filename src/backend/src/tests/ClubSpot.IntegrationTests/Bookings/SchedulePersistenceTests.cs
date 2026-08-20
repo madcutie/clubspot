@@ -169,6 +169,10 @@ public sealed class SchedulePersistenceTests(PostgresFixture postgres)
         var tenantContext = new AsyncLocalTenantContext();
         await using var db = postgres.CreateDbContext(tenantContext);
         using var scope = tenantContext.BeginScope(TenantId.From(Guid.Parse("a7b00b98-6191-433d-8930-3273904c1faa")));
+        // Bookings first: a court cannot go while a booking points at it. Without this the reset
+        // only worked while no earlier test in the collection had sold anything.
+        db.Payments.RemoveRange(db.Payments);
+        db.Bookings.RemoveRange(db.Bookings);
         db.AvailabilityOverrides.RemoveRange(db.AvailabilityOverrides);
         db.Courts.RemoveRange(db.Courts);
         db.Schedules.RemoveRange(db.Schedules);

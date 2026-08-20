@@ -1,73 +1,28 @@
 /**
- * Adaptador HTTP de horarios y canchas: mismas firmas que tenía el mock.
- * El PUT del backend es replace-all, así que se reenvía íntegro todo campo
- * que vino en el GET.
+ * Adaptador de horarios, canchas y agenda: traduce el contrato de la API a los
+ * tipos del dominio. Las llamadas y las formas del backend vienen del cliente
+ * generado (ADR-0016); acá no se escribe una URL ni una interfaz de respuesta.
+ * El PUT del backend es replace-all, así que se reenvía íntegro todo campo que
+ * vino en el GET.
  */
 
 import type { AgendaDia, Cancha, Deporte, Horario, Tramo } from '../domain/types';
-import { api } from './http';
+import { listAvailabilityOverrides, createAvailabilityOverride, deleteAvailabilityOverride } from './generated/availability-overrides/availability-overrides';
+import { cancelBooking, createBooking, createBookingCheckout, getAgenda } from './generated/bookings/bookings';
+import { getCourts, replaceCourts } from './generated/courts/courts';
+import { getSchedules, replaceSchedules } from './generated/schedules/schedules';
+import type {
+  CourtRequest,
+  ScheduleRequest,
+  ScheduleResponseWeeklyRanges,
+  Sport,
+  TimeRange,
+} from './generated/clubSpotApiV1.schemas';
 
 /** Claves de día del backend, indexadas como `Date.getDay()` (0 = domingo). */
 const DIAS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-interface TimeRange {
-  opensAtMinute: number;
-  closesAtMinute: number;
-}
-
-interface ScheduleResponse {
-  id: string;
-  name: string;
-  weeklyRanges: Record<string, TimeRange[]>;
-  version: number;
-}
-
-interface ScheduleRequest {
-  id: string | null;
-  version?: number;
-  name: string;
-  weeklyRanges: Record<string, TimeRange[]>;
-}
-
-type SportApi = 'padel' | 'football';
-
-interface CourtResponse {
-  id: string;
-  sport: SportApi;
-  sortOrder: number;
-  name: string;
-  detail: string;
-  isCovered: boolean;
-  isActive: boolean;
-  scheduleId: string;
-  durations: number[];
-  startIncrementMinutes: number;
-  minimumNoticeMinutes: number;
-  dayPrice: number;
-  nightPrice: number;
-  nightStartsAtMinute: number;
-  version: number;
-}
-
-interface CourtRequest {
-  id: string | null;
-  version?: number;
-  sport: SportApi;
-  sortOrder: number;
-  name: string;
-  detail: string;
-  isCovered: boolean;
-  isActive: boolean;
-  scheduleId: string;
-  durations: number[];
-  startIncrementMinutes: number;
-  minimumNoticeMinutes: number;
-  dayPrice: number;
-  nightPrice: number;
-  nightStartsAtMinute: number;
-}
-
-function aSemanal(weeklyRanges: Record<string, TimeRange[]>): Record<number, Tramo[]> {
+function aSemanal(weeklyRanges: ScheduleResponseWeeklyRanges): Record<number, Tramo[]> {
   const out: Record<number, Tramo[]> = {};
   DIAS_EN.forEach((dia, dow) => {
     const rangos = weeklyRanges[dia];
@@ -87,16 +42,16 @@ function aWeeklyRanges(semanal: Record<number, Tramo[]>): Record<string, TimeRan
   return out;
 }
 
-function aDeporte(sport: SportApi): Deporte {
+function aDeporte(sport: Sport): Deporte {
   return sport === 'football' ? 'futbol' : 'padel';
 }
 
-function aSport(deporte: Deporte): SportApi {
+function aSport(deporte: Deporte): Sport {
   return deporte === 'futbol' ? 'football' : 'padel';
 }
 
 export async function fetchHorarios(): Promise<Horario[]> {
-  const schedules = await api<ScheduleResponse[]>('/api/schedules/');
+  const schedules = await getSchedules();
   return schedules.map((s) => ({
     id: s.id,
     nombre: s.name,
@@ -108,15 +63,15 @@ export async function fetchHorarios(): Promise<Horario[]> {
 export async function guardarHorarios(horarios: Horario[]): Promise<void> {
   const body: ScheduleRequest[] = horarios.map((h) => ({
     id: h.version === undefined ? null : h.id,
-    version: h.version,
+    version: h.version ?? null,
     name: h.nombre,
     weeklyRanges: aWeeklyRanges(h.semanal),
   }));
-  await api<void>('/api/schedules/', { method: 'PUT', body: JSON.stringify(body) });
+  await replaceSchedules(body);
 }
 
 export async function fetchCanchas(): Promise<Cancha[]> {
-  const courts = await api<CourtResponse[]>('/api/courts/');
+  const courts = await getCourts();
   return courts.map((x) => ({
     id: x.id,
     deporte: aDeporte(x.sport),
@@ -154,20 +109,8 @@ export interface NuevaExcepcion {
   motivo: string | null;
 }
 
-interface OverrideResponse {
-  id: string;
-  courtId: string | null;
-  dates: string[];
-  windows: TimeRange[];
-  reason: string | null;
-  createdAt: string;
-  createdBy: string;
-}
-
 export async function fetchExcepciones(desde: string, hasta: string): Promise<Excepcion[]> {
-  const overrides = await api<OverrideResponse[]>(
-    `/api/availability-overrides/?from=${desde}&to=${hasta}`,
-  );
+  const overrides = await listAvailabilityOverrides({ from: desde, to: hasta });
   return overrides.map((o) => ({
     id: o.id,
     courtId: o.courtId,
@@ -179,70 +122,20 @@ export async function fetchExcepciones(desde: string, hasta: string): Promise<Ex
 }
 
 export async function crearExcepcion(input: NuevaExcepcion): Promise<void> {
-  await api<{ id: string }>('/api/availability-overrides/', {
-    method: 'POST',
-    body: JSON.stringify({
-      courtId: input.courtId,
-      dates: input.fechas,
-      windows: input.tramos.map((t) => ({ opensAtMinute: t[0], closesAtMinute: t[1] })),
-      reason: input.motivo,
-    }),
+  await createAvailabilityOverride({
+    courtId: input.courtId,
+    dates: input.fechas,
+    windows: input.tramos.map((t) => ({ opensAtMinute: t[0], closesAtMinute: t[1] })),
+    reason: input.motivo,
   });
 }
 
 export async function borrarExcepcion(id: string): Promise<void> {
-  await api<void>(`/api/availability-overrides/${id}`, { method: 'DELETE' });
-}
-
-interface AgendaSlotResponse {
-  startMinute: number;
-  duration: number;
-  price: number;
-}
-
-interface AgendaBookingResponse {
-  id: string;
-  startMinute: number;
-  durationMinutes: number;
-  customerName: string;
-  customerPhone: string | null;
-  price: number;
-  paidAmount: number;
-  status: 'confirmed' | 'cancelled' | 'pendingPayment' | 'expired';
-}
-
-interface AgendaCourtResponse {
-  courtId: string;
-  name: string;
-  detail: string;
-  isCovered: boolean;
-  windows: TimeRange[];
-  slots: AgendaSlotResponse[];
-  bookings: AgendaBookingResponse[];
-}
-
-interface AgendaInactiveResponse {
-  id: string;
-  courtId: string;
-  courtName: string;
-  startMinute: number;
-  durationMinutes: number;
-  customerName: string;
-  customerPhone: string | null;
-  price: number;
-  paidAmount: number;
-  status: 'confirmed' | 'cancelled' | 'pendingPayment' | 'expired';
-  cancelledAt: string | null;
-}
-
-interface AgendaResponse {
-  currency: string;
-  courts: AgendaCourtResponse[];
-  inactive: AgendaInactiveResponse[];
+  await deleteAvailabilityOverride(id);
 }
 
 export async function fetchAgenda(deporte: Deporte, fecha: string): Promise<AgendaDia> {
-  const agenda = await api<AgendaResponse>(`/api/agenda?sport=${aSport(deporte)}&date=${fecha}`);
+  const agenda = await getAgenda({ sport: aSport(deporte), date: fecha });
   return {
     moneda: agenda.currency,
     canchas: agenda.courts.map((x) => ({
@@ -291,22 +184,19 @@ export interface NuevaReserva {
 }
 
 export async function crearReserva(input: NuevaReserva): Promise<{ id: string; precio: number }> {
-  const creada = await api<{ id: string; price: number }>('/api/bookings', {
-    method: 'POST',
-    body: JSON.stringify({
-      courtId: input.courtId,
-      date: input.fecha,
-      startMinute: input.t,
-      durationMinutes: input.dur,
-      customerName: input.nombre,
-      customerPhone: input.tel,
-    }),
+  const creada = await createBooking({
+    courtId: input.courtId,
+    date: input.fecha,
+    startMinute: input.t,
+    durationMinutes: input.dur,
+    customerName: input.nombre,
+    customerPhone: input.tel,
   });
   return { id: creada.id, precio: creada.price };
 }
 
 export async function cancelarReserva(id: string): Promise<void> {
-  await api<void>(`/api/bookings/${id}/cancel`, { method: 'POST' });
+  await cancelBooking(id);
 }
 
 /** Link de pago del saldo, para mostrar como QR o mandar por WhatsApp. Se puede reemitir. */
@@ -317,17 +207,14 @@ export interface Cobro {
 }
 
 export async function cobrarReserva(id: string): Promise<Cobro> {
-  const cobro = await api<{ url: string; amount: number; expiresAt: string }>(
-    `/api/bookings/${id}/checkout`,
-    { method: 'POST' },
-  );
+  const cobro = await createBookingCheckout(id);
   return { url: cobro.url, monto: cobro.amount, venceEn: cobro.expiresAt };
 }
 
 export async function guardarCanchas(canchas: Cancha[]): Promise<void> {
   const body: CourtRequest[] = canchas.map((x) => ({
     id: x.version === undefined ? null : x.id,
-    version: x.version,
+    version: x.version ?? null,
     sport: aSport(x.deporte),
     sortOrder: x.ci,
     name: x.nombre,
@@ -342,5 +229,5 @@ export async function guardarCanchas(canchas: Cancha[]): Promise<void> {
     nightPrice: x.precioNoche,
     nightStartsAtMinute: x.noche,
   }));
-  await api<void>('/api/courts/', { method: 'PUT', body: JSON.stringify(body) });
+  await replaceCourts(body);
 }

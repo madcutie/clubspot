@@ -1,6 +1,6 @@
 # Plan — Registro de actividad (`activityLog`)
 
-**Fecha:** 19/08/2026 · **Estado:** escrito, esperando aprobación · Avance en la
+**Fecha:** 19/08/2026 · **Estado:** **F1 cerrada y verificada**; F2–F7 pendientes · Avance en la
 [bitácora](plan-activity-log.bitacora.md)
 
 Implementa [ADR-0017](adr/0017-registro-de-actividad-activitylog.md). El ADR fija el *qué* y el

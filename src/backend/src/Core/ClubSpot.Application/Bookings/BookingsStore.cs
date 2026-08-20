@@ -33,6 +33,11 @@ public interface IBookingsStore
     Task<HoldReleaseOutcome> ReleaseHoldAsync(Guid id, CancellationToken cancellationToken);
     Task<PaymentApplyOutcome> ApplyPaymentAsync(PaymentNotification notification, PaymentSource source, CancellationToken cancellationToken);
     Task<BookingSnapshot?> GetAsync(Guid id, CancellationToken cancellationToken);
+
+    // The link itself lives at the provider, so the only trace it leaves here is this entry: it is
+    // what answers "ya le mandé el link" without asking the customer.
+    Task RecordCheckoutIssuedAsync(Guid bookingId, Money amount, DateTimeOffset expiresAt, string provider,
+        CancellationToken cancellationToken);
     // Reconciliation candidates: online bookings still unpaid on our side.
     Task<IReadOnlyList<Guid>> GetUnsettledOnlineBookingIdsAsync(DateTimeOffset since, int limit, CancellationToken cancellationToken);
 }

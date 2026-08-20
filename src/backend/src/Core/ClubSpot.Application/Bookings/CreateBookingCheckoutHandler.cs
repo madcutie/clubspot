@@ -44,6 +44,8 @@ public sealed class CreateBookingCheckoutHandler(
         var session = await checkout.CreateCheckoutAsync(new CheckoutRequest(booking.Id, club.Slug, title,
             Money.Of(due, club.Currency), expiresAt, returnUrl), cancellationToken);
 
+        var amount = Money.Of(due, club.Currency);
+        await store.RecordCheckoutIssuedAsync(booking.Id, amount, expiresAt, checkout.Name, cancellationToken);
         return new BookingCheckoutResult(BookingCheckoutOutcome.Created, session.Url, due, expiresAt);
     }
 

@@ -1,6 +1,6 @@
 # Plan — Contrato de API y clientes TypeScript generados
 
-**Estado:** escrito 19/08/2026, esperando aprobación · implementa
+**Estado:** aprobado y **ejecutado** el 19/08/2026 (F1–F5 cerradas y verificadas) · implementa
 [ADR-0016](adr/0016-contrato-de-api-generado-desde-el-codigo.md) · avance en la
 [bitácora](plan-contrato-api.bitacora.md).
 

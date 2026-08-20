@@ -1,5 +1,6 @@
 using ClubSpot.Application.Bookings;
 using ClubSpot.Application.Core;
+using ClubSpot.Application.Core.Activity;
 using ClubSpot.Application.Core.People;
 using ClubSpot.Domain.Bookings;
 using ClubSpot.Infrastructure.Payments;
@@ -15,7 +16,7 @@ namespace ClubSpot.Infrastructure.Repositories;
 
 internal sealed class BookingsStore(
     ClubSpotDbContext db, ITenantContext tenantContext, IClubSettings clubSettings, IPeopleLink peopleLink,
-    IOptions<PaymentsOptions> paymentsOptions, IClock clock) : IBookingsStore
+    IOptions<PaymentsOptions> paymentsOptions, IClock clock, IActivityLog activityLog) : IBookingsStore
 {
     public async Task<BookingCreateResult> CreateAsync(BookingCreateInput input, CancellationToken cancellationToken)
     {
@@ -68,6 +69,21 @@ internal sealed class BookingsStore(
                 input.DurationMinutes, slot.Price, input.CustomerName, input.CustomerPhone, personId, input.Origin,
                 input.PaymentMode, utcNow.AddMinutes(paymentsOptions.Value.HoldMinutes), utcNow, input.CreatedBy);
         db.Bookings.Add(booking);
+        activityLog.Record(new ActivityRecord(
+            booking.Status == BookingStatus.PendingPayment ? BookingActivity.HoldCreated : BookingActivity.BookingCreated,
+            BookingId: booking.Id, PersonId: personId,
+            Data: new Dictionary<string, object?>
+            {
+                ["courtId"] = court.Id,
+                ["courtName"] = court.Name,
+                ["date"] = input.Date,
+                ["startMinute"] = input.StartMinute,
+                ["durationMinutes"] = input.DurationMinutes,
+                ["price"] = booking.Price.Amount,
+                ["currency"] = booking.Price.Currency,
+                ["paymentMode"] = input.PaymentMode,
+                ["expiresAt"] = booking.ExpiresAt
+            }));
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -75,6 +91,7 @@ internal sealed class BookingsStore(
         catch (DbUpdateException exception)
             when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.ExclusionViolation })
         {
+            activityLog.DiscardPending();
             return new BookingCreateResult(BookingCreateOutcome.SlotTaken, Guid.Empty, default);
         }
         return new BookingCreateResult(BookingCreateOutcome.Created, booking.Id, booking.Price,
@@ -102,7 +119,12 @@ internal sealed class BookingsStore(
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(booking => booking.Status, BookingStatus.Cancelled)
                 .SetProperty(booking => booking.CancelledAt, clock.UtcNow), cancellationToken);
-        if (released > 0) return HoldReleaseOutcome.Released;
+        if (released > 0)
+        {
+            activityLog.Record(new ActivityRecord(BookingActivity.HoldReleased, BookingId: id));
+            await db.SaveChangesAsync(cancellationToken);
+            return HoldReleaseOutcome.Released;
+        }
 
         return await db.Bookings.AnyAsync(booking => booking.Id == id, cancellationToken)
             ? HoldReleaseOutcome.NotPending
@@ -160,9 +182,23 @@ internal sealed class BookingsStore(
             notification.Approved ? PaymentStatus.Approved : PaymentStatus.Rejected, source, clock.UtcNow);
         db.Payments.Add(payment);
 
+        void RecordPayment(string type, string? why = null) => activityLog.Record(new ActivityRecord(
+            type, BookingId: booking.Id, PersonId: booking.PersonId, PaymentId: payment.Id,
+            Data: new Dictionary<string, object?>
+            {
+                ["amount"] = amount.Amount,
+                ["currency"] = amount.Currency,
+                ["provider"] = notification.Provider,
+                ["rail"] = notification.Rail,
+                ["externalId"] = notification.ExternalId,
+                ["kind"] = kind,
+                ["why"] = why
+            }));
+
         if (!notification.Approved)
         {
             // The customer can retry inside the hold's TTL; the hold stays as is.
+            RecordPayment(BookingActivity.PaymentRejected);
             await db.SaveChangesAsync(cancellationToken);
             return PaymentApplyOutcome.Rejected;
         }
@@ -174,6 +210,8 @@ internal sealed class BookingsStore(
             // is flagged instead of being filed as one more ordinary payment.
             var duplicate = settled >= booking.Price.Amount;
             if (duplicate) payment.MarkOrphaned();
+            RecordPayment(duplicate ? BookingActivity.PaymentOrphaned : BookingActivity.PaymentApproved,
+                duplicate ? "duplicate" : null);
             await db.SaveChangesAsync(cancellationToken);
             return duplicate ? PaymentApplyOutcome.Orphaned : PaymentApplyOutcome.Confirmed;
         }
@@ -182,6 +220,7 @@ internal sealed class BookingsStore(
         {
             // The buyer paid while the hold was being released: keep the money recorded, flag it.
             payment.MarkOrphaned();
+            RecordPayment(BookingActivity.PaymentOrphaned, "bookingLost");
             await db.SaveChangesAsync(cancellationToken);
             return PaymentApplyOutcome.Orphaned;
         }
@@ -194,6 +233,7 @@ internal sealed class BookingsStore(
         if (wrongCurrency || amount.Amount < expected.Amount)
         {
             payment.MarkOrphaned();
+            RecordPayment(BookingActivity.PaymentOrphaned, wrongCurrency ? "wrongCurrency" : "short");
             await db.SaveChangesAsync(cancellationToken);
             return PaymentApplyOutcome.Orphaned;
         }
@@ -201,6 +241,7 @@ internal sealed class BookingsStore(
         booking.ConfirmPayment();
         try
         {
+            RecordPayment(BookingActivity.PaymentApproved);
             await db.SaveChangesAsync(cancellationToken);
             return PaymentApplyOutcome.Confirmed;
         }
@@ -210,9 +251,26 @@ internal sealed class BookingsStore(
             // The hold had expired and someone else took the slot: keep the money recorded, flag it.
             await db.Entry(booking).ReloadAsync(cancellationToken);
             payment.MarkOrphaned();
+            // The confirmation entry describes a fact that did not happen: it goes, the orphan stays.
+            activityLog.DiscardPending();
+            RecordPayment(BookingActivity.PaymentOrphaned, "slotLost");
             await db.SaveChangesAsync(cancellationToken);
             return PaymentApplyOutcome.Orphaned;
         }
+    }
+
+    public async Task RecordCheckoutIssuedAsync(Guid bookingId, Money amount, DateTimeOffset expiresAt,
+        string provider, CancellationToken cancellationToken)
+    {
+        activityLog.Record(new ActivityRecord(BookingActivity.CheckoutIssued, BookingId: bookingId,
+            Data: new Dictionary<string, object?>
+            {
+                ["amount"] = amount.Amount,
+                ["currency"] = amount.Currency,
+                ["provider"] = provider,
+                ["expiresAt"] = expiresAt
+            }));
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<BookingSnapshot?> GetAsync(Guid id, CancellationToken cancellationToken)
@@ -243,14 +301,33 @@ internal sealed class BookingsStore(
             .Select(booking => booking.Id)
             .ToListAsync(cancellationToken);
 
-    private Task<int> ExpireStaleHoldsAsync(Guid courtId, DateOnly date, CancellationToken cancellationToken)
+    private async Task<int> ExpireStaleHoldsAsync(Guid courtId, DateOnly date, CancellationToken cancellationToken)
     {
         var utcNow = clock.UtcNow;
-        return db.Bookings
+        var stale = db.Bookings
             .Where(booking => booking.CourtId == courtId && booking.Date == date
-                && booking.Status == BookingStatus.PendingPayment && booking.ExpiresAt <= utcNow)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(booking => booking.Status, BookingStatus.Expired), cancellationToken);
+                && booking.Status == BookingStatus.PendingPayment && booking.ExpiresAt <= utcNow);
+
+        // Read before the update: after it they are no longer pending and there is nothing to name.
+        var expiring = await stale
+            .Select(booking => new { booking.Id, booking.ExpiresAt })
+            .ToListAsync(cancellationToken);
+        var expired = await stale.ExecuteUpdateAsync(setters => setters
+            .SetProperty(booking => booking.Status, BookingStatus.Expired), cancellationToken);
+
+        // Flushed here and not with the caller's work: the expiry already happened in its own
+        // statement, and it is a fact of its own even if what the caller was doing then fails.
+        foreach (var booking in expiring)
+        {
+            activityLog.Record(new ActivityRecord(BookingActivity.HoldExpired, BookingId: booking.Id,
+                Data: new Dictionary<string, object?>
+                {
+                    ["expiredAt"] = booking.ExpiresAt,
+                    ["noticedAfterSeconds"] = booking.ExpiresAt is { } due ? (int)(utcNow - due).TotalSeconds : null
+                }));
+        }
+        if (expiring.Count > 0) await db.SaveChangesAsync(cancellationToken);
+        return expired;
     }
 
     private static Money ChargeAmountFor(PaymentMode mode, Money price, int depositPercent) => mode switch

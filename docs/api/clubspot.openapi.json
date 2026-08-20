@@ -1,0 +1,2574 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "ClubSpot.Api | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/auth/session": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "SignIn",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignInRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/context": {
+      "get": {
+        "tags": [
+          "context"
+        ],
+        "operationId": "GetContext",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schedules": {
+      "get": {
+        "tags": [
+          "schedules"
+        ],
+        "operationId": "GetSchedules",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "schedules"
+        ],
+        "operationId": "ReplaceSchedules",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ScheduleRequest"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/courts": {
+      "get": {
+        "tags": [
+          "courts"
+        ],
+        "operationId": "GetCourts",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourtResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "courts"
+        ],
+        "operationId": "ReplaceCourts",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CourtRequest"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/availability-overrides": {
+      "get": {
+        "tags": [
+          "availabilityOverrides"
+        ],
+        "operationId": "ListAvailabilityOverrides",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OverrideResponse"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "availabilityOverrides"
+        ],
+        "operationId": "CreateAvailabilityOverride",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/availability-overrides/{id}": {
+      "delete": {
+        "tags": [
+          "availabilityOverrides"
+        ],
+        "operationId": "DeleteAvailabilityOverride",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/agenda": {
+      "get": {
+        "tags": [
+          "bookings"
+        ],
+        "operationId": "GetAgenda",
+        "parameters": [
+          {
+            "name": "sport",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agenda"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/bookings": {
+      "post": {
+        "tags": [
+          "bookings"
+        ],
+        "operationId": "CreateBooking",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingCreatedResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/bookings/{id}/cancel": {
+      "post": {
+        "tags": [
+          "bookings"
+        ],
+        "operationId": "CancelBooking",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/bookings/{id}/checkout": {
+      "post": {
+        "tags": [
+          "bookings"
+        ],
+        "operationId": "CreateBookingCheckout",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingCheckoutResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/people/{id}/bookings": {
+      "get": {
+        "tags": [
+          "bookings"
+        ],
+        "operationId": "GetPersonBookings",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PersonBookingResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portal/{clubSlug}/catalog": {
+      "get": {
+        "tags": [
+          "portal"
+        ],
+        "operationId": "GetPortalCatalog",
+        "parameters": [
+          {
+            "name": "clubSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalCatalogResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portal/{clubSlug}/availability": {
+      "get": {
+        "tags": [
+          "portal"
+        ],
+        "operationId": "GetPortalAvailability",
+        "parameters": [
+          {
+            "name": "sport",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "clubSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalAvailability"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/portal/{clubSlug}/bookings/{id}": {
+      "get": {
+        "tags": [
+          "portal"
+        ],
+        "operationId": "GetPortalBooking",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clubSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingSnapshot"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/portal/{clubSlug}/bookings": {
+      "post": {
+        "tags": [
+          "portal"
+        ],
+        "operationId": "CreatePortalBooking",
+        "parameters": [
+          {
+            "name": "clubSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalBookingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalBookingCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/portal/{clubSlug}/bookings/{id}/release": {
+      "post": {
+        "tags": [
+          "portal"
+        ],
+        "operationId": "ReleasePortalBooking",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clubSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/portal/{clubSlug}/bookings/{id}/settle": {
+      "post": {
+        "tags": [
+          "portal"
+        ],
+        "operationId": "SettlePortalBooking",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clubSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalSettleResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/payments/fake/webhook/{clubSlug}": {
+      "post": {
+        "tags": [
+          "payments"
+        ],
+        "operationId": "PostFakeWebhook",
+        "parameters": [
+          {
+            "name": "clubSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FakeWebhookRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentApplyResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/payments/mercadopago/webhook/{clubSlug}": {
+      "post": {
+        "tags": [
+          "payments"
+        ],
+        "operationId": "PostMercadoPagoWebhook",
+        "parameters": [
+          {
+            "name": "clubSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/people": {
+      "get": {
+        "tags": [
+          "people"
+        ],
+        "operationId": "SearchPeople",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeoplePageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "operationId": "CreatePerson",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePersonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/people/{id}": {
+      "get": {
+        "tags": [
+          "people"
+        ],
+        "operationId": "GetPerson",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/people/blocks": {
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "operationId": "BlockPeople",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlockPeopleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AffectedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/people/{id}/block": {
+      "put": {
+        "tags": [
+          "people"
+        ],
+        "operationId": "SetPersonBlock",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetBlockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/people/{id}/notes": {
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "operationId": "AddPersonNote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddNoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/people/{id}/payments": {
+      "post": {
+        "tags": [
+          "people"
+        ],
+        "operationId": "RegisterPersonPayment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddNoteRequest": {
+        "required": [
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "AffectedResponse": {
+        "required": [
+          "affected"
+        ],
+        "type": "object",
+        "properties": {
+          "affected": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "Agenda": {
+        "required": [
+          "currency",
+          "courts",
+          "inactive"
+        ],
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "courts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaCourt"
+            }
+          },
+          "inactive": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaInactiveBooking"
+            }
+          }
+        }
+      },
+      "AgendaBooking": {
+        "required": [
+          "id",
+          "startMinute",
+          "durationMinutes",
+          "customerName",
+          "customerPhone",
+          "price",
+          "paidAmount",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "customerPhone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          },
+          "paidAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BookingStatus"
+          }
+        }
+      },
+      "AgendaCourt": {
+        "required": [
+          "courtId",
+          "name",
+          "detail",
+          "isCovered",
+          "windows",
+          "slots",
+          "bookings"
+        ],
+        "type": "object",
+        "properties": {
+          "courtId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "isCovered": {
+            "type": "boolean"
+          },
+          "windows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimeRange"
+            }
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaSlot"
+            }
+          },
+          "bookings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgendaBooking"
+            }
+          }
+        }
+      },
+      "AgendaInactiveBooking": {
+        "required": [
+          "id",
+          "courtId",
+          "courtName",
+          "startMinute",
+          "durationMinutes",
+          "customerName",
+          "customerPhone",
+          "price",
+          "paidAmount",
+          "status",
+          "cancelledAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courtId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courtName": {
+            "type": "string"
+          },
+          "startMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "customerPhone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          },
+          "paidAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BookingStatus"
+          },
+          "cancelledAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "AgendaSlot": {
+        "required": [
+          "startMinute",
+          "duration",
+          "price"
+        ],
+        "type": "object",
+        "properties": {
+          "startMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "BlockPeopleRequest": {
+        "required": [
+          "ids",
+          "blocked"
+        ],
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "blocked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "BlockResponse": {
+        "required": [
+          "blocked"
+        ],
+        "type": "object",
+        "properties": {
+          "blocked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "BookingCheckoutResponse": {
+        "required": [
+          "url",
+          "amount",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BookingCreatedResponse": {
+        "required": [
+          "id",
+          "price"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "BookingRequest": {
+        "required": [
+          "courtId",
+          "date",
+          "startMinute",
+          "durationMinutes",
+          "customerName",
+          "customerPhone"
+        ],
+        "type": "object",
+        "properties": {
+          "courtId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "startMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "customerPhone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "BookingSnapshot": {
+        "required": [
+          "id",
+          "courtId",
+          "courtName",
+          "sport",
+          "date",
+          "startMinute",
+          "durationMinutes",
+          "price",
+          "paidAmount",
+          "status",
+          "paymentMode",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courtId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courtName": {
+            "type": "string"
+          },
+          "sport": {
+            "$ref": "#/components/schemas/Sport"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "startMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          },
+          "paidAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BookingStatus"
+          },
+          "paymentMode": {
+            "$ref": "#/components/schemas/PaymentMode"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "BookingStatus": {
+        "enum": [
+          "confirmed",
+          "cancelled",
+          "pendingPayment",
+          "expired"
+        ],
+        "type": "string"
+      },
+      "ClubResponse": {
+        "required": [
+          "name",
+          "venue"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "venue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ContextResponse": {
+        "required": [
+          "club",
+          "operator",
+          "modules"
+        ],
+        "type": "object",
+        "properties": {
+          "club": {
+            "$ref": "#/components/schemas/ClubResponse"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/OperatorResponse"
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CourtRequest": {
+        "required": [
+          "id",
+          "version",
+          "sport",
+          "sortOrder",
+          "name",
+          "detail",
+          "isCovered",
+          "isActive",
+          "scheduleId",
+          "durations",
+          "startIncrementMinutes",
+          "minimumNoticeMinutes",
+          "dayPrice",
+          "nightPrice",
+          "nightStartsAtMinute"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "version": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "uint32"
+          },
+          "sport": {
+            "$ref": "#/components/schemas/Sport"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "isCovered": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "scheduleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "durations": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "startIncrementMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "minimumNoticeMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dayPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "nightPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "nightStartsAtMinute": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "CourtResponse": {
+        "required": [
+          "id",
+          "sport",
+          "sortOrder",
+          "name",
+          "detail",
+          "isCovered",
+          "isActive",
+          "scheduleId",
+          "durations",
+          "startIncrementMinutes",
+          "minimumNoticeMinutes",
+          "dayPrice",
+          "nightPrice",
+          "nightStartsAtMinute",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sport": {
+            "$ref": "#/components/schemas/Sport"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "isCovered": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "scheduleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "durations": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "startIncrementMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "minimumNoticeMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dayPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "nightPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "nightStartsAtMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "version": {
+            "type": "integer",
+            "format": "uint32"
+          }
+        }
+      },
+      "CreatePersonRequest": {
+        "required": [
+          "name",
+          "phone",
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "FakeWebhookRequest": {
+        "required": [
+          "bookingId",
+          "externalId",
+          "approved",
+          "amount"
+        ],
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "externalId": {
+            "type": "string"
+          },
+          "approved": {
+            "type": "boolean"
+          },
+          "amount": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "currency": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "IdResponse": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "NoteResponse": {
+        "required": [
+          "text",
+          "authorName",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OperatorResponse": {
+        "required": [
+          "name",
+          "roles"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          }
+        }
+      },
+      "OverrideRequest": {
+        "required": [
+          "courtId",
+          "dates",
+          "windows",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "courtId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "dates": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          "windows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverrideWindowRequest"
+            }
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "OverrideResponse": {
+        "required": [
+          "id",
+          "courtId",
+          "dates",
+          "windows",
+          "reason",
+          "createdAt",
+          "createdBy"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courtId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "dates": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          "windows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimeRange"
+            }
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "OverrideWindowRequest": {
+        "required": [
+          "opensAtMinute",
+          "closesAtMinute"
+        ],
+        "type": "object",
+        "properties": {
+          "opensAtMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "closesAtMinute": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PaymentApplyOutcome": {
+        "enum": [
+          "confirmed",
+          "rejected",
+          "alreadyProcessed",
+          "orphaned",
+          "unknownBooking"
+        ],
+        "type": [
+          "null",
+          "string"
+        ]
+      },
+      "PaymentApplyResponse": {
+        "required": [
+          "outcome"
+        ],
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "$ref": "#/components/schemas/PaymentApplyOutcome"
+          }
+        }
+      },
+      "PaymentMode": {
+        "enum": [
+          "club",
+          "onlineFull",
+          "onlineDeposit"
+        ],
+        "type": "string"
+      },
+      "PaymentResponse": {
+        "required": [
+          "paid"
+        ],
+        "type": "object",
+        "properties": {
+          "paid": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "PeoplePageResponse": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pages",
+          "pageSize",
+          "census",
+          "needsAttention",
+          "totalDebt",
+          "totals"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PersonResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "census": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "needsAttention": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalDebt": {
+            "type": "number",
+            "format": "double"
+          },
+          "totals": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        }
+      },
+      "PersonBookingResponse": {
+        "required": [
+          "id",
+          "date",
+          "startMinute",
+          "durationMinutes",
+          "courtName",
+          "sport",
+          "price",
+          "paid",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "startMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "courtName": {
+            "type": "string"
+          },
+          "sport": {
+            "$ref": "#/components/schemas/Sport"
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          },
+          "paid": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BookingStatus"
+          }
+        }
+      },
+      "PersonDetailsResponse": {
+        "required": [
+          "person",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "person": {
+            "$ref": "#/components/schemas/PersonResponse"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NoteResponse"
+            }
+          }
+        }
+      },
+      "PersonOrigin": {
+        "enum": [
+          "app",
+          "counter"
+        ],
+        "type": "string"
+      },
+      "PersonResponse": {
+        "required": [
+          "id",
+          "name",
+          "phone",
+          "email",
+          "origin",
+          "bookings",
+          "lastBookingOn",
+          "debt",
+          "isBlocked",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/PersonOrigin"
+          },
+          "bookings": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastBookingOn": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "debt": {
+            "type": "number",
+            "format": "double"
+          },
+          "isBlocked": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PortalAvailability": {
+        "required": [
+          "currency",
+          "days"
+        ],
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalDay"
+            }
+          }
+        }
+      },
+      "PortalBookingCreatedResponse": {
+        "required": [
+          "id",
+          "price",
+          "chargeAmount",
+          "status",
+          "expiresAt",
+          "checkoutUrl",
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          },
+          "chargeAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BookingStatus"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "checkoutUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "PortalBookingRequest": {
+        "required": [
+          "courtId",
+          "date",
+          "startMinute",
+          "durationMinutes",
+          "customerName",
+          "customerPhone",
+          "customerEmail",
+          "paymentMode",
+          "returnUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "courtId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "startMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "customerPhone": {
+            "type": "string"
+          },
+          "customerEmail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "paymentMode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PaymentMode"
+              }
+            ]
+          },
+          "returnUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PortalCatalogResponse": {
+        "required": [
+          "club",
+          "sports",
+          "onlinePayments"
+        ],
+        "type": "object",
+        "properties": {
+          "club": {
+            "$ref": "#/components/schemas/PortalClub"
+          },
+          "sports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalSport"
+            }
+          },
+          "onlinePayments": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PortalClub": {
+        "required": [
+          "name",
+          "venue",
+          "currency",
+          "depositPercent"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "venue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "currency": {
+            "type": "string"
+          },
+          "depositPercent": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PortalCourt": {
+        "required": [
+          "id",
+          "name",
+          "detail",
+          "isCovered",
+          "durations"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "isCovered": {
+            "type": "boolean"
+          },
+          "durations": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        }
+      },
+      "PortalDay": {
+        "required": [
+          "date",
+          "courts"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "courts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalDayCourt"
+            }
+          }
+        }
+      },
+      "PortalDayCourt": {
+        "required": [
+          "courtId",
+          "slots"
+        ],
+        "type": "object",
+        "properties": {
+          "courtId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalSlot"
+            }
+          }
+        }
+      },
+      "PortalSettleResponse": {
+        "required": [
+          "outcome"
+        ],
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PaymentApplyOutcome"
+              }
+            ]
+          }
+        }
+      },
+      "PortalSlot": {
+        "required": [
+          "startMinute",
+          "duration",
+          "price"
+        ],
+        "type": "object",
+        "properties": {
+          "startMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "PortalSport": {
+        "required": [
+          "sport",
+          "courts"
+        ],
+        "type": "object",
+        "properties": {
+          "sport": {
+            "$ref": "#/components/schemas/Sport"
+          },
+          "courts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalCourt"
+            }
+          }
+        }
+      },
+      "Role": {
+        "enum": [
+          "administrator",
+          "memberDesk",
+          "treasury",
+          "courtReception",
+          "accessControl",
+          "coach",
+          "member"
+        ],
+        "type": "string"
+      },
+      "ScheduleRequest": {
+        "required": [
+          "id",
+          "version",
+          "name",
+          "weeklyRanges"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "version": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "uint32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "weeklyRanges": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/TimeRange"
+              }
+            }
+          }
+        }
+      },
+      "ScheduleResponse": {
+        "required": [
+          "id",
+          "name",
+          "weeklyRanges",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "weeklyRanges": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/TimeRange"
+              }
+            }
+          },
+          "version": {
+            "type": "integer",
+            "format": "uint32"
+          }
+        }
+      },
+      "SessionResponse": {
+        "required": [
+          "accessToken"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          }
+        }
+      },
+      "SetBlockRequest": {
+        "required": [
+          "blocked"
+        ],
+        "type": "object",
+        "properties": {
+          "blocked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SignInRequest": {
+        "required": [
+          "club",
+          "email",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "club": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "Sport": {
+        "enum": [
+          "padel",
+          "football"
+        ],
+        "type": "string"
+      },
+      "TimeRange": {
+        "required": [
+          "opensAtMinute",
+          "closesAtMinute"
+        ],
+        "type": "object",
+        "properties": {
+          "opensAtMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "closesAtMinute": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "auth"
+    },
+    {
+      "name": "context"
+    },
+    {
+      "name": "schedules"
+    },
+    {
+      "name": "courts"
+    },
+    {
+      "name": "availabilityOverrides"
+    },
+    {
+      "name": "bookings"
+    },
+    {
+      "name": "portal"
+    },
+    {
+      "name": "payments"
+    },
+    {
+      "name": "people"
+    }
+  ]
+}

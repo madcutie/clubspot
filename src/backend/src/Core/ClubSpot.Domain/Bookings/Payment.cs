@@ -3,8 +3,10 @@ using ClubSpot.SharedKernel.Tenancy;
 
 namespace ClubSpot.Domain.Bookings;
 
-// Append-only: a payment is never edited. Provisionally lives in bookings until the
-// finance granularity is defined (ADR-0012).
+// Settled money is append-only: it is never edited, only reversed by a counter-entry. A payment
+// that has not settled yet is not money — it is the provider saying "I have seen this, I do not
+// know how it ends", and that row advances in place until it does. Provisionally lives in bookings
+// until the finance granularity is defined (ADR-0012).
 public sealed class Payment : ITenantOwned
 {
     public Guid Id { get; private set; }
@@ -45,6 +47,32 @@ public sealed class Payment : ITenantOwned
         CreatedAt = createdAt;
     }
 
+    // Which notifications still say something new about a payment already on record. Answering
+    // "the row exists, therefore this is a replay" is what let a first `pending` notification burn
+    // the (provider, externalId) key and swallow the approval that came after it. A payment that
+    // has not settled can still land anywhere; a rejected one can still turn into money, because
+    // the provider — not this row — is the authority on what it holds. Settled money is final.
+    public bool Accepts(PaymentOutcome outcome) => Status switch
+    {
+        PaymentStatus.Pending => true,
+        PaymentStatus.Rejected => outcome == PaymentOutcome.Approved,
+        _ => false
+    };
+
+    // The provider reported a new state for a payment that had not settled yet: this row advances
+    // instead of a second one being written, so (provider, externalId) stays the idempotency anchor.
+    public void Settle(Money amount, PaymentKind kind, PaymentStatus status, PaymentSource source)
+    {
+        if (status == PaymentStatus.Pending)
+            throw new ArgumentException("Settling a payment must reach a decided state.", nameof(status));
+
+        Amount = amount;
+        Kind = kind;
+        Status = status;
+        OrphanReason = null;
+        Source = source;
+    }
+
     // Money the club did not agree to; needs manual follow-up, and the reason is what the person
     // deciding reads first — so it is a column here, not only a line in the activity log.
     public void MarkOrphaned(PaymentOrphanReason reason)
@@ -76,9 +104,21 @@ public enum PaymentKind
 
 public enum PaymentStatus
 {
+    // The provider has the payment but has not decided it yet. Not money: it is excluded from every
+    // sum of what a booking has paid, and it keeps the booking a reconciliation candidate.
+    Pending,
     Approved,
     Rejected,
     ApprovedOrphan
+}
+
+// What a provider reports about a payment. Distinct from PaymentStatus because "not approved" and
+// "not approved yet" are different facts, and collapsing them loses money.
+public enum PaymentOutcome
+{
+    Pending,
+    Approved,
+    Rejected
 }
 
 public enum PaymentSource

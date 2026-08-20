@@ -15,6 +15,30 @@ public sealed class PortalEndpointsTests(PostgresFixture postgres)
 {
     private static readonly TenantId SeedTenant = TenantId.From(Guid.Parse("a7b00b98-6191-433d-8930-3273904c1faa"));
 
+    // The url travels to the provider as a back url it auto-returns to, so letting the caller pick it
+    // turns an anonymous endpoint into a redirector wearing the club's checkout as the lead-in.
+    [Theory]
+    [InlineData("https://evil.example/cobrado")]
+    [InlineData("http://localhost:5183.evil.example/")]
+    [InlineData("javascript:alert(1)")]
+    [InlineData(null)]
+    public async Task A_return_url_the_club_did_not_configure_is_refused(string? returnUrl)
+    {
+        await ResetBookingsAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 20);
+
+        var response = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
+        {
+            courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
+            customerName = "Redirigido", customerPhone = "362 400-0120", customerEmail = (string?)null,
+            paymentMode = "onlineFull", returnUrl
+        });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
     [Fact]
     public async Task The_catalog_lists_the_seeded_courts_anonymously()
     {

@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
+using ClubSpot.Api.Auth;
 using ClubSpot.Domain.Core;
 using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.SharedKernel.Tenancy;
@@ -75,6 +76,61 @@ public sealed class AuthenticationTests(PostgresFixture postgres)
             SaveAsync(second, NewUser(second.Id, "shared@clubspot.test", "Second", Role.Administrator)));
 
         Assert.Contains("uxUsersEmail", conflict.InnerException?.Message ?? conflict.Message);
+    }
+
+    [Fact]
+    public async Task Guessing_one_password_runs_out_of_attempts()
+    {
+        var club = NewClub("club-throttle", "Club Throttle");
+        var user = NewUser(club.Id, "throttled@clubspot.test", "Court Operator", Role.CourtReception);
+        await SaveAsync(club, user);
+
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+
+        for (var attempt = 0; attempt < SignInThrottle.MaxFailuresPerAccount; attempt++)
+        {
+            var refused = await client.PostAsJsonAsync("/api/auth/session", new
+            {
+                email = "throttled@clubspot.test", password = $"guess-{attempt}"
+            });
+            Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
+        }
+
+        var blocked = await client.PostAsJsonAsync("/api/auth/session", new
+        {
+            email = "throttled@clubspot.test", password = "guess-again"
+        });
+        Assert.Equal(HttpStatusCode.TooManyRequests, blocked.StatusCode);
+
+        // The right password is refused too while the block holds: a throttle that the attacker can
+        // step past by guessing correctly is not a throttle.
+        var correct = await client.PostAsJsonAsync("/api/auth/session", new
+        {
+            email = "throttled@clubspot.test", password = "correct-password"
+        });
+        Assert.Equal(HttpStatusCode.TooManyRequests, correct.StatusCode);
+    }
+
+    [Fact]
+    public async Task Signing_in_correctly_is_never_throttled()
+    {
+        var club = NewClub("club-not-throttled", "Club Not Throttled");
+        var user = NewUser(club.Id, "steady@clubspot.test", "Court Operator", Role.CourtReception);
+        await SaveAsync(club, user);
+
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+
+        // Well past the per-account budget: only failures count, so a whole shift signing in is fine.
+        for (var attempt = 0; attempt < SignInThrottle.MaxFailuresPerAccount + 5; attempt++)
+        {
+            var response = await client.PostAsJsonAsync("/api/auth/session", new
+            {
+                email = "steady@clubspot.test", password = "correct-password"
+            });
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
     }
 
     [Fact]

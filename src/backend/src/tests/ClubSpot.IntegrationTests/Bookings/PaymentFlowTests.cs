@@ -97,6 +97,95 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         Assert.Equal(0, snapshot.PaidAmount);
     }
 
+    // The regression for the bug that lost the most money: Mercado Pago announces a payment before it
+    // resolves — always for the offline methods — and that first notification used to be filed as a
+    // rejection under the payment's own id. The approval that followed then looked like a replay, so
+    // the booking never confirmed while the money was taken, and neither J2 nor the portal's settle
+    // could repair it because all three share this path.
+    [Fact]
+    public async Task A_payment_reported_pending_still_confirms_the_slot_when_it_is_approved()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 16);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineFull", "362 400-0110");
+
+        var pending = await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "fake-pending-1", approved = false,
+            amount = created.ChargeAmount, outcome = "pending"
+        });
+        Assert.Equal(HttpStatusCode.OK, pending.StatusCode);
+        Assert.Equal(BookingStatus.PendingPayment, (await SnapshotAsync(client, created)).Status);
+
+        // Same payment id: it is the same money finally settling, not a second payment.
+        var approved = await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "fake-pending-1", approved = true,
+            amount = created.ChargeAmount
+        });
+        Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
+
+        var snapshot = await SnapshotAsync(client, created);
+        Assert.Equal(BookingStatus.Confirmed, snapshot.Status);
+        Assert.Equal(created.ChargeAmount, snapshot.PaidAmount);
+
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        var payments = await db.Payments.Where(payment => payment.BookingId == created.Id).ToListAsync();
+        // One row, advanced in place: the unique (provider, externalId) stays the idempotency anchor.
+        Assert.Single(payments);
+        Assert.Equal(PaymentStatus.Approved, payments[0].Status);
+    }
+
+    [Fact]
+    public async Task A_payment_still_pending_is_not_money_the_booking_has()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 17);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineFull", "362 400-0111");
+
+        await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "fake-pending-2", approved = false,
+            amount = created.ChargeAmount, outcome = "pending"
+        });
+
+        var snapshot = await SnapshotAsync(client, created);
+        Assert.Equal(BookingStatus.PendingPayment, snapshot.Status);
+        Assert.Equal(0, snapshot.PaidAmount);
+    }
+
+    // A rejection is still terminal for that payment id: the buyer retries with a new one.
+    [Fact]
+    public async Task A_replayed_rejection_stays_a_no_op()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 18);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineFull", "362 400-0112");
+
+        for (var attempt = 0; attempt < 2; attempt++)
+            await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+            {
+                bookingId = created.Id, externalId = "fake-reject-replay", approved = false,
+                amount = created.ChargeAmount
+            });
+
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        var payments = await db.Payments.Where(payment => payment.BookingId == created.Id).ToListAsync();
+        Assert.Single(payments);
+        Assert.Equal(PaymentStatus.Rejected, payments[0].Status);
+        Assert.Equal(BookingStatus.PendingPayment, (await SnapshotAsync(client, created)).Status);
+    }
+
     [Fact]
     public async Task A_deposit_charges_the_club_percentage()
     {

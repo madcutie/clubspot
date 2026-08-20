@@ -48,7 +48,11 @@ public static class PortalEndpoints
             : [PaymentMode.OnlineFull, PaymentMode.OnlineDeposit];
         var paymentMode = request.PaymentMode ?? allowedModes[0];
         if (!allowedModes.Contains(paymentMode)) return TypedResults.UnprocessableEntity();
-        if (checkout is not null && string.IsNullOrWhiteSpace(request.ReturnUrl))
+        // Where the buyer is sent back to is the club's configuration, never the caller's: this is an
+        // anonymous endpoint, and the url travels to the provider as a back url it auto-returns to.
+        // Checking it only at /api/payments/return was not enough — that hop is skipped entirely for
+        // an https url, which is also exactly what turns auto_return on.
+        if (checkout is not null && !CheckoutReturnUrl.IsAllowed(paymentsOptions.Value, request.ReturnUrl))
             return TypedResults.UnprocessableEntity();
 
         var result = await store.CreateAsync(new BookingCreateInput(

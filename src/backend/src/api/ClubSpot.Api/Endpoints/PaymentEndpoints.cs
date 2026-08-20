@@ -31,18 +31,8 @@ public static class PaymentEndpoints
         return app;
     }
 
-    // Origins are compared parsed, never as string prefixes: "https://club.com.attacker.io" starts
-    // with an allowed "https://club.com" and would otherwise be redirected to.
-    private static IResult Return(string to, IOptions<PaymentsOptions> options)
-    {
-        if (!Uri.TryCreate(to, UriKind.Absolute, out var target)) return Results.BadRequest();
-
-        var allowed = options.Value.AllowedReturnOrigins.Any(origin =>
-            Uri.TryCreate(origin, UriKind.Absolute, out var allowedOrigin)
-            && Uri.Compare(target, allowedOrigin, UriComponents.SchemeAndServer, UriFormat.UriEscaped,
-                StringComparison.OrdinalIgnoreCase) == 0);
-        return allowed ? Results.Redirect(to) : Results.BadRequest();
-    }
+    private static IResult Return(string to, IOptions<PaymentsOptions> options) =>
+        CheckoutReturnUrl.IsAllowed(options.Value, to) ? Results.Redirect(to) : Results.BadRequest();
 
     private static async Task<Results<Ok<PaymentApplyResponse>, NotFound>> FakeWebhookAsync(FakeWebhookRequest request, IBookingsStore store,
         IWebHostEnvironment environment, CancellationToken cancellationToken)
@@ -51,7 +41,9 @@ public static class PaymentEndpoints
 
         var outcome = await store.ApplyPaymentAsync(new PaymentNotification(
             request.BookingId, FakePaymentProvider.ProviderName, PaymentRail.Checkout,
-            request.ExternalId, request.Approved, request.Amount, request.Currency),
+            request.ExternalId,
+            request.Outcome ?? (request.Approved ? PaymentOutcome.Approved : PaymentOutcome.Rejected),
+            request.Amount, request.Currency),
             PaymentSource.Webhook, cancellationToken);
         return TypedResults.Ok(new PaymentApplyResponse(outcome));
     }
@@ -96,8 +88,10 @@ public static class PaymentEndpoints
         return TypedResults.Ok();
     }
 
+    // Outcome overrides Approved when present: the dev checkout page only knows approve/reject, but a
+    // test needs to drive the undecided state the real providers report.
     internal sealed record FakeWebhookRequest(Guid BookingId, string ExternalId, bool Approved, decimal? Amount,
-        string? Currency = null);
+        string? Currency = null, PaymentOutcome? Outcome = null);
 
     internal sealed record PaymentApplyResponse(PaymentApplyOutcome Outcome);
 }

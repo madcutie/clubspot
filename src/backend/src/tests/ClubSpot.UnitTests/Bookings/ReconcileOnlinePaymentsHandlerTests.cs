@@ -16,7 +16,7 @@ public sealed class ReconcileOnlinePaymentsHandlerTests
         var store = new StoreFake([Unpaid, Abandoned]);
         var provider = new ProviderFake(new Dictionary<Guid, PaymentNotification[]>
         {
-            [Unpaid] = [new PaymentNotification(Unpaid, "mercadopago", PaymentRail.Checkout, "111", Approved: true, 12000)],
+            [Unpaid] = [new PaymentNotification(Unpaid, "mercadopago", PaymentRail.Checkout, "111", PaymentOutcome.Approved, 12000)],
             [Abandoned] = []
         });
         var handler = new ReconcileOnlinePaymentsHandler(store, [provider], new ClockFake(DateTimeOffset.UtcNow));
@@ -36,7 +36,7 @@ public sealed class ReconcileOnlinePaymentsHandlerTests
         var empty = new ProviderFake(new Dictionary<Guid, PaymentNotification[]>(), name: "one");
         var holding = new ProviderFake(new Dictionary<Guid, PaymentNotification[]>
         {
-            [Unpaid] = [new PaymentNotification(Unpaid, "two", PaymentRail.Checkout, "333", Approved: true, 12000)]
+            [Unpaid] = [new PaymentNotification(Unpaid, "two", PaymentRail.Checkout, "333", PaymentOutcome.Approved, 12000)]
         }, name: "two");
         var handler = new ReconcileOnlinePaymentsHandler(store, [empty, holding], new ClockFake(DateTimeOffset.UtcNow));
 
@@ -53,7 +53,7 @@ public sealed class ReconcileOnlinePaymentsHandlerTests
         var store = new StoreFake([Unpaid]) { OutcomeToReturn = PaymentApplyOutcome.Orphaned };
         var provider = new ProviderFake(new Dictionary<Guid, PaymentNotification[]>
         {
-            [Unpaid] = [new PaymentNotification(Unpaid, "mercadopago", PaymentRail.Checkout, "222", Approved: true, 12000)]
+            [Unpaid] = [new PaymentNotification(Unpaid, "mercadopago", PaymentRail.Checkout, "222", PaymentOutcome.Approved, 12000)]
         });
         var handler = new ReconcileOnlinePaymentsHandler(store, [provider], new ClockFake(DateTimeOffset.UtcNow));
 

@@ -12,6 +12,8 @@ public static class BookingActivity
     public const string CheckoutIssued = "checkoutIssued";
 
     public const string PaymentApproved = "paymentApproved";
+    // The provider took the payment and has not decided it yet; no money has moved.
+    public const string PaymentPending = "paymentPending";
     public const string PaymentRejected = "paymentRejected";
     public const string PaymentOrphaned = "paymentOrphaned";
 

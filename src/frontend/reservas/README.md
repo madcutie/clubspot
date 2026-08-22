@@ -11,8 +11,8 @@ npm install
 npm run dev
 ```
 
-- Local: http://localhost:5183
-- En el celular: usar la URL `Network:` que imprime Vite (ej. `http://192.168.68.200:5183`),
+- Local: http://localhost:5183/chaco-for-ever
+- En el celular: usar la URL `Network:` que imprime Vite (ej. `http://192.168.68.200:5183/chaco-for-ever`),
   con el teléfono en la misma WiFi. Conviene "Agregar a pantalla de inicio" para
   verla sin la barra del navegador.
 

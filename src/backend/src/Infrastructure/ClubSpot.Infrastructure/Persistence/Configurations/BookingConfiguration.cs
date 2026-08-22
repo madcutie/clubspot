@@ -9,7 +9,8 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
 {
     public void Configure(EntityTypeBuilder<Booking> builder)
     {
-        builder.ToTable("bookings");
+        builder.ToTable("bookings", table => table.HasCheckConstraint("ckBookingsDepositPercent",
+            "\"depositPercent\" IS NULL OR \"depositPercent\" IN (50, 100)"));
         builder.HasKey(booking => booking.Id);
         builder.Property(booking => booking.Id).HasColumnName("id").ValueGeneratedNever();
         builder.Property(booking => booking.TenantId).HasColumnName("tenantId");
@@ -29,6 +30,8 @@ internal sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(booking => booking.Origin).HasColumnName("origin").HasConversion<string>();
         builder.Property(booking => booking.PaymentMode).HasColumnName("paymentMode").HasConversion<string>();
         builder.Property(booking => booking.ExpiresAt).HasColumnName("expiresAt");
+        // Non-null only on a deposit hold: what the club agreed to charge up front, frozen at that moment.
+        builder.Property(booking => booking.DepositPercent).HasColumnName("depositPercent");
         builder.Property(booking => booking.CreatedAt).HasColumnName("createdAt");
         builder.Property(booking => booking.CreatedBy).HasColumnName("createdBy");
         builder.Property(booking => booking.CancelledAt).HasColumnName("cancelledAt");

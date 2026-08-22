@@ -1,3 +1,4 @@
+using ClubSpot.Api.Observability;
 using ClubSpot.Application.Core;
 using ClubSpot.SharedKernel.Activity;
 using ClubSpot.SharedKernel.Tenancy;
@@ -23,6 +24,10 @@ internal static class ClubScope
 
         var tenantScopeFactory = context.HttpContext.RequestServices.GetRequiredService<ITenantScopeFactory>();
         using var tenantScope = tenantScopeFactory.BeginScope(clubId.Value);
+        // Anonymous traffic resolves its club here and nowhere else. Without this the orphaned-payment
+        // warning — which arrives by webhook — comes out with no club, which is the one line that has
+        // to be findable per club.
+        context.HttpContext.Items[HttpContextEnricher.TenantKey] = clubId.Value.Value;
         var actorScopeFactory = context.HttpContext.RequestServices.GetRequiredService<IActivityActorScopeFactory>();
         using var actorScope = actorScopeFactory.BeginScope(actor);
 

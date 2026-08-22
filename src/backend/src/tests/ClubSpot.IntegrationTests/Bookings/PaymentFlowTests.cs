@@ -244,6 +244,63 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task A_deposit_paid_after_the_club_moved_the_percentage_is_still_the_agreed_one()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 26);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineDeposit", "362 400-0122");
+        Assert.Equal(Math.Round(created.Price / 2, 2), created.ChargeAmount);
+
+        var previousPercent = 0;
+        try
+        {
+            // The club switches to charging the whole price up front while this checkout is in flight.
+            previousPercent = await SetDepositPercentAsync(100);
+
+            var webhook = await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+            {
+                bookingId = created.Id, externalId = "fake-frozen-1", approved = true, amount = created.ChargeAmount
+            });
+            Assert.Equal(HttpStatusCode.OK, webhook.StatusCode);
+
+            // The customer paid exactly what was asked of them. Recomputing against the live setting is
+            // what used to file a correct deposit as a short payment and leave the money orphaned.
+            var tenantContext = new AsyncLocalTenantContext();
+            await using var db = postgres.CreateDbContext(tenantContext);
+            using var scope = tenantContext.BeginScope(SeedTenant);
+            var payment = await db.Payments.SingleAsync(candidate => candidate.BookingId == created.Id);
+            Assert.Equal(PaymentStatus.Approved, payment.Status);
+            Assert.Null(payment.OrphanReason);
+            var booking = await db.Bookings.SingleAsync(candidate => candidate.Id == created.Id);
+            Assert.Equal(BookingStatus.Confirmed, booking.Status);
+            Assert.Equal(50, booking.DepositPercent);
+        }
+        finally
+        {
+            if (previousPercent > 0) await SetDepositPercentAsync(previousPercent);
+        }
+    }
+
+    // Scoped to the seeded club by id: raw SQL is not reached by the global tenant filter, and other
+    // classes in this collection leave clubs of their own behind. Returns what it replaced so the
+    // caller restores what was there instead of a literal that happens to match today.
+    private async Task<int> SetDepositPercentAsync(int percent)
+    {
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        var previous = await db.Clubs.AsNoTracking()
+            .Where(club => club.Id == SeedTenant)
+            .Select(club => club.DepositPercent)
+            .SingleAsync();
+        await db.Database.ExecuteSqlAsync(
+            $"UPDATE public.clubs SET \"depositPercent\" = {percent} WHERE id = {SeedTenant.Value}");
+        return previous;
+    }
+
+    [Fact]
     public async Task An_expired_hold_stops_blocking_the_slot()
     {
         await ResetAsync();
@@ -297,8 +354,10 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         });
         Assert.Equal(HttpStatusCode.Created, retry.StatusCode);
 
+        // Expired and not Cancelled: giving up is the same fact as running out of time, and Cancelled
+        // is reserved for a person who decided and left a reason.
         var snapshot = await SnapshotAsync(client, created);
-        Assert.Equal(BookingStatus.Cancelled, snapshot!.Status);
+        Assert.Equal(BookingStatus.Expired, snapshot!.Status);
     }
 
     [Fact]
@@ -323,7 +382,7 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task A_payment_landing_on_a_released_hold_is_orphaned()
+    public async Task A_payment_landing_on_a_released_hold_confirms_it_while_the_slot_is_free()
     {
         await ResetAsync();
         using var factory = new ApiFactory(postgres);
@@ -339,14 +398,50 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         });
         Assert.Equal(HttpStatusCode.OK, webhook.StatusCode);
 
+        // Whoever pressed "Volver" and paid anyway gets the slot, exactly like whoever let the TTL run
+        // out and paid anyway. Nobody else took it in between, so there is nothing to be orphaned about.
+        var tenantContext = new AsyncLocalTenantContext();
+        await using var db = postgres.CreateDbContext(tenantContext);
+        using var scope = tenantContext.BeginScope(SeedTenant);
+        var payment = await db.Payments.SingleAsync(candidate => candidate.BookingId == created.Id);
+        Assert.Equal(PaymentStatus.Approved, payment.Status);
+        Assert.Null(payment.OrphanReason);
+        var booking = await db.Bookings.SingleAsync(candidate => candidate.Id == created.Id);
+        Assert.Equal(BookingStatus.Confirmed, booking.Status);
+    }
+
+    [Fact]
+    public async Task A_payment_landing_on_a_released_hold_is_orphaned_once_the_slot_is_gone()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        var (court, date, slot) = await FirstSlotAsync(client, daysAhead: 25);
+        var created = await HoldAsync(client, court.Id, date, slot, "onlineFull", "362 400-0120");
+        await SendWithTokenAsync(client, HttpMethod.Post,
+            $"/api/portal/chaco-for-ever/bookings/{created.Id}/release", created.Token);
+
+        // The slot the release freed is sold to somebody else before the first payment shows up.
+        var second = await client.PostAsJsonAsync("/api/portal/chaco-for-ever/bookings", new
+        {
+            courtId = court.Id, date, startMinute = slot.StartMinute, durationMinutes = slot.Duration,
+            customerName = "Segundo Cliente", customerPhone = "362 400-0121", customerEmail = (string?)null,
+            paymentMode = "onlineFull", returnUrl = "http://localhost:5183/?retorno=x"
+        });
+        Assert.Equal(HttpStatusCode.Created, second.StatusCode);
+
+        var webhook = await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
+        {
+            bookingId = created.Id, externalId = "fake-orphan-2", approved = true, amount = created.ChargeAmount
+        });
+        Assert.Equal(HttpStatusCode.OK, webhook.StatusCode);
+
         var tenantContext = new AsyncLocalTenantContext();
         await using var db = postgres.CreateDbContext(tenantContext);
         using var scope = tenantContext.BeginScope(SeedTenant);
         var payment = await db.Payments.SingleAsync(candidate => candidate.BookingId == created.Id);
         Assert.Equal(PaymentStatus.ApprovedOrphan, payment.Status);
-        Assert.Equal(PaymentOrphanReason.BookingLost, payment.OrphanReason);
-        var booking = await db.Bookings.SingleAsync(candidate => candidate.Id == created.Id);
-        Assert.Equal(BookingStatus.Cancelled, booking.Status);
+        Assert.Equal(PaymentOrphanReason.SlotLost, payment.OrphanReason);
     }
 
     [Fact]

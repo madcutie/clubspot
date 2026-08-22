@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ClubSpot.Api.Auth;
+using ClubSpot.Api.Observability;
 using ClubSpot.SharedKernel.Activity;
 
 namespace ClubSpot.Api.Activity;
@@ -24,6 +25,9 @@ public sealed class ActivityActorMiddleware(RequestDelegate next)
 
         using var actorScope = actorScopeFactory.BeginScope(
             new ActivityActor(userId, name, ActivitySource.Counter));
+        // The id, never the name: a log is diagnostics and does not need to carry who a person is.
+        // Only when there is one — a null field on every line of every request buys nothing.
+        if (userId is { } id) context.Items[HttpContextEnricher.UserIdKey] = id;
         await next(context);
     }
 }

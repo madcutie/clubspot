@@ -5,6 +5,7 @@ using ClubSpot.SharedKernel.Modularity;
 using ClubSpot.SharedKernel.Tenancy;
 using Hangfire;
 using Hangfire.Storage;
+using Serilog.Context;
 
 namespace ClubSpot.JobService;
 
@@ -34,17 +35,20 @@ public sealed class PaymentsReconciliationDispatcher(
 
         foreach (var club in clubs)
         {
+            // Around the try and not inside the run: the two lines that say this club failed were the
+            // ones coming out without the field a per-club filter looks for.
+            using var logScope = LogContext.PushProperty("tenant", club.Value);
             try
             {
                 await RunForTenantAsync(club, cancellationToken);
             }
             catch (DistributedLockTimeoutException)
             {
-                logger.LogWarning("Tenant {Tenant} is already being reconciled; skipped.", club.Value);
+                logger.LogWarning("The club is already being reconciled; skipped.");
             }
             catch (Exception exception)
             {
-                logger.LogError(exception, "Reconciliation failed for tenant {Tenant}.", club.Value);
+                logger.LogError(exception, "Reconciliation failed for the club.");
             }
         }
     }
@@ -69,7 +73,7 @@ public sealed class PaymentsReconciliationDispatcher(
         // Provisional run record until real metrics exist (observability phase).
         foreach (var result in results)
             logger.LogInformation(
-                "Reconciliation for tenant {Tenant} via {Provider}: {Candidates} candidates, {Applied} applied, {Orphaned} orphaned.",
-                tenant.Value, result.Provider, result.Candidates, result.Applied, result.Orphaned);
+                "Reconciliation via {Provider}: {Candidates} candidates, {Applied} applied, {Orphaned} orphaned.",
+                result.Provider, result.Candidates, result.Applied, result.Orphaned);
     }
 }

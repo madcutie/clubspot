@@ -39,14 +39,23 @@ public sealed class CreateBookingCheckoutHandler(
         var endsAt = calendar.ToUtc(booking.Date.AddDays(endMinute / 1440),
             new TimeOnly(endMinute % 1440 / 60, endMinute % 60));
         var expiresAt = endsAt > clock.UtcNow + MinimumLifetime ? endsAt : clock.UtcNow + MinimumLifetime;
+        var amount = Money.Of(due, club.Currency);
+
+        // Reissuing stays free — the slot is already the customer's — but handing out a second payable
+        // link for the same money is not. Any link for this same charge that has not expired is handed
+        // back instead: minting another cannot void the first, so a second one only ever adds a way to
+        // pay twice. Once none is live there is nothing to protect and a fresh one is issued.
+        if (await store.FindLiveCheckoutAsync(booking.Id, checkout.Name, amount, clock.UtcNow, cancellationToken)
+            is { } live)
+            return new BookingCheckoutResult(BookingCheckoutOutcome.Created, live.Url, due, live.ExpiresAt);
 
         var title = $"{club.Name} · {booking.CourtName} {booking.Date:dd/MM} {Hour(booking.StartMinute)}";
         var session = await checkout.CreateCheckoutAsync(new CheckoutRequest(booking.Id, club.Slug, title,
-            Money.Of(due, club.Currency), expiresAt, returnUrl), cancellationToken);
+            amount, expiresAt, returnUrl), cancellationToken);
 
-        await store.RecordCheckoutIssuedAsync(new CheckoutIssued(booking.Id, checkout.Name, session.Url,
-            Money.Of(due, club.Currency), expiresAt), cancellationToken);
-        return new BookingCheckoutResult(BookingCheckoutOutcome.Created, session.Url, due, expiresAt);
+        var handed = await store.RecordCheckoutIssuedAsync(new CheckoutIssued(booking.Id, checkout.Name,
+            session.Url, amount, expiresAt), cancellationToken);
+        return new BookingCheckoutResult(BookingCheckoutOutcome.Created, handed.Url, due, handed.ExpiresAt);
     }
 
     private static string Hour(int minute) => $"{minute / 60:00}:{minute % 60:00}";

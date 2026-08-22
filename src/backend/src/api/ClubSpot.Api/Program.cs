@@ -14,7 +14,9 @@ using ClubSpot.Application.Modularity;
 using ClubSpot.Domain.Bookings;
 using ClubSpot.Domain.Core.People;
 using ClubSpot.Infrastructure.DependencyInjection;
+using ClubSpot.Api.Observability;
 using ClubSpot.Infrastructure.MercadoPago;
+using ClubSpot.Infrastructure.Observability;
 using ClubSpot.Infrastructure.Payments;
 using ClubSpot.Infrastructure.Persistence;
 using ClubSpot.SharedKernel.Modularity;
@@ -25,6 +27,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Before anything that can throw at startup: a connection string that is missing has to leave a line
+// somewhere, and the default console provider is gone the moment this runs.
+builder.AddClubSpotLogging("api", new HttpContextEnricher());
+// The enricher reads the ambient HttpContext; ASP.NET only publishes it when the accessor is registered.
+builder.Services.AddHttpContextAccessor();
 
 var connectionString = builder.Configuration.GetConnectionString("ClubSpot")
     ?? throw new InvalidOperationException("Connection string 'ClubSpot' is required.");
@@ -156,6 +164,8 @@ if (app.Environment.IsDevelopment())
 
 // Before anything that reads the caller's address, which is what the rate limits partition on.
 if (trustedProxies.Length > 0) app.UseForwardedHeaders();
+// Ahead of the exception handler: the 500 it logs is the line that most needs to name its request.
+app.UseMiddleware<RequestLogContextMiddleware>();
 app.UseExceptionHandler();
 // Liveness: the process answers. Deliberately touches nothing else, so a database blip never
 // makes the orchestrator kill a container that is perfectly able to serve.

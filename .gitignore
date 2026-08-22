@@ -41,6 +41,10 @@ Thumbs.db
 .DS_Store
 *.log
 
+# Logs estructurados de desarrollo (ADR-0019): se escriben solos y se borran solos
+logs/
+*.jsonl
+
 # Reviews locales (no versionados)
 code-reviews/
 

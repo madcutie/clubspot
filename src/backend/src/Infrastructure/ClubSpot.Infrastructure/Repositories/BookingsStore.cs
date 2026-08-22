@@ -9,6 +9,7 @@ using ClubSpot.SharedKernel.Primitives;
 using ClubSpot.SharedKernel.Tenancy;
 using ClubSpot.SharedKernel.Time;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
@@ -16,7 +17,8 @@ namespace ClubSpot.Infrastructure.Repositories;
 
 internal sealed class BookingsStore(
     ClubSpotDbContext db, ITenantContext tenantContext, IClubSettings clubSettings, IPeopleLink peopleLink,
-    IOptions<PaymentsOptions> paymentsOptions, IClock clock, IActivityLog activityLog) : IBookingsStore
+    IOptions<PaymentsOptions> paymentsOptions, IClock clock, IActivityLog activityLog,
+    ILogger<BookingsStore> logger) : IBookingsStore
 {
     public async Task<BookingCreateResult> CreateAsync(BookingCreateInput input, CancellationToken cancellationToken)
     {
@@ -61,13 +63,17 @@ internal sealed class BookingsStore(
             : null;
 
         var chargeAmount = ChargeAmountFor(input.PaymentMode, slot.Price, club.DepositPercent);
+        // Frozen on the hold, not read again when the payment lands: the club can move the percentage
+        // while a checkout is in flight, and the customer owes what was asked of them at that moment.
+        var agreedPercent = input.PaymentMode == PaymentMode.OnlineDeposit ? club.DepositPercent : (int?)null;
         var booking = input.PaymentMode == PaymentMode.Club
             ? new Booking(Guid.NewGuid(), tenantContext.Current, court.Id, input.Date, input.StartMinute,
                 input.DurationMinutes, slot.Price, input.CustomerName, input.CustomerPhone, personId, input.Origin,
                 utcNow, input.CreatedBy)
             : Booking.Hold(Guid.NewGuid(), tenantContext.Current, court.Id, input.Date, input.StartMinute,
                 input.DurationMinutes, slot.Price, input.CustomerName, input.CustomerPhone, personId, input.Origin,
-                input.PaymentMode, utcNow.AddMinutes(paymentsOptions.Value.HoldMinutes), utcNow, input.CreatedBy);
+                input.PaymentMode, utcNow.AddMinutes(paymentsOptions.Value.HoldMinutes), agreedPercent, utcNow,
+                input.CreatedBy);
         db.Bookings.Add(booking);
         activityLog.Record(new ActivityRecord(
             booking.Status == BookingStatus.PendingPayment ? BookingActivity.HoldCreated : BookingActivity.BookingCreated,
@@ -92,6 +98,11 @@ internal sealed class BookingsStore(
             when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.ExclusionViolation })
         {
             activityLog.DiscardPending();
+            // Nothing is wrong here — two people wanted the same slot and the constraint picked one —
+            // but it is the only explanation for a 409 the caller can otherwise not account for.
+            logger.LogInformation(
+                "Slot {Court} {Date} {Start}+{Duration} was taken concurrently; the booking was refused.",
+                court.Id, input.Date, input.StartMinute, input.DurationMinutes);
             return new BookingCreateResult(BookingCreateOutcome.SlotTaken, Guid.Empty, default);
         }
         return new BookingCreateResult(BookingCreateOutcome.Created, booking.Id, booking.Price,
@@ -133,12 +144,15 @@ internal sealed class BookingsStore(
 
     public async Task<HoldReleaseOutcome> ReleaseHoldAsync(Guid id, CancellationToken cancellationToken)
     {
-        // Conditional update: a hold the webhook confirmed a moment ago must never be cancelled.
+        // Conditional update: a hold the webhook confirmed a moment ago must never be released.
+        // Expired and not Cancelled: giving up on the checkout is the same fact as letting the TTL run
+        // out, so a payment landing afterwards can still confirm instead of being orphaned, and J2 —
+        // which reconciles pending and expired holds — keeps watching it. Cancelled is left meaning
+        // exclusively "a person decided, and left a reason".
         var released = await db.Bookings
             .Where(booking => booking.Id == id && booking.Status == BookingStatus.PendingPayment)
             .ExecuteUpdateAsync(setters => setters
-                .SetProperty(booking => booking.Status, BookingStatus.Cancelled)
-                .SetProperty(booking => booking.CancelledAt, clock.UtcNow), cancellationToken);
+                .SetProperty(booking => booking.Status, BookingStatus.Expired), cancellationToken);
         if (released > 0)
         {
             activityLog.Record(new ActivityRecord(BookingActivity.HoldReleased, BookingId: id));
@@ -166,6 +180,9 @@ internal sealed class BookingsStore(
         {
             // Two notifications for the same payment raced past the lookup below: the unique index on
             // (provider, externalId) is what actually makes a replayed payment a no-op.
+            logger.LogInformation(
+                "Payment {Provider}/{ExternalId} for booking {Booking} arrived twice at once; the duplicate was dropped.",
+                notification.Provider, notification.ExternalId, notification.BookingId);
             return PaymentApplyOutcome.AlreadyProcessed;
         }
     }
@@ -213,9 +230,11 @@ internal sealed class BookingsStore(
         // What this particular payment was asked for: the first charge is the deposit or the whole
         // price, the balance is whatever the deposit left owing. Reading the deposit for both is what
         // made a correct balance payment look short whenever the deposit was not exactly half.
+        // The percentage comes off the booking, which froze it when the hold was taken; the live club
+        // setting is only reached by holds created before that column existed, and those die with the TTL.
         var expected = kind == PaymentKind.Balance
             ? Money.Of(booking.Price.Amount - settled, booking.Price.Currency)
-            : ChargeAmountFor(booking.PaymentMode, booking.Price, club.DepositPercent);
+            : ChargeAmountFor(booking.PaymentMode, booking.Price, booking.DepositPercent ?? club.DepositPercent);
 
         // The row records the currency the provider actually settled in, not the one the club asked
         // for: written the other way round, a mismatch would be invisible on the payment itself.
@@ -251,7 +270,17 @@ internal sealed class BookingsStore(
             db.Payments.Add(payment);
         }
 
-        void RecordPayment(string type, PaymentOrphanReason? why = null) => activityLog.Record(new ActivityRecord(
+        void RecordPayment(string type, PaymentOrphanReason? why = null)
+        {
+            // Money the club is holding for something it did not agree to. It is already in the
+            // chronicle for the operator; this line is so it can also be found while troubleshooting,
+            // which is the only way anyone learns about it before the customer complains.
+            if (why is { } reason)
+                logger.LogWarning(
+                    "Payment {Provider}/{ExternalId} of {Amount} {Currency} on booking {Booking} was orphaned: {Reason}.",
+                    notification.Provider, notification.ExternalId, amount.Amount, amount.Currency,
+                    booking.Id, reason);
+            activityLog.Record(new ActivityRecord(
             type, BookingId: booking.Id, PersonId: booking.PersonId, PaymentId: payment.Id,
             Data: new Dictionary<string, object?>
             {
@@ -263,6 +292,7 @@ internal sealed class BookingsStore(
                 ["kind"] = kind,
                 ["why"] = why
             }));
+        }
 
         if (notification.Outcome == PaymentOutcome.Pending)
         {
@@ -338,13 +368,47 @@ internal sealed class BookingsStore(
         }
     }
 
-    public async Task RecordCheckoutIssuedAsync(CheckoutIssued issued, CancellationToken cancellationToken)
+    public async Task<CheckoutIssued> RecordCheckoutIssuedAsync(CheckoutIssued issued, CancellationToken cancellationToken)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        // The same booking row the payment path locks. Checking for a live link and minting one are two
+        // statements with a provider round-trip in between, so without this two operators pressing at
+        // once both find nothing and both hand out a payable link for the same money. Serialising the
+        // record and re-reading the winner keeps the loser's preference unpublished.
+        await db.Database.ExecuteSqlAsync(
+            $"SELECT 1 FROM public.bookings WHERE id = {issued.BookingId} FOR UPDATE", cancellationToken);
+
         db.BookingCheckouts.Add(new BookingCheckout(Guid.NewGuid(), tenantContext.Current, issued.BookingId,
             issued.Provider, issued.Url, issued.Amount, issued.ExpiresAt, clock.UtcNow));
         activityLog.Record(new ActivityRecord(BookingActivity.CheckoutIssued, BookingId: issued.BookingId));
         await db.SaveChangesAsync(cancellationToken);
+
+        var effective = await LiveCheckouts(issued.BookingId, issued.Provider, issued.Amount, clock.UtcNow)
+            .OrderBy(checkout => checkout.IssuedAt).ThenBy(checkout => checkout.Id)
+            .Select(checkout => new CheckoutIssued(checkout.BookingId, checkout.Provider, checkout.Url,
+                checkout.Amount, checkout.ExpiresAt))
+            .FirstAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return effective;
     }
+
+    public async Task<CheckoutIssued?> FindLiveCheckoutAsync(Guid bookingId, string provider, Money amount,
+        DateTimeOffset asOf, CancellationToken cancellationToken) =>
+        await LiveCheckouts(bookingId, provider, amount, asOf)
+            .OrderBy(checkout => checkout.IssuedAt).ThenBy(checkout => checkout.Id)
+            .Select(checkout => new CheckoutIssued(checkout.BookingId, checkout.Provider, checkout.Url,
+                checkout.Amount, checkout.ExpiresAt))
+            .FirstOrDefaultAsync(cancellationToken);
+
+    // Oldest first wherever this is ordered: whoever won the race is the one whose link may already be
+    // in a customer's hands, so it is the one everybody has to keep handing out.
+    private IQueryable<BookingCheckout> LiveCheckouts(Guid bookingId, string provider, Money amount, DateTimeOffset asOf) =>
+        db.BookingCheckouts.AsNoTracking()
+            .Where(checkout => checkout.BookingId == bookingId
+                && checkout.Provider == provider
+                && checkout.Amount.Amount == amount.Amount
+                && checkout.Amount.Currency == amount.Currency
+                && checkout.ExpiresAt > asOf);
 
     public async Task<BookingSnapshot?> GetAsync(Guid id, CancellationToken cancellationToken)
     {

@@ -47,7 +47,14 @@ public interface IBookingsStore
 
     // Every link handed out is kept: it answers "ya le mandé el link" without asking the customer,
     // and lets the same link be shown again instead of asking the provider for another one.
-    Task RecordCheckoutIssuedAsync(CheckoutIssued issued, CancellationToken cancellationToken);
+    // Returns the link the caller must actually hand over, which is not always the one just issued:
+    // two operators can each find no live link and each mint one, and only one of them may reach a
+    // customer. The loser's stays unpublished at the provider.
+    Task<CheckoutIssued> RecordCheckoutIssuedAsync(CheckoutIssued issued, CancellationToken cancellationToken);
+    // A link already handed out for this same charge and not yet expired. Asking the provider for
+    // another one instead leaves two payable links alive for the same money.
+    Task<CheckoutIssued?> FindLiveCheckoutAsync(Guid bookingId, string provider, Money amount,
+        DateTimeOffset asOf, CancellationToken cancellationToken);
     // Reconciliation candidates: online bookings still unpaid on our side.
     Task<IReadOnlyList<Guid>> GetUnsettledOnlineBookingIdsAsync(DateTimeOffset since, int limit, CancellationToken cancellationToken);
 }

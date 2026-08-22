@@ -34,7 +34,7 @@ public sealed class CounterCheckoutTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task Reissuing_is_free_because_no_slot_is_being_held()
+    public async Task Asking_again_for_the_same_charge_hands_back_the_same_link()
     {
         await ResetAsync();
         using var factory = new ApiFactory(postgres);
@@ -45,9 +45,35 @@ public sealed class CounterCheckoutTests(PostgresFixture postgres)
         var first = await client.PostAsync($"/api/bookings/{booking.Id}/checkout", null);
         var second = await client.PostAsync($"/api/bookings/{booking.Id}/checkout", null);
 
+        // The operator can ask as often as they need — no slot is being held — but two payable links
+        // for the same money is money the club did not agree to twice.
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
-        // Append-only: every link handed out stays, so the counter can tell one from the next.
+        var firstUrl = (await first.Content.ReadFromJsonAsync<CheckoutResponse>(TestJsonOptions.Default))!.Url;
+        var secondUrl = (await second.Content.ReadFromJsonAsync<CheckoutResponse>(TestJsonOptions.Default))!.Url;
+        Assert.Equal(firstUrl, secondUrl);
+        Assert.Single(await CheckoutsAsync(booking.Id));
+    }
+
+    [Fact]
+    public async Task A_link_for_a_different_amount_is_a_new_link()
+    {
+        await ResetAsync();
+        using var factory = new ApiFactory(postgres);
+        using var client = factory.CreateClient();
+        await AuthorizeAsync(client);
+        var booking = await CounterBookingAsync(client, daysAhead: 30, phone: "362 500-0110");
+
+        var first = await client.PostAsync($"/api/bookings/{booking.Id}/checkout", null);
+        await PayAsync(client, booking.Id, "counter-reissue-1", 5000);
+        var second = await client.PostAsync($"/api/bookings/{booking.Id}/checkout", null);
+
+        // Part of it was paid in cash: what is owed changed, so the old link would charge too much.
+        var firstCheckout = (await first.Content.ReadFromJsonAsync<CheckoutResponse>(TestJsonOptions.Default))!;
+        var secondCheckout = (await second.Content.ReadFromJsonAsync<CheckoutResponse>(TestJsonOptions.Default))!;
+        Assert.Equal(booking.Price, firstCheckout.Amount);
+        Assert.Equal(booking.Price - 5000, secondCheckout.Amount);
+        Assert.NotEqual(firstCheckout.Url, secondCheckout.Url);
         Assert.Equal(2, (await CheckoutsAsync(booking.Id)).Count);
     }
 

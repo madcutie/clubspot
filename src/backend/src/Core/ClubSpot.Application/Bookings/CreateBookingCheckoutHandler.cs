@@ -42,11 +42,10 @@ public sealed class CreateBookingCheckoutHandler(
         var amount = Money.Of(due, club.Currency);
 
         // Reissuing stays free — the slot is already the customer's — but handing out a second payable
-        // link for the same money is not. While the match has not ended every link for this booking
-        // expires at the same instant, so an equal expiry means "the same charge, still valid" and the
-        // operator gets that link back. Once the one-hour floor takes over each link outlives the last,
-        // no two match, and a late charge still gets a fresh one.
-        if (await store.FindLiveCheckoutAsync(booking.Id, checkout.Name, amount, expiresAt, cancellationToken)
+        // link for the same money is not. Any link for this same charge that has not expired is handed
+        // back instead: minting another cannot void the first, so a second one only ever adds a way to
+        // pay twice. Once none is live there is nothing to protect and a fresh one is issued.
+        if (await store.FindLiveCheckoutAsync(booking.Id, checkout.Name, amount, clock.UtcNow, cancellationToken)
             is { } live)
             return new BookingCheckoutResult(BookingCheckoutOutcome.Created, live.Url, due, live.ExpiresAt);
 

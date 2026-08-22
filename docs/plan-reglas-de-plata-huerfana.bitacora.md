@@ -2,6 +2,35 @@
 
 Registro de avance del [plan](plan-reglas-de-plata-huerfana.md). La entrada más nueva arriba.
 
+## 21/08/2026 — Revisión de código: la regla de reuso del link no cubría el caso más común
+
+Del pipeline de `code-reviewer` salieron dos correcciones sobre lo entregado el mismo día. Los
+verificadores de esta parte los frenó el usuario antes de que devolvieran, así que **estas dos no
+tienen verificación independiente**: se aplicaron porque se pueden comprobar leyendo el código.
+
+**D — el reuso del link no funcionaba cuando más importa.** La regla entregada reusaba el link cuyo
+vencimiento coincidía exactamente con el que tendría uno nuevo. Eso vale mientras el turno no
+terminó, pero desde una hora antes del fin del turno entra el piso de una hora y el vencimiento pasa
+a ser `ahora + 1h`, distinto en cada pulsación: la igualdad no da nunca y cada "Cobrar" emitía otra
+preferencia pagable. Como el cobro en mostrador ocurre justo alrededor de la hora de juego —para un
+turno de 60 minutos cobrado al empezar, el piso ya gana—, **el caso que la regla no cubría era el
+habitual**. La condición pasó a ser "cualquier link del mismo cobro que no haya vencido":
+emitir otro no anula el anterior, así que un segundo link sólo agrega una forma de pagar dos veces.
+De paso desaparece la fragilidad de comparar un `DateTimeOffset` por igualdad exacta contra un
+`timestamptz`, que tiene menos resolución.
+
+**El helper de tests actualizaba todos los clubes.** `SetDepositPercentAsync` corría
+`UPDATE public.clubs SET "depositPercent" = …` **sin `WHERE`** —el filtro global de tenant no alcanza
+al SQL crudo— y restauraba un `50` literal en vez del valor que había. Otras clases de la misma
+colección dejan clubes propios en la base, así que el día que alguno se siembre con 100 el `finally`
+lo pisaría en silencio. Ahora filtra por el id del club sembrado y devuelve lo que reemplazó.
+
+**Quedaron reportados y sin aplicar** (sus verificadores no llegaron a correr): que un pago que llega
+por un link viejo y supera el precio se asienta como aprobado en vez de marcarse huérfano —el chequeo
+mira lo cobrado *antes* del pago y no la suma—; que reusar un link no deja entrada en la crónica; que
+dos operadores apretando "Cobrar" a la vez siguen produciendo dos links; que las reservas liberadas
+ahora quedan 48 h en el lote de J2; y varios huecos de tests. Están en la lista del PR.
+
 ## Estado por punto
 
 | Punto | Qué | Estado |

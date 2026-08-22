@@ -377,13 +377,13 @@ internal sealed class BookingsStore(
     }
 
     public async Task<CheckoutIssued?> FindLiveCheckoutAsync(Guid bookingId, string provider, Money amount,
-        DateTimeOffset expiresAt, CancellationToken cancellationToken) =>
+        DateTimeOffset asOf, CancellationToken cancellationToken) =>
         await db.BookingCheckouts.AsNoTracking()
             .Where(checkout => checkout.BookingId == bookingId
                 && checkout.Provider == provider
                 && checkout.Amount.Amount == amount.Amount
                 && checkout.Amount.Currency == amount.Currency
-                && checkout.ExpiresAt == expiresAt)
+                && checkout.ExpiresAt > asOf)
             .OrderByDescending(checkout => checkout.IssuedAt)
             .Select(checkout => new CheckoutIssued(checkout.BookingId, checkout.Provider, checkout.Url,
                 checkout.Amount, checkout.ExpiresAt))

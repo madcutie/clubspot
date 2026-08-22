@@ -56,14 +56,21 @@ diagnosticar sin que nadie le copie y pegue una ventana de consola.
 Empujado con `LogContext` donde cada dato ya se resuelve, para que ningún llamador tenga que
 acordarse de pasarlo:
 
-| Campo | Dónde se empuja |
+| Campo | Dónde se resuelve |
 |---|---|
 | `application` | fijo por host: `api` o `jobs` |
-| `requestId`, `method`, `path` | `RequestLogContextMiddleware`, primero en el pipeline |
-| `tenant` | `TenantResolutionMiddleware` en la Api, el despachador de J2 en el JobService |
-| `userId` | `ActivityActorMiddleware`, sólo el id |
+| `requestId`, `method`, `path` | `RequestLogContextMiddleware`, primero en el pipeline (`LogContext`) |
+| `tenant` | `HttpContext.Items`, escrito por `TenantResolutionMiddleware` (autenticado) y por `ClubScope` (portal y webhooks); en el JobService, `LogContext` en el despachador de J2 |
+| `userId` | `HttpContext.Items`, escrito por `ActivityActorMiddleware`; sólo el id, y sólo si hay uno |
 
-`tenant` se llama igual en los dos procesos a propósito: un solo filtro lee la Api y los jobs.
+`tenant` se llama igual en los dos procesos a propósito: un solo filtro lee la Api y los jobs. Por
+eso, además, ninguna plantilla de mensaje repite el valor como `{Tenant}`: un dato, un nombre de campo.
+
+**En la Api, `tenant` y `userId` no van por `LogContext` sino por `HttpContext.Items`, leídos por un
+enricher.** Un ámbito de `LogContext` se cierra mientras la excepción sube, así que el 500 —la línea
+que más necesita nombrar su club— salía sin ninguno de los dos, y las superficies anónimas (portal y
+webhooks) resuelven el club en un filtro de endpoint que ningún middleware ve. Leerlos del contexto
+en el momento de escribir el evento resuelve los dos casos con un solo mecanismo.
 
 **4. Lo que nunca va a un log.**
 
@@ -99,14 +106,25 @@ se elija el hosting.
 ## Consecuencias
 
 - **Un archivo nuevo decide todo el logging**: `ClubSpot.Infrastructure/Observability/ClubSpotLogging.cs`,
-  con la extensión `AddClubSpotLogging(application)` que llaman los dos hosts en su primera línea
-  —antes de leer una cadena de conexión, para que una falla de arranque también deje una línea—.
+  con la extensión `AddClubSpotLogging(application, enrichers)` que llaman los dos hosts en su primera
+  línea. Que una falla de arranque deje una línea **no sale de llamarla primero**: sale del manejador
+  de `AppDomain.UnhandledException` que instala, que escribe `Fatal` y hace flush. Se eligió eso en vez
+  de envolver cada `Program.cs` en `try/catch` porque el host de tests aborta el arranque con una
+  excepción centinela que espera tragarse, y un `catch` ahí la registraría como caída y haría flush de
+  un logger que el test todavía usa.
+- **`SelfLog` encendido en Development**: un sink que no puede escribir falla en silencio por diseño, y
+  sin esto un directorio de logs sin permisos se ve igual que un sistema tranquilo.
 - Serilog vive en `ClubSpot.Infrastructure` y no en un proyecto propio. La regla de aislar SDKs de
   vendor (AGENTS.md §6) es para **gateways y servicios externos**, que traen un contrato de negocio
-  ajeno; Serilog no habla con nadie: se enchufa debajo de una abstracción que ya se usa, y no expone
-  ni un tipo suyo fuera de ese archivo y de los tres `LogContext.PushProperty`.
+  ajeno; Serilog no habla con nadie: se enchufa debajo de una abstracción que ya se usa. Sus tipos
+  aparecen fuera de ese archivo en tres lugares acotados y nombrados: el enricher de la Api
+  (`ILogEventEnricher`), el `LogContext` del middleware de request, y el `LogContext` del despachador
+  de J2. Ninguno cuelga de una `PackageReference` propia — llegan por flujo transitivo desde
+  Infrastructure, que es frágil si alguien le pone `PrivateAssets` a esas referencias.
 - `Logging:LogLevel` desaparece de los `appsettings.json` de los dos hosts y de
   `appsettings.Development.json.example`, reemplazada por `Serilog:MinimumLevel`.
+- **`Diagnostics:LogDirectory`** cambia dónde cae el archivo de Development. Vive fuera de la sección
+  `Serilog` porque esa la parsea otra biblioteca.
 - `logs/` y `*.jsonl` van al `.gitignore`.
 - Los tres caminos silenciosos dejan de serlo, con el nivel que les corresponde: `Information` para
   los dos que son concurrencia normal, `Warning` para todo pago que queda huérfano —una sola línea,
@@ -125,6 +143,11 @@ hostings se paga— para guardar algo que el proveedor ya está guardando, y que
 esa regla existe para que el SDK de un servicio externo no se filtre por toda la solución. Acá el
 "vendor" es un proveedor de una abstracción que ya está en uso, y el aislamiento que da un proyecto
 aparte ya lo da un archivo.
+
+**Un sink de archivo en los tests.** La suite de integración corre con `Development`, así que escribía
+sus propias líneas en el archivo que este ADR designa para diagnosticar —una centena de arranques y
+apagados de host por corrida, mezclados con los de la API real—. El `ApiFactory` apunta
+`Diagnostics:LogDirectory` al temporal.
 
 **Mercado Pago, EF Core y las consultas SQL en el log.** `Microsoft.EntityFrameworkCore` queda en
 `Warning`. El log de cada consulta es útil una tarde y carísimo el resto del tiempo, y en producción

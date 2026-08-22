@@ -30,7 +30,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Before anything that can throw at startup: a connection string that is missing has to leave a line
 // somewhere, and the default console provider is gone the moment this runs.
-builder.AddClubSpotLogging("api");
+builder.AddClubSpotLogging("api", new HttpContextEnricher());
+// The enricher reads the ambient HttpContext; ASP.NET only publishes it when the accessor is registered.
+builder.Services.AddHttpContextAccessor();
 
 var connectionString = builder.Configuration.GetConnectionString("ClubSpot")
     ?? throw new InvalidOperationException("Connection string 'ClubSpot' is required.");

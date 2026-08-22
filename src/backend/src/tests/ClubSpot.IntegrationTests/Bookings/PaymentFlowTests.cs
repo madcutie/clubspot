@@ -253,10 +253,11 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         var created = await HoldAsync(client, court.Id, date, slot, "onlineDeposit", "362 400-0122");
         Assert.Equal(Math.Round(created.Price / 2, 2), created.ChargeAmount);
 
+        var previousPercent = 0;
         try
         {
             // The club switches to charging the whole price up front while this checkout is in flight.
-            await SetDepositPercentAsync(100);
+            previousPercent = await SetDepositPercentAsync(100);
 
             var webhook = await client.PostAsJsonAsync("/api/payments/fake/webhook/chaco-for-ever", new
             {
@@ -278,16 +279,25 @@ public sealed class PaymentFlowTests(PostgresFixture postgres)
         }
         finally
         {
-            await SetDepositPercentAsync(50);
+            if (previousPercent > 0) await SetDepositPercentAsync(previousPercent);
         }
     }
 
-    private async Task SetDepositPercentAsync(int percent)
+    // Scoped to the seeded club by id: raw SQL is not reached by the global tenant filter, and other
+    // classes in this collection leave clubs of their own behind. Returns what it replaced so the
+    // caller restores what was there instead of a literal that happens to match today.
+    private async Task<int> SetDepositPercentAsync(int percent)
     {
         var tenantContext = new AsyncLocalTenantContext();
         await using var db = postgres.CreateDbContext(tenantContext);
         using var scope = tenantContext.BeginScope(SeedTenant);
-        await db.Database.ExecuteSqlAsync($"UPDATE public.clubs SET \"depositPercent\" = {percent}");
+        var previous = await db.Clubs.AsNoTracking()
+            .Where(club => club.Id == SeedTenant)
+            .Select(club => club.DepositPercent)
+            .SingleAsync();
+        await db.Database.ExecuteSqlAsync(
+            $"UPDATE public.clubs SET \"depositPercent\" = {percent} WHERE id = {SeedTenant.Value}");
+        return previous;
     }
 
     [Fact]

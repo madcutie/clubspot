@@ -54,9 +54,12 @@ JSON en cualquier otro entorno. `Logging:LogLevel` sale de los `appsettings.json
 ### F2 — Contexto en cada línea
 
 `RequestLogContextMiddleware` (primero en el pipeline, antes del manejador de excepciones) empuja
-`requestId`, `method` y `path`. `TenantResolutionMiddleware` empuja `tenant`; `ActivityActorMiddleware`
-empuja `userId`, sólo el id. En el JobService, el despachador de J2 empuja `tenant` **con el mismo
-nombre de campo**, para que un solo filtro lea los dos procesos.
+`requestId`, `method` y `path` por `LogContext`. `tenant` y `userId` viajan por `HttpContext.Items`
+—escritos por `TenantResolutionMiddleware`, `ClubScope` y `ActivityActorMiddleware`— y los lee un
+enricher al escribir el evento: un ámbito de `LogContext` se cierra mientras la excepción sube, y las
+superficies anónimas no pasan por ningún middleware que pudiera empujar nada. En el JobService, el
+despachador de J2 empuja `tenant` **con el mismo nombre de campo**, para que un solo filtro lea los
+dos procesos.
 
 ### F3 — Los caminos que fallan en silencio
 
@@ -76,7 +79,8 @@ ADR-0019 con las decisiones, incluida la lista de lo que nunca va a un log y la 
 
 ## 4. Verificación
 
-- `dotnet build` sin warnings · 92 unitarios y 95 de integración en verde.
+- `dotnet build` sin warnings · 92 unitarios y 95 de integración en verde, antes y después de las
+  correcciones de la revisión de código (ver bitácora, 21/08/2026).
 - El documento OpenAPI **no cambia**: nada de esto toca el contrato, así que no hay clientes que
   regenerar.
 - Falta la verificación en vivo: levantar los dos hosts y confirmar que el archivo `.jsonl` aparece

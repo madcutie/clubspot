@@ -76,7 +76,7 @@ public sealed class SettleBookingHandlerTests
             Task.CompletedTask;
 
         public Task<CheckoutIssued?> FindLiveCheckoutAsync(Guid bookingId, string provider, Money amount,
-            DateTimeOffset expiresAt, CancellationToken cancellationToken) =>
+            DateTimeOffset asOf, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
         public Task<BookingSnapshot?> GetAsync(Guid id, CancellationToken cancellationToken) =>

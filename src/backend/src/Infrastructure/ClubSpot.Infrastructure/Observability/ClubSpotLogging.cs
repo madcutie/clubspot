@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Core;
+using Serilog.Debugging;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
 
@@ -19,7 +21,8 @@ public static class ClubSpotLogging
     // JSON everywhere it is machine-read: a hosting provider collects the container's stdout, and a
     // line whose fields are fields can be filtered by tenant instead of grepped. Development also
     // keeps a rolling file, because that is the only environment whose filesystem survives a restart.
-    public static void AddClubSpotLogging(this IHostApplicationBuilder builder, string application)
+    public static void AddClubSpotLogging(this IHostApplicationBuilder builder, string application,
+        params ILogEventEnricher[] enrichers)
     {
         var logger = new LoggerConfiguration()
             .MinimumLevel.Information()
@@ -28,10 +31,14 @@ public static class ClubSpotLogging
             .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
             .MinimumLevel.Override("Hangfire", LogEventLevel.Warning)
             .Enrich.FromLogContext()
-            .Enrich.WithProperty("application", application);
+            .Enrich.WithProperty("application", application)
+            .Enrich.With(enrichers);
 
         if (builder.Environment.IsDevelopment())
         {
+            // A sink that cannot write fails silently by design: Serilog routes its own errors here and
+            // nowhere else. Without this an unwritable log directory looks exactly like a quiet system.
+            SelfLog.Enable(Console.Error);
             logger.WriteTo.Console(outputTemplate:
                 "{Timestamp:HH:mm:ss} {Level:u3} {SourceContext}: {Message:lj}{NewLine}{Exception}");
             logger.WriteTo.File(new CompactJsonFormatter(),
@@ -51,6 +58,26 @@ public static class ClubSpotLogging
         Log.Logger = logger.CreateLogger();
         builder.Logging.ClearProviders();
         builder.Logging.AddSerilog(Log.Logger, dispose: true);
+        InstallCrashHandler();
+    }
+
+    private static int crashHandlerInstalled;
+
+    // Everything that validates configuration throws before the host is built, and ClearProviders has
+    // already removed the console provider that would have printed it — so without this a missing
+    // connection string dies as a plain-text .NET dump that a JSON log collector cannot parse. Hooked
+    // on the AppDomain rather than wrapping each Program.cs in try/catch on purpose: the test host
+    // aborts startup with a sentinel exception it expects to swallow, and a catch there would file it
+    // as a fatal crash and flush a logger the test is still using.
+    private static void InstallCrashHandler()
+    {
+        if (Interlocked.Exchange(ref crashHandlerInstalled, 1) == 1) return;
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            if (args.ExceptionObject is Exception exception)
+                Log.Fatal(exception, "The host terminated unexpectedly.");
+            Log.CloseAndFlush();
+        };
     }
 
     private static string FileDirectory(IHostApplicationBuilder builder)

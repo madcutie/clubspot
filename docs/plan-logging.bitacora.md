@@ -2,6 +2,44 @@
 
 Registro de avance del [plan](plan-logging.md). La entrada más nueva arriba.
 
+## 21/08/2026 — Revisión de código: seis correcciones, cinco de ellas por hallazgos verificados
+
+Se corrió el pipeline de `code-reviewer` sobre el PR (4 finders + verificadores). El verificador de
+comportamiento del logging **confirmó 6 de 7** hallazgos y refutó uno. Lo corregido:
+
+- **El 500 salía sin `tenant` ni `userId`** (confirmado). El middleware que los empujaba está *debajo*
+  del manejador de excepciones, así que sus ámbitos de `LogContext` ya estaban cerrados cuando se
+  escribía la línea del error — justo la que más necesita nombrar el club. Se cambió el mecanismo:
+  los dos valores van a `HttpContext.Items` y los lee un `HttpContextEnricher` al escribir el evento.
+  Se descartó mover `app.UseExceptionHandler()` más abajo, que era la otra salida: los errores de
+  CORS, del rate limiter y de JwtBearer dejarían de pasar por ProblemDetails.
+- **Ninguna línea del portal ni de los webhooks llevaba `tenant`** (confirmado, y probado contra el
+  `.jsonl` que dejó la propia corrida de tests: de 5 avisos de pago huérfano, **4 sin club**). Esas
+  superficies resuelven el club en `ClubScope`, un filtro de endpoint que ningún middleware ve. El
+  mismo enricher lo cubre, con una línea en `ClubScope`. Era el agujero más caro: el aviso de plata
+  huérfana es la línea de más valor que agrega el PR y llegaba sin poder filtrarse por club.
+- **Las dos líneas de falla de J2 quedaban fuera del ámbito de `tenant`** (confirmado). El push estaba
+  dentro de `RunForTenantAsync`, así que "Reconciliation failed" salía sólo con `Tenant` (PascalCase,
+  de la plantilla). Se movió al `foreach` y se sacó `{Tenant}` de las plantillas: un dato, un nombre.
+- **Una falla de arranque no dejaba línea** (confirmado la mitad de arranque; la de flush en apagado
+  fue refutada, porque `dispose: true` ya cubre el apagado ordenado y los sinks no bufferean). Se
+  instala un manejador de `AppDomain.UnhandledException` que escribe `Fatal` y hace flush. **No** se
+  envolvieron los `Program.cs` en `try/catch`: el host de tests aborta el arranque con una excepción
+  centinela que espera tragarse, y un `catch` ahí registraría una caída falsa por cada clase de test.
+- **Un sink que no puede escribir fallaba en silencio** (confirmado). `SelfLog` encendido en
+  Development.
+- **La suite escribía sus líneas en el archivo que el ADR designa para diagnosticar** (confirmado, y
+  medido: 89 pares de arranque/apagado de host en el `.jsonl` de la corrida). `ApiFactory` apunta
+  `Diagnostics:LogDirectory` al temporal.
+
+**Refutado y no tocado:** que el override `Microsoft → Warning` silencie los rechazos del rate limiter
+y los fallos de autenticación. El verificador mostró que `main` ya tenía `Microsoft.AspNetCore` en
+`Warning`, así que los dos casos citados ya estaban en silencio antes del PR: no es una regresión.
+Queda anotado igual, porque **la API no tiene access log** y eso es una decisión, no un olvido.
+
+**Dónde quedó / próximo paso:** build sin warnings, 92 unitarios y 95 de integración en verde. Sigue
+faltando la verificación en vivo.
+
 ## Estado por fase
 
 | Fase | Contenido | Estado |

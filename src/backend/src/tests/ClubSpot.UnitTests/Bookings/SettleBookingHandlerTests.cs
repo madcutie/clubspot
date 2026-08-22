@@ -72,8 +72,8 @@ public sealed class SettleBookingHandlerTests
         public Task<HoldReleaseOutcome> ReleaseHoldAsync(Guid id, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task RecordCheckoutIssuedAsync(CheckoutIssued issued, CancellationToken cancellationToken) =>
-            Task.CompletedTask;
+        public Task<CheckoutIssued> RecordCheckoutIssuedAsync(CheckoutIssued issued, CancellationToken cancellationToken) =>
+            Task.FromResult(issued);
 
         public Task<CheckoutIssued?> FindLiveCheckoutAsync(Guid bookingId, string provider, Money amount,
             DateTimeOffset asOf, CancellationToken cancellationToken) =>

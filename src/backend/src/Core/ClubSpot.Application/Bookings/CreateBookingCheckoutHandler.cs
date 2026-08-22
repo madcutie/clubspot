@@ -53,9 +53,9 @@ public sealed class CreateBookingCheckoutHandler(
         var session = await checkout.CreateCheckoutAsync(new CheckoutRequest(booking.Id, club.Slug, title,
             amount, expiresAt, returnUrl), cancellationToken);
 
-        await store.RecordCheckoutIssuedAsync(new CheckoutIssued(booking.Id, checkout.Name, session.Url,
-            amount, expiresAt), cancellationToken);
-        return new BookingCheckoutResult(BookingCheckoutOutcome.Created, session.Url, due, expiresAt);
+        var handed = await store.RecordCheckoutIssuedAsync(new CheckoutIssued(booking.Id, checkout.Name,
+            session.Url, amount, expiresAt), cancellationToken);
+        return new BookingCheckoutResult(BookingCheckoutOutcome.Created, handed.Url, due, handed.ExpiresAt);
     }
 
     private static string Hour(int minute) => $"{minute / 60:00}:{minute % 60:00}";

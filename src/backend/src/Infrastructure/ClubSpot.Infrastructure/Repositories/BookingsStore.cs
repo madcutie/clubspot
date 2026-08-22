@@ -368,26 +368,47 @@ internal sealed class BookingsStore(
         }
     }
 
-    public async Task RecordCheckoutIssuedAsync(CheckoutIssued issued, CancellationToken cancellationToken)
+    public async Task<CheckoutIssued> RecordCheckoutIssuedAsync(CheckoutIssued issued, CancellationToken cancellationToken)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        // The same booking row the payment path locks. Checking for a live link and minting one are two
+        // statements with a provider round-trip in between, so without this two operators pressing at
+        // once both find nothing and both hand out a payable link for the same money. Serialising the
+        // record and re-reading the winner keeps the loser's preference unpublished.
+        await db.Database.ExecuteSqlAsync(
+            $"SELECT 1 FROM public.bookings WHERE id = {issued.BookingId} FOR UPDATE", cancellationToken);
+
         db.BookingCheckouts.Add(new BookingCheckout(Guid.NewGuid(), tenantContext.Current, issued.BookingId,
             issued.Provider, issued.Url, issued.Amount, issued.ExpiresAt, clock.UtcNow));
         activityLog.Record(new ActivityRecord(BookingActivity.CheckoutIssued, BookingId: issued.BookingId));
         await db.SaveChangesAsync(cancellationToken);
+
+        var effective = await LiveCheckouts(issued.BookingId, issued.Provider, issued.Amount, clock.UtcNow)
+            .OrderBy(checkout => checkout.IssuedAt).ThenBy(checkout => checkout.Id)
+            .Select(checkout => new CheckoutIssued(checkout.BookingId, checkout.Provider, checkout.Url,
+                checkout.Amount, checkout.ExpiresAt))
+            .FirstAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return effective;
     }
 
     public async Task<CheckoutIssued?> FindLiveCheckoutAsync(Guid bookingId, string provider, Money amount,
         DateTimeOffset asOf, CancellationToken cancellationToken) =>
-        await db.BookingCheckouts.AsNoTracking()
+        await LiveCheckouts(bookingId, provider, amount, asOf)
+            .OrderBy(checkout => checkout.IssuedAt).ThenBy(checkout => checkout.Id)
+            .Select(checkout => new CheckoutIssued(checkout.BookingId, checkout.Provider, checkout.Url,
+                checkout.Amount, checkout.ExpiresAt))
+            .FirstOrDefaultAsync(cancellationToken);
+
+    // Oldest first wherever this is ordered: whoever won the race is the one whose link may already be
+    // in a customer's hands, so it is the one everybody has to keep handing out.
+    private IQueryable<BookingCheckout> LiveCheckouts(Guid bookingId, string provider, Money amount, DateTimeOffset asOf) =>
+        db.BookingCheckouts.AsNoTracking()
             .Where(checkout => checkout.BookingId == bookingId
                 && checkout.Provider == provider
                 && checkout.Amount.Amount == amount.Amount
                 && checkout.Amount.Currency == amount.Currency
-                && checkout.ExpiresAt > asOf)
-            .OrderByDescending(checkout => checkout.IssuedAt)
-            .Select(checkout => new CheckoutIssued(checkout.BookingId, checkout.Provider, checkout.Url,
-                checkout.Amount, checkout.ExpiresAt))
-            .FirstOrDefaultAsync(cancellationToken);
+                && checkout.ExpiresAt > asOf);
 
     public async Task<BookingSnapshot?> GetAsync(Guid id, CancellationToken cancellationToken)
     {

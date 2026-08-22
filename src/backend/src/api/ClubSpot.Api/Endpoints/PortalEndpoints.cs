@@ -80,9 +80,11 @@ public static class PortalEndpoints
                 var session = await checkout!.CreateCheckoutAsync(new CheckoutRequest(
                     result.Id, clubSlug, title, result.ChargeAmount, result.ExpiresAt!.Value, returnUrl),
                     cancellationToken);
-                checkoutUrl = session.Url;
-                await store.RecordCheckoutIssuedAsync(new CheckoutIssued(result.Id, checkout.Name, session.Url,
-                    result.ChargeAmount, result.ExpiresAt.Value), cancellationToken);
+                // A fresh hold has no earlier link, so this is the one just minted — taken from the
+                // store anyway so both callers hand over whatever it says is the live one.
+                var handed = await store.RecordCheckoutIssuedAsync(new CheckoutIssued(result.Id, checkout.Name,
+                    session.Url, result.ChargeAmount, result.ExpiresAt.Value), cancellationToken);
+                checkoutUrl = handed.Url;
             }
             catch
             {

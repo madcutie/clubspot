@@ -2,6 +2,47 @@
 
 Registro de avance del [plan](plan-reglas-de-plata-huerfana.md). La entrada más nueva arriba.
 
+## 21/08/2026 — Verificación del camino del dinero: 5 de 6 refutados
+
+Se relanzó el verificador que había quedado sin correr. De los seis hallazgos del camino del dinero,
+**uno confirmado y cinco refutados**, cada uno con evidencia contra el código.
+
+**Confirmado — dos operadores pueden emitir dos links pagables a la vez** (bajado a severidad baja).
+Buscar el link vivo, pedirle uno al proveedor y asentarlo son tres pasos con una llamada de red en el
+medio, sin nada que los serialice. Dentro de una misma pestaña React Query lo dedupe, así que hace
+falta que dos sesiones —el canchero y un administrador, o la misma reserva en dos máquinas— aprieten
+dentro de la misma llamada a Mercado Pago. **Corregido**: `RecordCheckoutIssuedAsync` toma el mismo
+`FOR UPDATE` sobre la fila de la reserva que ya toma el camino del pago, asienta, y **devuelve el link
+que hay que entregar**, que no siempre es el recién emitido — el del que perdió la carrera queda sin
+publicar en el proveedor. El handler y el portal entregan lo que devuelve el store.
+
+**Refutados, con lo que hay que recordar de cada uno:**
+
+- **El pago que supera el precio no se marca huérfano.** La aritmética del hallazgo es correcta y el
+  arreglo propuesto (`settled + amount > price`) no produce falsos positivos en ningún flujo — se
+  verificó contra seña+saldo, pago completo exacto y pago doble genuino, sin deriva de redondeo—.
+  Pero **el estado inicial no es producible en producción**: no existe ningún endpoint que asiente un
+  cobro en efectivo, así que "el canchero cobró 5000 en efectivo" no pasa; con Mercado Pago cada
+  preferencia se emite por el saldo del momento y el saldo sólo baja. La única forma de llegar ahí es
+  el webhook falso, que sólo existe en Development. Además es **idéntico en `main`** y este PR lo hace
+  *menos* probable, no más. Queda como **ticket propio de severidad baja**: se abre el día que se
+  registre un cobro de mostrador en efectivo, que es justo lo que este plan anticipa.
+- **Reusar el link no deja entrada en la crónica.** El escenario que lo justificaba no existe:
+  **reenviar por WhatsApp no toca el servidor** —`CobroPanel` arma el mensaje con la URL que ya tiene—,
+  así que "lo mandé tres veces" nunca estuvo en el registro, ni antes ni después. Lo que se pierde es
+  "el operador reabrió el panel", que nadie necesita leer para operar.
+- **Las reservas liberadas quedan 48 h en el lote de J2.** El método que las selecciona ya incluía
+  `Expired` en `main` y no se tocó; lo que se suma son sólo los holds liberados desde el portal, un
+  subconjunto de los abandonados, cuyo hermano mayor —los vencidos por TTL— ya estaba adentro. Y cada
+  fila agregada es exactamente la que el punto A existe para rescatar. La inanición del lote requeriría
+  más de 200 reservas online impagas en 48 h **para un solo club**.
+- **`Expired` puede quedar con `ExpiresAt` futuro.** Ningún lector se rompe: todos los que deciden algo
+  con `ExpiresAt` exigen además `PendingPayment`, y los dos frontends cortan por estado antes de mirar
+  la fecha. Invariante sin consumidores, sin constraint y sin comentario que la afirme.
+- **`BookingLost` cambió de significado.** No cambió: su definición es "la reserva se canceló mientras
+  el comprador pagaba", y eso sigue siendo exacta y únicamente lo que cubre — `CancelAsync` acepta una
+  reserva en cualquier estado, `PendingPayment` incluido.
+
 ## 21/08/2026 — Revisión de código: la regla de reuso del link no cubría el caso más común
 
 Del pipeline de `code-reviewer` salieron dos correcciones sobre lo entregado el mismo día. Los

@@ -2,6 +2,62 @@
 
 Registro de avance del [plan](plan-build-frontends-por-entorno.md). La entrada más nueva arriba.
 
+## 21/08/2026 — F3, F4 y F5 ejecutadas: ya se puede compilar para publicar
+
+**F3 — el build de producción falla si le falta su configuración.** El guard vive en
+`build/requireApiUrl.ts` de cada app y lo llama `vite.config.ts`. Rechaza `VITE_API_URL` ausente,
+vacía, sin esquema, con barra final, o apuntando a loopback sin `VITE_ALLOW_LOCAL_API=1`.
+
+- **Se midió cada caso, no se supuso**: sin variable, vacía, `api.example.test`,
+  `https://api.example.test/`, `http://localhost:5037`, el mismo con el escape, y una URL válida.
+  Los cinco primeros salen con exit 1 y mensaje propio; los dos últimos compilan.
+- **`@types/node` no estaba en ninguna de las dos apps** y los `tsconfig.json` compilan
+  `vite.config.ts`, así que `loadEnv(mode, process.cwd(), …)` rompía `tsc -b` antes de que Vite
+  arrancara. Se agregó la dependencia, `"node"` a `types` y `build` a `include`.
+- **El fallback a `localhost` dejó de existir en producción.** Envolverlo en `import.meta.env.DEV`
+  —constante literal en el bundle— lo saca del archivo en vez de dejarlo como código muerto. Es lo
+  que hace que la auditoría del `dist/` sea limpia.
+- Las tres `VITE_DEV_*` del backoffice se borraron.
+
+**Un defecto que sólo apareció corriéndolo: `vite preview` también usa `mode === 'production'`.**
+Con el guard atado sólo al modo, servir un `dist/` ya construido fallaba pidiendo una variable que
+no hace falta, porque preview no compila nada. El guard pasó a exigir además `command === 'build'`.
+Es exactamente el flujo que el escape venía a habilitar, así que sin este arreglo el escape no
+servía para nada.
+
+**F4 — `scripts/build-frontends.ps1`.** Un solo parámetro obligatorio, `-ApiUrl`; no hay
+`-ClubSlug`, porque el bundle sirve a todos los clubes. Valida https y barra final **antes de
+instalar nada**, compila la Api para confirmar que el contrato versionado está al día, y recién
+después corre `npm ci` y `npm run build` en cada frontend.
+
+- **El chequeo del contrato nació mal y se corrigió con evidencia**: usaba
+  `git status --porcelain`, que marca el documento como modificado por el fin de línea —se escribe
+  con LF, el árbol lo guarda con CRLF— aunque el contenido sea idéntico. Pasó a
+  `git diff --name-only`, que compara contenido. Con `status` el script abortaba siempre.
+- **La auditoría del `dist/` también nació mal.** Buscar `localhost` a secas daba dos falsos
+  positivos: el fallback propio —resuelto en F3— y **`"http://localhost"` que react-router usa
+  internamente como base ficticia**. Quedó en dos chequeos precisos: que la URL pedida **esté** en
+  el bundle, y que no haya loopback **con puerto**, que es la forma que tiene una dirección de API.
+  Si algo falla, borra el `dist/` antes de abortar.
+- `.env.example` versionado en las dos apps (verificado con `git check-ignore`), `.nvmrc` con 24 y
+  `engines` con lo que exige Vite 7.3.6.
+
+**F5 — el fallback de SPA.** `vercel.json` y `public/_redirects` en las dos apps, más encabezados
+de caché (`no-cache` en `index.html`, `immutable` en `/assets/*`). Los `vercel.json` perdieron
+`framework`, `installCommand` y `buildCommand` —el host no construye— y los `.vercelignore`
+dejaron de excluir `dist`, que es justamente lo único que hay que subir.
+
+**Verificado con el `dist/` de producción servido de verdad**, no sólo compilando: el script
+completo termina en verde y deja los dos `dist/` con `https://api.miclub.com.ar` adentro y sin
+un solo loopback con puerto; `_redirects` viaja dentro de los dos. Compilando con el escape contra
+la API local y sirviendo con `npm run preview`, `/chaco-for-ever` abre el portal desde el bundle
+—los assets resuelven en una ruta con segmento— y el `<title>` sale del catálogo.
+
+**Lo que falta del plan:** F1 (los dos ADR), F6 (el borde del backend: `AllowedReturnOrigins`
+fuera del `appsettings.json` versionado, el guard de loopback para `PortalBaseUrl`, y CORS con
+`!IsDevelopment()`) y F7 (documentación). Y sigue en pie el bloqueante externo: en producción no
+hay migración ni seed, así que no existe ningún club.
+
 ## 21/08/2026 — F2 ejecutada: el portal dejó de estar atado a un club
 
 `VITE_CLUB_SLUG` ya no existe. El club sale del primer segmento del path, resuelto en runtime.

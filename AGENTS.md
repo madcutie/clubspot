@@ -36,7 +36,7 @@ Leer antes de proponer cualquier cosa de dominio. Están en `docs/`:
 | [`docs/plan-reserva-online.md`](docs/plan-reserva-online.md) + su [bitácora](docs/plan-reserva-online.bitacora.md) | **Plan aprobado (17/08/2026)**: reserva online desde el portal en 3 etapas. **Etapas 1 y 2 cerradas**: reserva sin pago con vínculo a persona (email → celular → crear), y pago online (hold con TTL perezoso, webhook idempotente, tabla `payments`) verificado con el **gateway fake**; Mercado Pago escrito pero sin probar (faltan credenciales). Etapa 3 (login) pendiente |
 | [`docs/plan-login-backoffice.md`](docs/plan-login-backoffice.md) + su [bitácora](docs/plan-login-backoffice.bitacora.md) | **En curso (20/08/2026)**: login del backoffice empezando por el canchero (ADR-0018) — login sólo con email, email único global, claims cortas, y consola dibujada según el rol. **F1–F5 escritas y verdes** (build, 79 unitarios y 72 de integración); falta la recorrida en el navegador |
 | [`docs/plan-contrato-api.md`](docs/plan-contrato-api.md) + su [bitácora](docs/plan-contrato-api.bitacora.md) | **Plan aprobado y ejecutado (19/08/2026)**: documento OpenAPI generado por el build de la Api y clientes TypeScript generados con Orval para los dos frontends (ADR-0016). **Cerrado y verificado**: F1–F5 |
-| [`docs/plan-build-frontends-por-entorno.md`](docs/plan-build-frontends-por-entorno.md) + su [bitácora](docs/plan-build-frontends-por-entorno.bitacora.md) | **Escrito 21/08/2026, listo para ejecutar**: dejar los dos frontends listos para publicar. Son dos trabajos que van juntos: la configuración **por entorno** se hornea y el build falla si falta —hoy los dos `dist/` en disco tienen `localhost:5037` adentro y nada avisa—, y **el portal deja de estar atado a un club**: el slug sale del build y pasa al primer segmento del path (ADR-0020). Un solo despliegue sirve a todos los clubes. **F2 cerrada y verificada** (el portal resuelve el club por la URL, probado con dos clubes a la vez); F1 y F3–F7 pendientes |
+| [`docs/plan-build-frontends-por-entorno.md`](docs/plan-build-frontends-por-entorno.md) + su [bitácora](docs/plan-build-frontends-por-entorno.bitacora.md) | **Escrito 21/08/2026, listo para ejecutar**: dejar los dos frontends listos para publicar. Son dos trabajos que van juntos: la configuración **por entorno** se hornea y el build falla si falta —hoy los dos `dist/` en disco tienen `localhost:5037` adentro y nada avisa—, y **el portal deja de estar atado a un club**: el slug sale del build y pasa al primer segmento del path (ADR-0020). Un solo despliegue sirve a todos los clubes. **F2 a F5 cerradas y verificadas**: el portal resuelve el club por la URL (probado con dos clubes a la vez), el build de producción falla si le falta configuración, `scripts/build-frontends.ps1` deja los dos `dist/`, y el fallback de SPA va versionado. Faltan F1 (los ADR), F6 (borde del backend) y F7 (documentación) |
 | [`docs/auditoria-codigo-vs-reglas.md`](docs/auditoria-codigo-vs-reglas.md) | **Auditoría del código contra sus propias reglas** (20/08/2026): qué desvíos había, qué parecía desvío y no lo era —anotado con su razón para no repetir la vuelta— y qué queda por chequear |
 | `src/frontend/backoffice/` | **El mock manda** (decisión del 14/08/2026): donde el prototipo y cualquier otra fuente difieran, gana el prototipo. Ver sección 10 |
 
@@ -358,9 +358,17 @@ API arrancó, `/health` alcanza.
 cd src/backend && dotnet build      # compilar la solución (y reescribir docs/api/clubspot.openapi.json)
 cd src/backend && dotnet test       # correr los tests (los de integración necesitan Docker)
 cd src/frontend/backoffice && npm i && npm run dev   # consola del club — :5184
-cd src/frontend/reservas && npm i && npm run dev     # portal de reservas — :5183
+cd src/frontend/reservas && npm i && npm run dev     # portal — :5183/<slug-del-club>
 npm run api:gen                                      # regenera el cliente (lo corre solo predev/prebuild)
+
+.\scripts\build-frontends.ps1 -ApiUrl https://api.miclub.com.ar   # los dos dist/ de un entorno real
 ```
+
+**`build-frontends.ps1` sí lo puede correr un agente**, a diferencia de `dev-up.ps1`: no abre
+ventanas, escribe en la consola y termina. Compila la Api para confirmar que el contrato está al
+día, hornea `VITE_API_URL` en los dos bundles y audita el `dist/` resultante. Para revisar un
+bundle de producción contra la API local, `VITE_ALLOW_LOCAL_API=1 npm run build` y `npm run
+preview` — ese escape existe para eso y no va en un deploy.
 
 La API corre en `:5037` y **PostgreSQL en el `5432` estándar** (decisión del usuario,
 17/08/2026; si otro proyecto lo ocupa, override con `CLUBSPOT_PG_PORT`). En Development la

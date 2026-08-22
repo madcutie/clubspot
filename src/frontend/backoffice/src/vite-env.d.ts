@@ -2,9 +2,6 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
-  readonly VITE_DEV_CLUB?: string;
-  readonly VITE_DEV_EMAIL?: string;
-  readonly VITE_DEV_PASSWORD?: string;
 }
 
 interface ImportMeta {

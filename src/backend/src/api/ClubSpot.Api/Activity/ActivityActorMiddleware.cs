@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using ClubSpot.Api.Auth;
 using ClubSpot.SharedKernel.Activity;
+using Serilog.Context;
 
 namespace ClubSpot.Api.Activity;
 
@@ -24,6 +25,8 @@ public sealed class ActivityActorMiddleware(RequestDelegate next)
 
         using var actorScope = actorScopeFactory.BeginScope(
             new ActivityActor(userId, name, ActivitySource.Counter));
+        // The id, never the name: a log is diagnostics and does not need to carry who a person is.
+        using var logScope = LogContext.PushProperty("userId", userId);
         await next(context);
     }
 }

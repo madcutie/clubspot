@@ -31,7 +31,8 @@ Leer antes de proponer cualquier cosa de dominio. Están en `docs/`:
 | [`docs/plan-cobro-en-mostrador.md`](docs/plan-cobro-en-mostrador.md) + su [bitácora](docs/plan-cobro-en-mostrador.bitacora.md) | **Escrito 19/08/2026, esperando aprobación**: cobrar un turno con Mercado Pago desde el backoffice (QR en pantalla + link por WhatsApp), reusando Checkout Pro. **Sin arrancar** |
 | [`docs/plan-activity-log.md`](docs/plan-activity-log.md) + su [bitácora](docs/plan-activity-log.bitacora.md) | **En curso (19/08/2026)**: registro de actividad (ADR-0017) — una crónica append-only de qué pasó, quién lo hizo y por qué, que ve tanto el canchero como la auditoría. **F1 cerrada y verificada** (entidad, actor por ámbito, tipos de reservas y pagos cableados); F2–F7 pendientes |
 | [`docs/plan-cancelacion-con-motivo.md`](docs/plan-cancelacion-con-motivo.md) + su [bitácora](docs/plan-cancelacion-con-motivo.bitacora.md) | **Cerrado y verificado (20/08/2026)**: cancelar un turno exige motivo —guardado en la reserva, no en el registro de actividad— y el panel avisa la plata cobrada antes de hacerlo. Queda pendiente el mismo tratamiento al bloquear una ficha |
-| [`docs/plan-reglas-de-plata-huerfana.md`](docs/plan-reglas-de-plata-huerfana.md) + su [bitácora](docs/plan-reglas-de-plata-huerfana.bitacora.md) | **Escrito 20/08/2026, esperando decisiones**: por qué entra plata que el club no acordó. De los cinco motivos, tres pasan de verdad, uno es un defecto propio y uno no puede pasar. Cuatro puntos a resolver, uno de ellos —el TTL del hold— decisión de negocio. **Sin arrancar** |
+| [`docs/plan-reglas-de-plata-huerfana.md`](docs/plan-reglas-de-plata-huerfana.md) + su [bitácora](docs/plan-reglas-de-plata-huerfana.bitacora.md) | **Cerrado (21/08/2026)**: por qué entra plata que el club no acordó. Liberar un hold deja `Expired` (A), lo acordado se congela en la reserva (B) y reemitir devuelve el link vivo (D); el TTL del hold **queda en 5 minutos** por decisión del usuario (C). Falta la verificación con plata real |
+| [`docs/plan-logging.md`](docs/plan-logging.md) + su [bitácora](docs/plan-logging.bitacora.md) | **Cerrado (21/08/2026)**: logging estructurado con Serilog ([ADR-0019](docs/adr/0019-logging-estructurado-y-diagnostico.md)) — JSON a la consola, `tenant`/`requestId`/`userId` en cada línea, y los tres caminos que fallaban en silencio. Sin rastreador de errores: se decide con el hosting |
 | [`docs/plan-pagos-multiproveedor.md`](docs/plan-pagos-multiproveedor.md) + su [bitácora](docs/plan-pagos-multiproveedor.bitacora.md) | **Plan aprobado (18/08/2026)**: asiento de pago transparente al proveedor y al canal (ADR-0014/0015) — `payments.provider` + `payments.rail`, puerto `IPaymentProvider` con capacidades. **Cerrado y verificado (fake y Mercado Pago real)** |
 | [`docs/plan-reserva-online.md`](docs/plan-reserva-online.md) + su [bitácora](docs/plan-reserva-online.bitacora.md) | **Plan aprobado (17/08/2026)**: reserva online desde el portal en 3 etapas. **Etapas 1 y 2 cerradas**: reserva sin pago con vínculo a persona (email → celular → crear), y pago online (hold con TTL perezoso, webhook idempotente, tabla `payments`) verificado con el **gateway fake**; Mercado Pago escrito pero sin probar (faltan credenciales). Etapa 3 (login) pendiente |
 | [`docs/plan-login-backoffice.md`](docs/plan-login-backoffice.md) + su [bitácora](docs/plan-login-backoffice.bitacora.md) | **En curso (20/08/2026)**: login del backoffice empezando por el canchero (ADR-0018) — login sólo con email, email único global, claims cortas, y consola dibujada según el rol. **F1–F5 escritas y verdes** (build, 79 unitarios y 72 de integración); falta la recorrida en el navegador |
@@ -283,6 +284,16 @@ con cobro o sin cobro y sin liquidaciones · otro con club + reservas + finanzas
   foto de ese dato, más lo único que aporta él: **quién** lo hizo y **cuándo**. Antes de mandar
   algo al `activityLog`, preguntarse si alguien va a necesitar leerlo para operar: si la
   respuesta es sí, va también —o sólo— en su tabla.
+- **El log es diagnóstico; el `activityLog` es la crónica** (ADR-0019). Un hecho de negocio va al
+  registro de actividad aunque además se loguee; una falla técnica va al log y **no** al registro. El
+  log puede desaparecer sin que el negocio pierda nada — si un dato no puede desaparecer, no es un log.
+- **A un log nunca van**: contraseñas ni hashes · tokens, JWT ni claves de firma · el access token o
+  el secreto de webhook de un proveedor de pago · el cuerpo completo de un webhook · datos personales
+  más allá de un id (nombre, email, teléfono, documento). Para diagnosticar alcanza el identificador.
+- **Un camino que traduce un error técnico a un resultado de negocio deja una línea de log.** Los tres
+  `catch` que convierten una violación de PostgreSQL en "el turno ya se vendió", en "notificación
+  repetida" o en un pago huérfano son los que había; cualquiera nuevo sigue la misma regla, porque un
+  `catch` mudo es una falla que nadie va a poder explicar después.
 - Movimientos de dinero **append-only**: no se editan, se anulan con contra-asiento.
 - Las invariantes del dominio se imponen en el agregado y en la base. El sistema de referencia
   las "valida" con carteles en pantalla y por eso tiene datos rotos: grupos familiares de un
@@ -344,6 +355,13 @@ vence, el turno se libera y **nadie se entera nunca**: no queda ni una fila en `
 entrada en el registro de actividad. La única evidencia queda del lado de Mercado Pago.
 
 Con todo levantado son **cinco ventanas**: API, JobService, Backoffice, Reservas y ngrok.
+
+**Dónde quedan los logs** (ADR-0019): en Development cada host escribe además un archivo JSON por
+línea en `logs/` bajo su propia carpeta de proyecto —`…/ClubSpot.Api/logs/api-<fecha>.jsonl` y
+`…/ClubSpot.JobService/logs/jobs-<fecha>.jsonl`—, con rotación diaria y 7 archivos. Es el camino para
+diagnosticar sin mirar una ventana: cada línea lleva `tenant`, `requestId` y `userId`. Fuera de
+Development no hay archivo, sólo JSON a la consola, que es lo que recoge el hosting. Para subir o
+bajar el detalle de un namespace, `Serilog:MinimumLevel` en la configuración — sin recompilar.
 
 Para bajar uno: matar el proceso que escucha su puerto
 (`Get-NetTCPConnection -State Listen -LocalPort 5037`), no cerrar ventanas ajenas.

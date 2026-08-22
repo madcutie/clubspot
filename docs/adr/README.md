@@ -30,3 +30,4 @@ decisión, numerado, en español y en voz impersonal.
 | [0016](0016-contrato-de-api-generado-desde-el-codigo.md) | El contrato OpenAPI se genera desde el código y los clientes TypeScript desde el contrato (Orval) | 19/08/2026 | Aceptada |
 | [0017](0017-registro-de-actividad-activitylog.md) | Registro de actividad (`activityLog`): un solo registro append-only para el operador y para la auditoría; actor persona o sistema | 19/08/2026 | Aceptada |
 | [0018](0018-sesion-del-backoffice-token-en-sessionstorage-y-rol-en-la-claim.md) | Sesión del backoffice: el login es sólo email (el club sale del usuario), el token vive en `sessionStorage` y el rol se lee de la claim | 20/08/2026 | Aceptada |
+| [0019](0019-logging-estructurado-y-diagnostico.md) | Logging estructurado con Serilog: JSON a la consola, contexto (`tenant`, `requestId`, `userId`) en cada línea; el log es diagnóstico y no reemplaza al `activityLog` | 21/08/2026 | Aceptada |

@@ -5,6 +5,7 @@ using ClubSpot.SharedKernel.Modularity;
 using ClubSpot.SharedKernel.Tenancy;
 using Hangfire;
 using Hangfire.Storage;
+using Serilog.Context;
 
 namespace ClubSpot.JobService;
 
@@ -53,6 +54,8 @@ public sealed class PaymentsReconciliationDispatcher(
     {
         using var scope = scopeFactory.CreateScope();
         using var tenantScope = tenantScopeFactory.BeginScope(tenant);
+        // Same field name the API pushes: one filter reads both processes.
+        using var logScope = LogContext.PushProperty("tenant", tenant.Value);
         // Applying a payment writes to the activity log, and that refuses to record without knowing
         // who acted. Without this the job throws the moment it finds money to apply — which is the
         // only moment it matters.

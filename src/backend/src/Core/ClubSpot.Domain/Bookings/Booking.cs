@@ -22,6 +22,10 @@ public sealed class Booking : ITenantOwned
     public PaymentMode PaymentMode { get; private set; }
     // Only for online-payment holds: past this instant the hold no longer blocks the slot.
     public DateTimeOffset? ExpiresAt { get; private set; }
+    // What the club agreed to charge up front, frozen when the hold was taken. Non-null only for a
+    // deposit: read off the live club setting instead, a correct deposit paid before the club moved
+    // the percentage arrives looking short and gets orphaned.
+    public int? DepositPercent { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     // Null for portal bookings: the customer books without an operator.
     public Guid? CreatedBy { get; private set; }
@@ -35,28 +39,34 @@ public sealed class Booking : ITenantOwned
         Money price, string customerName, string? customerPhone, Guid? personId, BookingOrigin origin,
         DateTimeOffset createdAt, Guid? createdBy)
         : this(id, tenantId, courtId, date, startMinute, durationMinutes, price, customerName, customerPhone,
-            personId, origin, PaymentMode.Club, BookingStatus.Confirmed, expiresAt: null, createdAt, createdBy)
+            personId, origin, PaymentMode.Club, BookingStatus.Confirmed, expiresAt: null, depositPercent: null,
+            createdAt, createdBy)
     {
     }
 
     public static Booking Hold(Guid id, TenantId tenantId, Guid courtId, DateOnly date, int startMinute,
         int durationMinutes, Money price, string customerName, string? customerPhone, Guid? personId,
-        BookingOrigin origin, PaymentMode paymentMode, DateTimeOffset expiresAt, DateTimeOffset createdAt,
-        Guid? createdBy)
+        BookingOrigin origin, PaymentMode paymentMode, DateTimeOffset expiresAt, int? depositPercent,
+        DateTimeOffset createdAt, Guid? createdBy)
     {
         if (paymentMode == PaymentMode.Club)
             throw new ArgumentException("A club-paid booking confirms immediately; it never holds.", nameof(paymentMode));
         if (expiresAt <= createdAt)
             throw new ArgumentException("A hold must expire after its creation.", nameof(expiresAt));
+        if (paymentMode == PaymentMode.OnlineDeposit && depositPercent is null)
+            throw new ArgumentException("A deposit hold must freeze the percentage it was sold under.", nameof(depositPercent));
+        if (paymentMode != PaymentMode.OnlineDeposit && depositPercent is not null)
+            throw new ArgumentException("Only a deposit hold carries a percentage.", nameof(depositPercent));
 
         return new Booking(id, tenantId, courtId, date, startMinute, durationMinutes, price, customerName,
-            customerPhone, personId, origin, paymentMode, BookingStatus.PendingPayment, expiresAt, createdAt, createdBy);
+            customerPhone, personId, origin, paymentMode, BookingStatus.PendingPayment, expiresAt, depositPercent,
+            createdAt, createdBy);
     }
 
     private Booking(Guid id, TenantId tenantId, Guid courtId, DateOnly date, int startMinute, int durationMinutes,
         Money price, string customerName, string? customerPhone, Guid? personId, BookingOrigin origin,
-        PaymentMode paymentMode, BookingStatus status, DateTimeOffset? expiresAt, DateTimeOffset createdAt,
-        Guid? createdBy)
+        PaymentMode paymentMode, BookingStatus status, DateTimeOffset? expiresAt, int? depositPercent,
+        DateTimeOffset createdAt, Guid? createdBy)
     {
         if (durationMinutes <= 0)
             throw new ArgumentException("A booking must have a positive duration.", nameof(durationMinutes));
@@ -91,6 +101,7 @@ public sealed class Booking : ITenantOwned
         Origin = origin;
         PaymentMode = paymentMode;
         ExpiresAt = expiresAt;
+        DepositPercent = depositPercent;
         CreatedAt = createdAt;
         CreatedBy = createdBy;
     }

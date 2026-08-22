@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ClubSpot.Infrastructure.DependencyInjection;
 using ClubSpot.Infrastructure.MercadoPago;
+using ClubSpot.Infrastructure.Observability;
 using ClubSpot.JobService;
 using ClubSpot.SharedKernel.Time;
 using ClubSpot.Application.Modularity;
@@ -12,6 +13,10 @@ using Hangfire.PostgreSql;
 using Npgsql;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+// Before the connection strings, which throw: nobody is watching this process, so a startup failure
+// that leaves no line is a service that is simply not there.
+builder.AddClubSpotLogging("jobs");
 
 var clubSpotConnection = builder.Configuration.GetConnectionString("ClubSpot")
     ?? throw new InvalidOperationException("Connection string 'ClubSpot' is required.");

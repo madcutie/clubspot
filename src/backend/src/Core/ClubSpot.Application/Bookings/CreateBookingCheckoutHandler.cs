@@ -39,13 +39,23 @@ public sealed class CreateBookingCheckoutHandler(
         var endsAt = calendar.ToUtc(booking.Date.AddDays(endMinute / 1440),
             new TimeOnly(endMinute % 1440 / 60, endMinute % 60));
         var expiresAt = endsAt > clock.UtcNow + MinimumLifetime ? endsAt : clock.UtcNow + MinimumLifetime;
+        var amount = Money.Of(due, club.Currency);
+
+        // Reissuing stays free — the slot is already the customer's — but handing out a second payable
+        // link for the same money is not. While the match has not ended every link for this booking
+        // expires at the same instant, so an equal expiry means "the same charge, still valid" and the
+        // operator gets that link back. Once the one-hour floor takes over each link outlives the last,
+        // no two match, and a late charge still gets a fresh one.
+        if (await store.FindLiveCheckoutAsync(booking.Id, checkout.Name, amount, expiresAt, cancellationToken)
+            is { } live)
+            return new BookingCheckoutResult(BookingCheckoutOutcome.Created, live.Url, due, live.ExpiresAt);
 
         var title = $"{club.Name} · {booking.CourtName} {booking.Date:dd/MM} {Hour(booking.StartMinute)}";
         var session = await checkout.CreateCheckoutAsync(new CheckoutRequest(booking.Id, club.Slug, title,
-            Money.Of(due, club.Currency), expiresAt, returnUrl), cancellationToken);
+            amount, expiresAt, returnUrl), cancellationToken);
 
         await store.RecordCheckoutIssuedAsync(new CheckoutIssued(booking.Id, checkout.Name, session.Url,
-            Money.Of(due, club.Currency), expiresAt), cancellationToken);
+            amount, expiresAt), cancellationToken);
         return new BookingCheckoutResult(BookingCheckoutOutcome.Created, session.Url, due, expiresAt);
     }
 

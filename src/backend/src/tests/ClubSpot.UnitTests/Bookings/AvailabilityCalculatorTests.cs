@@ -45,7 +45,7 @@ public sealed class AvailabilityCalculatorTests
         var createdAt = DateTimeOffset.UtcNow;
         return Booking.Hold(Guid.NewGuid(), Tenant, CourtId, Today, startMinute, durationMinutes,
             Money.Of(14000m, "ARS"), "Ana Suarez", null, Guid.NewGuid(), BookingOrigin.Portal,
-            PaymentMode.OnlineFull, createdAt.AddMinutes(5), createdAt, null);
+            PaymentMode.OnlineFull, createdAt.AddMinutes(5), depositPercent: null, createdAt, null);
     }
 
     [Fact]

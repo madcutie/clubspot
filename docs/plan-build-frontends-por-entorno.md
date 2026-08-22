@@ -1,6 +1,6 @@
 # Plan — Frontends listos para producción, multi-club
 
-**Fecha:** 21/08/2026 · **Estado:** escrito, esperando decisiones · Avance en la
+**Fecha:** 21/08/2026 · **Estado:** escrito, listo para ejecutar · Avance en la
 [bitácora](plan-build-frontends-por-entorno.bitacora.md)
 
 Cierra el sexto bloqueante de [`infraestructura-mvp.html`](infraestructura-mvp.html) §9 —*"un
@@ -88,14 +88,14 @@ developer, que tiene la API levantada en ese puerto— y falla en todas las dem�
 | Qué | Por qué queda afuera |
 |---|---|
 | **Dominio propio por club** (`reservas.chacoforever.com.ar`) | Se puede agregar encima del club por path sin recompilar nada: es una tabla host → slug y DNS del lado del club. Se hace el día que un club lo pida |
-| **Pantalla de listado público de clubes en la raíz** | Publicar la lista de clientes es una decisión comercial, no técnica. La raíz muestra "no encontramos ese club" (ver decisión 5) |
+| **Pantalla de listado público de clubes en la raíz** | Publicar la lista de clientes es una decisión comercial, no técnica. La raíz muestra "no encontramos ese club" (sección 5, decisión 3) |
 | **Branding por club** (colores, logo, tipografía) | El portal es uno solo y hoy tiene un solo aspecto. Que cada club tenga el suyo es un plan de producto, no de despliegue |
 | **Configuración en runtime de la URL de la API** (`config.json` al lado del `dist/`) | Sólo paga cuando haya que **promover** un mismo `dist/` entre entornos en vez de recompilarlo. Queda escrita como alternativa descartada en ADR-0019 |
 | **Mismo origen para API y frontends con prefijo de path** | Eliminaría CORS y `AllowedReturnOrigins` de un saque, pero es una decisión de topología de despliegue, no de build |
 | **CI / GitHub Actions** | Hoy no existe `.github/workflows` ni script `test` en ningún `package.json`. Además reabre el problema del `prebuild` de Orval, que lee fuera de la carpeta del proyecto |
 | **Chequeo post-deploy contra los dominios reales** | Sin dominio no hay contra qué correrlo. Es del plan de despliegue |
 | **Dockerfile, migraciones y seed en producción, `Network:TrustedProxies`, la base de Hangfire, el reemplazo de ngrok** | [`infraestructura-mvp.html`](infraestructura-mvp.html) §9 y su plan de despliegue. Ver la sección 8: son bloqueantes **externos** a este plan |
-| **Alta de un club desde alguna pantalla** | Hoy el único que crea clubes es `DevSeeder`. Quién crea el primer club en producción es la decisión 6 |
+| **Alta de un club desde alguna pantalla** | Hoy el único que crea clubes es `DevSeeder`. Quién crea el primer club en producción es la decisión 5 de la sección 6 |
 
 ## 5. Decisiones que este plan fija
 
@@ -130,9 +130,13 @@ developer, que tiene la API levantada en ese puerto— y falla en todas las dem�
    espejo de lo que la API ya hace con `Cors:AllowedOrigins`, y por el mismo motivo que dice su
    comentario: heredar los valores de desarrollo se manifiesta como una pantalla vacía en el
    mostrador, no como un error de arranque.
-9. **El guard vive en `vite.config.ts` y sólo corre con `mode === 'production'`.** Que falte
-   configuración es un error de build, no de runtime. Que sólo corra en `production` es lo que
-   deja intacto `npm run dev` y, con él, `scripts/dev-up.ps1`.
+9. **El guard vive en `vite.config.ts`, sólo corre con `mode === 'production'`, y tiene un
+    escape declarado.** Que falte configuración es un error de build, no de runtime. Que sólo
+    corra en `production` es lo que deja intacto `npm run dev` y, con él, `scripts/dev-up.ps1`.
+    Compilar en modo producción contra la API local —`npm run build && npm run preview`, para
+    ver el bundle real antes de publicarlo— es un uso legítimo, así que `VITE_ALLOW_LOCAL_API=1`
+    lo habilita. Sin ese escape el guard se termina comentando a mano, y un guard comentado a
+    mano no vuelve nunca.
 10. **En desarrollo el fallback a `http://localhost:5037` sobrevive**, con un comentario de una
     línea que lo marca como sólo de desarrollo y dice qué lo impide en producción.
 11. **El valor de producción va como argumento de un script versionado, nunca en un
@@ -160,22 +164,11 @@ developer, que tiene la API levantada en ese puerto— y falla en todas las dem�
 
 ## 6. Decisiones que necesita el usuario
 
-La primera **bloquea la ejecución**. Las otras bloquean el despliegue, no el plan.
+**Ninguna bloquea la ejecución del plan**: las siete fases se pueden escribir y ejecutar
+enteras sin estas respuestas. Lo que bloquean es el **despliegue** — sin ellas no hay contra
+qué compilar el `dist/` real ni cómo verificarlo.
 
-**1 · ¿Se acepta un escape declarado para probar contra la API local?**
-
-| Opción | Qué implica |
-|---|---|
-| **(a) Guard con escape `VITE_ALLOW_LOCAL_API=1`** *(recomendada)* | `npm run build` de producción rechaza `localhost` salvo que se pida explícitamente |
-| (b) Guard sin escape | Para probar `npm run preview` contra la API local hay que comentar el guard a mano |
-| (c) Sin chequeo de `localhost` | Sólo se exige que la variable esté |
-
-**Por qué (a).** Probar el `dist/` contra la API local es un uso legítimo y frecuente; sin
-escape, el guard se termina comentando a mano, y un guard comentado a mano no vuelve nunca.
-(c) deja vivo el modo de falla del defecto 2: el bundle apuntando a `localhost` anda perfecto
-justo en la única máquina que lo va a verificar.
-
-**2 · ¿Cuál es el dominio de producción y cómo se reparten los nombres?** La propuesta de
+**1 · ¿Cuál es el dominio de producción y cómo se reparten los nombres?** La propuesta de
 [`infraestructura-mvp.html`](infraestructura-mvp.html) es un dominio con subdominios `api.`,
 `admin.` y `reservas.`. Con el club por path, `reservas.<dominio>` alcanza para todos los
 clubes. Conviene tener presente el acoplamiento: ese `api.<dominio>` es a la vez el
@@ -183,18 +176,18 @@ clubes. Conviene tener presente el acoplamiento: ese `api.<dominio>` es a la vez
 que Mercado Pago guarda dentro de cada preferencia. Cambiarlo después es recompilar y
 republicar los dos frontends, más pagos viejos notificando a una URL que ya no existe.
 
-**3 · ¿Se despliega también un entorno de test, o sólo producción?** El documento de
+**2 · ¿Se despliega también un entorno de test, o sólo producción?** El documento de
 infraestructura propone test primero, y es el único lugar donde el webhook de Mercado Pago se
 puede probar contra una URL pública estable —hoy eso lo hace ngrok—. El script soporta los dos
 sin ningún cambio: es el mismo comando con otra `-ApiUrl`.
 
-**4 · Si hay entorno de test, ¿qué proveedor de pagos usa?** No puede ser `fake`:
+**3 · Si hay entorno de test, ¿qué proveedor de pagos usa?** No puede ser `fake`:
 `FakePaymentProvider` arma la URL de checkout como `{ApiBaseUrl}/dev/checkout`, y
 `Program.cs:189` mapea esa ruta **sólo en Development**. Un test con `Provider=fake` le entrega
 al comprador una URL que ese mismo host responde con 404. Las opciones son el sandbox de
 Mercado Pago, o mapear `/dev/checkout` fuera de Development bajo una condición explícita.
 
-**5 · ¿Qué hosting estático?** El documento de infraestructura recomienda DigitalOcean App
+**4 · ¿Qué hosting estático?** El documento de infraestructura recomienda DigitalOcean App
 Platform. El único rastro en la máquina es un proyecto de Vercel llamado `forever-spot`
 (`reservas/.vercel/project.json`, no versionado), linkeado el 14/08/2026 cuando el portal era
 todavía el mockup con datos falsos: si se reusa, hay que decidirlo a sabiendas — y el nombre
@@ -204,12 +197,12 @@ subida: con Vercel, subir un `dist/` compilado localmente exige
 `vercel build && vercel deploy --prebuilt`, que trabaja sobre `.vercel/output`, no sobre
 `dist/`.
 
-**6 · ¿Quién crea el primer club en producción?** Hoy el único que crea clubes es `DevSeeder`,
+**5 · ¿Quién crea el primer club en producción?** Hoy el único que crea clubes es `DevSeeder`,
 y sólo corre en Development. Sin esa fila en `clubs`, el portal desplegado responde *no
 encontramos ese club* desde el primer día, para cualquier slug. Es lo que hay que resolver
 antes de poder verificar nada de punta a punta.
 
-**7 · ¿Se aceptan deploys de preview con URL aleatoria?** `ConfirmScreen.tsx:51` manda
+**6 · ¿Se aceptan deploys de preview con URL aleatoria?** `ConfirmScreen.tsx:51` manda
 `window.location.origin + window.location.pathname` como `returnUrl`, y el backend lo rechaza
 con 422 si el origen no está en `AllowedReturnOrigins`. Una URL distinta por deploy no se puede
 listar por anticipado: en un preview, **reservar sin pago funciona y reservar con pago no**, con
@@ -358,7 +351,7 @@ propio motivo: monta `BrowserRouter` y rutea por path.
   `index.html` cacheado apuntando al bundle viejo.
 - `public/_redirects` en las dos apps, con la regla equivalente de Netlify y Cloudflare Pages;
   Vite copia `public/` al `dist/` tal cual.
-- **Se resuelve la contradicción del defecto 9**, coherente con la decisión 12: los dos
+- **Se resuelve la contradicción del defecto 9**, coherente con la decisión 12 de la sección 5: los dos
   `vercel.json` pierden `framework`, `installCommand` y `buildCommand` —el host no construye— y
   los dos `.vercelignore` dejan de excluir `dist`, que es lo único que hay que subir.
 
@@ -472,7 +465,7 @@ punta** hasta que estén. No son alcance de este plan:
 
 | Qué falta | Por qué bloquea |
 |---|---|
-| **En producción no hay migración ni seed** | `Program.cs:148-155` migra y siembra sólo en Development, y `DevSeeder` es el único que crea clubes. Sin una fila en `clubs`, el portal responde *no encontramos ese club* para cualquier slug. Es la decisión 6 |
+| **En producción no hay migración ni seed** | `Program.cs:148-155` migra y siembra sólo en Development, y `DevSeeder` es el único que crea clubes. Sin una fila en `clubs`, el portal responde *no encontramos ese club* para cualquier slug. Es la decisión 5 de la sección 6 |
 | **Los dos Dockerfiles y quién corre las migraciones** | `infraestructura-mvp.html` §9. Sin API desplegada no hay contra qué apuntar el `VITE_API_URL` |
 | **El reemplazo de ngrok** | Hoy `Payments:PublicBaseUrl` es el túnel. Sin URL pública estable, Mercado Pago no notifica |
 | **Los nombres de DNS y sus certificados** | Son los valores que el script de F4 necesita como argumento |

@@ -2,6 +2,25 @@
 
 Registro de avance del [plan](plan-build-frontends-por-entorno.md). La entrada más nueva arriba.
 
+## 21/08/2026 — El escape del guard queda fijado, y el plan deja de estar bloqueado
+
+El plan listaba como *decisión que bloquea la ejecución* si el guard de `vite.config.ts` acepta
+un escape para compilar en modo producción contra la API local. El usuario pidió que se lo
+explicara y quedó claro que **estaba mal catalogado**: es un detalle de implementación de una
+sola fase, no una decisión de producto, y elevarlo a bloqueante frenaba el plan entero por algo
+que tiene una respuesta obvia.
+
+Queda fijado en el plan (sección 5, decisión 9): el guard acepta `VITE_ALLOW_LOCAL_API=1`.
+`npm run build && npm run preview` contra `localhost:5037` —ver el bundle real, minificado,
+antes de publicarlo— es un uso legítimo y frecuente. Sin escape hay que comentar el guard a
+mano, y un guard comentado a mano no se descomenta nunca. Sacar el chequeo de `localhost` no es
+opción: es el defecto que este plan arregla.
+
+Con eso, **ninguna de las decisiones que quedan bloquea la ejecución**. Las seis restantes son
+de despliegue —dominio, entorno de test, proveedor de pagos del test, hosting, quién crea el
+primer club, previews— y lo que bloquean es compilar y verificar el `dist/` real, no escribir
+ni ejecutar las fases. El estado del plan pasa a **listo para ejecutar**.
+
 ## 21/08/2026 — Corrección del usuario: no existe un build por club
 
 La primera versión del plan proponía dejar `VITE_CLUB_SLUG` horneado en el build y marcarlo como

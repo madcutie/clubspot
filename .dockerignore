@@ -1,0 +1,24 @@
+# The build context is the repository root, and the images only need src/backend/.
+# Everything else just makes the context bigger and busts the layer cache.
+.git/
+.github/
+.claude/
+.vs/
+.idea/
+.vercel/
+code-reviews/
+docs/
+scripts/
+*.md
+
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/TestResults/
+**/*.tsbuildinfo
+
+# Local developer configuration and secrets never travel into an image.
+.env
+.env.*
+**/appsettings.Development.json

@@ -67,7 +67,7 @@ if (Get-Process -Name ngrok -ErrorAction SilentlyContinue) {
 }
 
 Write-Host ''
-Write-Host 'Portal de reservas   http://localhost:5183' -ForegroundColor Green
+Write-Host 'Portal de reservas   http://localhost:5183/chaco-for-ever' -ForegroundColor Green
 Write-Host 'Backoffice           http://localhost:5184' -ForegroundColor Green
 Write-Host 'API                  http://localhost:5037' -ForegroundColor Green
 Write-Host 'JobService           (sin puerto; concilia pagos cada 5 min)' -ForegroundColor Green

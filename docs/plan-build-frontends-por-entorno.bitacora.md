@@ -2,6 +2,53 @@
 
 Registro de avance del [plan](plan-build-frontends-por-entorno.md). La entrada más nueva arriba.
 
+## 21/08/2026 — F2 ejecutada: el portal dejó de estar atado a un club
+
+`VITE_CLUB_SLUG` ya no existe. El club sale del primer segmento del path, resuelto en runtime.
+
+- **`src/api/club.ts`** nuevo: lee el primer segmento de `location.pathname`, lo valida contra
+  `^[a-z0-9]+(-[a-z0-9]+)*$` y contra los 60 caracteres de `clubs.slug`, y expone `CLUB_SLUG`
+  (`string | null`) más `requireClubSlug()`. **No hay club por defecto**: un default haría que un
+  error de ruteo se viera como el portal andando, con el club equivocado.
+- **`config.ts`** queda con una sola línea; `vite-env.d.ts` pierde `VITE_CLUB_SLUG` y gana el
+  `/// <reference types="vite/client" />` que le faltaba. `portalApi.ts` cambió sus **6** usos.
+- **Las dos claves de `localStorage` llevan el club adentro.** Es el bug de datos cruzados que no
+  estaba en el radar: `clubspot.misReservas` y `clubspot.tokensReserva` eran globales al origen.
+  Pasaron a `clubspot.<slug>.misReservas` y `clubspot.<slug>.tokensReserva`, calculadas por
+  función y no por constante de módulo, para no lanzar al importar sin club.
+- **`ClubNotFoundScreen`** nueva. Entra por dos caminos: la URL no trae segmento con forma de
+  slug, o el catálogo responde 404. `App` quedó partido en dos —el gate afuera, los hooks
+  adentro— para no romper las reglas de hooks.
+- **El `<title>` sale del catálogo** (`PortalCatalogResponse.club.name`, que ya viajaba en el
+  contrato). El `index.html` quedó con `Reserva de canchas`, sin el nombre de ningún club.
+- **El `returnUrl` no se tocó**: `origin + pathname` ya incluye el segmento del club.
+
+**Verificado corriendo, no sólo con tests.** Con la API en `:5037` y el portal en `:5183`:
+
+- `/chaco-for-ever` abre el portal y la pestaña dice *"Club Atlético Chaco For Ever · Reserva de
+  canchas"* — el nombre lo puso el catálogo.
+- `/` y `/no-existe` muestran *"No encontramos ese club"*, sin llamadas en loop.
+- **Reserva de punta a punta**: pádel, sábado 22, 19:00–20:00, Cancha 1, $18.000 → la fila quedó
+  en `bookings` como `PendingPayment` bajo `chaco-for-ever`, y el token en
+  `clubspot.chaco-for-ever.tokensReserva`.
+- **Dos clubes a la vez.** Se sembró `club-de-prueba` en la base de desarrollo: `/club-de-prueba`
+  abrió el portal con su propio nombre y sus 0 canchas, contra el mismo dev server y el mismo
+  bundle. Con una reserva sembrada en cada club, **"Mis reservas" de uno mostró Cancha 1 y la del
+  otro Cancha 2** — que es exactamente lo que hoy no se cumplía. El club de prueba se borró
+  después; la base quedó como estaba.
+- La vuelta del pago con `?retorno=<guid>` limpia la query y **conserva el segmento del club**.
+- `npm run typecheck` limpio (`tsc -b --force`), `npm run build` verde, y **`chaco-for-ever` ya no
+  aparece en `dist/assets/*.js`**. Los clientes de Orval quedaron idénticos: el `git status` que
+  aparece después del build es sólo fin de línea, con `git diff` vacío.
+
+**Actualizado además**: `scripts/dev-up.ps1` y el README del portal ahora imprimen la URL con el
+club adentro.
+
+**Lo que no entra en esta fase**, y sigue como estaba: el guard de `vite.config.ts` que hace
+fallar el build sin `VITE_API_URL` (F3), el script de build (F4) y el fallback de SPA (F5). Hasta
+que exista F5, un F5 del navegador sobre `/<slug>` depende de que el hosting reescriba a
+`index.html`; el dev server de Vite ya lo hace solo.
+
 ## 21/08/2026 — El escape del guard queda fijado, y el plan deja de estar bloqueado
 
 El plan listaba como *decisión que bloquea la ejecución* si el guard de `vite.config.ts` acepta

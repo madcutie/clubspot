@@ -1,6 +1,6 @@
 import { addDays, dayChipOf, dayLabelOf, hhmm, isoDate, parseDate } from '../domain/dates';
 import type { CourtFilter, CourtType, Duration, Sport } from '../domain/types';
-import { CLUB_SLUG } from './config';
+import { requireClubSlug } from './club';
 import { queryClient } from './queryClient';
 import {
   createPortalBooking,
@@ -38,7 +38,7 @@ export { ApiError } from './http';
 function fetchCatalog(): Promise<PortalCatalogResponse> {
   return queryClient.fetchQuery({
     queryKey: ['portal', 'catalog'],
-    queryFn: () => getPortalCatalog(CLUB_SLUG),
+    queryFn: () => getPortalCatalog(requireClubSlug()),
   });
 }
 
@@ -48,7 +48,7 @@ function fetchRange(sport: Sport): Promise<PortalAvailability> {
   const to = isoDate(addDays(hoy, DIAS_VISIBLES - 1));
   return queryClient.fetchQuery({
     queryKey: ['portal', 'availability', sport, from],
-    queryFn: () => getPortalAvailability(CLUB_SLUG, { sport: API_SPORT[sport], from, to }),
+    queryFn: () => getPortalAvailability(requireClubSlug(), { sport: API_SPORT[sport], from, to }),
   });
 }
 
@@ -301,22 +301,22 @@ function proofOfOwnership(token: string | null): RequestInit {
 }
 
 export function createBooking(request: PortalBookingRequest): Promise<BookingCreated> {
-  return createPortalBooking(CLUB_SLUG, request);
+  return createPortalBooking(requireClubSlug(), request);
 }
 
 export function fetchBooking(id: string, token: string | null): Promise<BookingSnapshot> {
-  return getPortalBooking(CLUB_SLUG, id, proofOfOwnership(token));
+  return getPortalBooking(requireClubSlug(), id, proofOfOwnership(token));
 }
 
 /** Abandono del checkout: libera el hold ya, sin esperar el TTL. Idempotente. */
 export async function releaseBooking(id: string, token: string | null): Promise<void> {
   // Se llama al salir de la pantalla: que el hold siga vivo hasta el TTL no es un error a mostrar.
-  await releasePortalBooking(CLUB_SLUG, id, proofOfOwnership(token)).catch(() => undefined);
+  await releasePortalBooking(requireClubSlug(), id, proofOfOwnership(token)).catch(() => undefined);
 }
 
 /** El webhook no llegó todavía: pide conciliar esta reserva ya, sin esperar el job. */
 export async function settleBooking(id: string, token: string | null): Promise<void> {
-  await settlePortalBooking(CLUB_SLUG, id, proofOfOwnership(token)).catch(() => undefined);
+  await settlePortalBooking(requireClubSlug(), id, proofOfOwnership(token)).catch(() => undefined);
 }
 
 /**
